@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokens — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.tokens-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.token-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; }
+.token-value { font-size: 2em; font-weight: 700; margin: var(--space-2) 0; }
+.token-label { font-size: var(--font-size-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.token-trend { font-size: var(--font-size-xs); color: var(--green); margin-top: var(--space-1); }
+.token-history { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-4); }
+.token-history h3 { font-size: var(--font-size-sm); margin-bottom: var(--space-3); }
+.history-row { display: flex; justify-content: space-between; padding: var(--space-2) 0; border-bottom: 1px solid var(--border-secondary); font-size: var(--font-size-sm); }
+.history-row:last-child { border-bottom: none; }
+.history-time { color: var(--text-muted); }
+.history-tokens { font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+<div class="header-title">📊 Token Analysis</div>
+<div class="header-actions">
+<button class="btn btn-sm" onclick="refreshTokens()">↻ Refresh</button>
+</div>
+</div>
+
+<div class="tokens-grid">
+<div class="token-card">
+<div class="token-label">Total Input</div>
+<div class="token-value" id="total-input">—</div>
+</div>
+<div class="token-card">
+<div class="token-label">Total Output</div>
+<div class="token-value" id="total-output">—</div>
+</div>
+<div class="token-card">
+<div class="token-label">Sessions Today</div>
+<div class="token-value" id="sessions-today">—</div>
+</div>
+<div class="token-card">
+<div class="token-label">Est. Cost (USD)</div>
+<div class="token-value" id="total-cost">—</div>
+</div>
+</div>
+
+<div class="token-history">
+<h3>Recent Sessions (last 20)</h3>
+<div id="history-list"><div style="color:var(--text-muted)">Loading...</div></div>
+</div>
+</div>
+
+<script>
+// Token tracking — reads from localStorage (accumulated from chat responses)
+let tokenData = JSON.parse(localStorage.getItem('owl-tokens') || '{"sessions":[],"totalInput":0,"totalOutput":0,"totalCost":0}');
+
+function recordSession(inputTokens, outputTokens, cost) {
+  const now = new Date();
+  tokenData.totalInput += inputTokens || 0;
+  tokenData.totalOutput += outputTokens || 0;
+  tokenData.totalCost += cost || 0;
+  tokenData.sessions.push({
+    time: now.toISOString(),
+    input: inputTokens || 0,
+    output: outputTokens || 0,
+    cost: cost || 0
+  });
+  // Keep last 50 sessions
+  if (tokenData.sessions.length > 50) tokenData.sessions = tokenData.sessions.slice(-50);
+  localStorage.setItem('owl-tokens', JSON.stringify(tokenData));
+  render();
+}
+
+function render() {
+  document.getElementById('total-input').textContent = formatNumber(tokenData.totalInput);
+  document.getElementById('total-output').textContent = formatNumber(tokenData.totalOutput);
+  document.getElementById('total-cost').textContent = '$' + tokenData.totalCost.toFixed(4);
+  
+  const today = new Date().toDateString();
+  const todaySessions = tokenData.sessions.filter(s => new Date(s.time).toDateString() === today);
+  document.getElementById('sessions-today').textContent = todaySessions.length;
+  
+  const historyList = document.getElementById('history-list');
+  const recent = tokenData.sessions.slice(-20).reverse();
+  if (recent.length === 0) {
+    historyList.innerHTML = '<div style="color:var(--text-muted)">No sessions recorded yet. Start chatting to see token usage.</div>';
+  } else {
+    historyList.innerHTML = recent.map(s => `
+      <div class="history-row">
+        <span class="history-time">${new Date(s.time).toLocaleTimeString()}</span>
+        <span class="history-tokens">↓ ${formatNumber(s.input)} · ↑ ${formatNumber(s.output)} · $${s.cost.toFixed(4)}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function refreshTokens() { render(); }
+
+// Auto-refresh every 10s (in case chat tab made requests)
+setInterval(render, 10000);
+document.addEventListener('DOMContentLoaded', render);
+</script>
+</body>
+</html>

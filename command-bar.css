@@ -1,0 +1,144 @@
+/* ============================================================
+   Life OS — Command Bar (shared component)
+   Ctrl+K opens overlay, parses natural language actions
+   Include this CSS in shared.css or page <style>
+   ============================================================ */
+
+.command-bar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+}
+
+.command-bar-overlay.open {
+  display: flex;
+}
+
+.command-bar {
+  width: 560px;
+  max-width: 90vw;
+  background: #1a1d24;
+  border: 1px solid #2a2f3a;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+.command-bar-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+.command-bar-input-row .icon {
+  font-size: 18px;
+  color: #58a6ff;
+  flex-shrink: 0;
+}
+
+.command-bar-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #e8eaed;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+}
+
+.command-bar-input::placeholder {
+  color: #6e7681;
+}
+
+.command-bar-results {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.command-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: #c9d1d9;
+  font-size: 14px;
+}
+
+.command-bar-item:hover,
+.command-bar-item.selected {
+  background: rgba(88,166,255,0.08);
+  color: #fff;
+}
+
+.command-bar-item .item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.command-bar-item .item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.command-bar-item .item-title {
+  font-weight: 600;
+  color: #e8eaed;
+}
+
+.command-bar-item .item-desc {
+  font-size: 12px;
+  color: #6e7681;
+  margin-top: 1px;
+}
+
+.command-bar-item .item-shortcut {
+  font-size: 11px;
+  color: #6e7681;
+  background: rgba(255,255,255,0.06);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', monospace;
+}
+
+.command-bar-empty {
+  padding: 24px;
+  text-align: center;
+  color: #6e7681;
+  font-size: 13px;
+}
+
+.command-bar-hint {
+  padding: 8px 16px;
+  border-top: 1px solid #2a2f3a;
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: #6e7681;
+}
+
+.command-bar-hint kbd {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: 'SF Mono', monospace;
+  font-size: 10px;
+}

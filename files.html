@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Files — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Flex layout: sidebar + main area */
+.files-layout { display: flex; height: calc(100vh - 80px); }
+.file-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+.file-reader { flex: 1; display: flex; flex-direction: column; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); overflow: hidden; }
+@media (max-width: 768px) { .files-layout { flex-direction: column; } .file-sidebar { width: 100%; } }
+
+.file-sidebar-title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.folder-group { margin-bottom: var(--space-2); }
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  user-select: none;
+}
+.folder-header:hover { background: var(--bg-tertiary); }
+.folder-name { flex: 1; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.folder-name:hover { background: var(--accent-bg); color: var(--accent); }
+.folder-toggle { font-size: 10px; transition: transform 0.2s; }
+.folder-toggle.open { transform: rotate(90deg); }
+.folder-children { padding-left: var(--space-4); display: none; }
+.folder-children.open { display: block; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.file-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.file-item.active { background: var(--accent-bg); color: var(--accent); }
+.file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-reader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  background: var(--bg-tertiary);
+}
+.file-reader-title { font-size: var(--font-size-sm); font-weight: 500; }
+.file-reader-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+.file-reader-content iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: var(--bg-primary);
+}
+/* Markdown rendered content */
+.md-content {
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+.md-content h1 { font-size: 1.5em; margin: 0 0 var(--space-3); border-bottom: 1px solid var(--border-secondary); padding-bottom: var(--space-2); }
+.md-content h2 { font-size: 1.25em; margin: var(--space-4) 0 var(--space-2); }
+.md-content h3 { font-size: 1.1em; margin: var(--space-3) 0 var(--space-2); }
+.md-content p { margin: 0 0 var(--space-3); }
+.md-content ul, .md-content ol { padding-left: var(--space-4); margin: 0 0 var(--space-3); }
+.md-content code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+.md-content pre { background: var(--bg-tertiary); padding: var(--space-3); border-radius: var(--radius-md); overflow-x: auto; margin: 0 0 var(--space-3); }
+.md-content pre code { background: none; padding: 0; }
+.md-content blockquote { border-left: 3px solid var(--accent); padding-left: var(--space-3); color: var(--text-muted); margin: 0 0 var(--space-3); }
+.md-content table { border-collapse: collapse; width: 100%; margin: 0 0 var(--space-3); }
+.md-content th, .md-content td { border: 1px solid var(--border-secondary); padding: var(--space-2) var(--space-3); text-align: left; }
+.md-content th { background: var(--bg-tertiary); font-weight: 600; }
+.md-content a { color: var(--accent); text-decoration: none; }
+.md-content a:hover { text-decoration: underline; }
+.md-content hr { border: none; border-top: 1px solid var(--border-secondary); margin: var(--space-4) 0; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+<div class="header-title">📁 File Browser</div>
+<div class="header-actions">
+<button class="btn btn-sm" onclick="refreshTree()">↻ Refresh</button>
+</div>
+</div>
+<div class="files-layout">
+<div class="file-sidebar" id="file-sidebar">
+<div class="file-sidebar-title">Vault Structure</div>
+<div id="tree-container"><div style="padding:16px;color:var(--text-muted)">Loading...</div>
+</div>
+</div>
+<div class="file-reader" id="file-reader">
+<div class="file-reader-header">
+  <span class="file-reader-title" id="reader-title" onclick="navigateUp()" style="cursor:pointer" title="Click to go up">Select a file</span>
+  <button class="btn btn-sm" onclick="closeReader()">✕ Close</button>
+</div>
+<div class="file-reader-content" id="reader-content">
+<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+<div style="text-align:center;">
+<div style="font-size:48px;margin-bottom:12px;">📂</div>
+<div>Click a file to view its contents</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const VAULT_EXCLUDE = ['life-os', '.git', 'node_modules', '__pycache__', '.obsidian'];
+
+async function loadTree() {
+  try {
+    const resp = await fetch('/api/tree');
+    const result = await resp.json();
+    renderTree(result.data || []);
+  } catch(e) {
+    document.getElementById('tree-container').innerHTML = `<div style="padding:16px;color:var(--red)">Error loading tree: ${e.message}</div>`;
+  }
+}
+
+function renderTree(items, container) {
+  if (!container) {
+    const c = document.getElementById('tree-container');
+    c.innerHTML = '';
+    renderTree(items, c);
+    return;
+  }
+  items.forEach(item => {
+    if (VAULT_EXCLUDE.includes(item.name)) return;
+    if (item.type === 'dir' || item.type === 'directory') {
+      const div = document.createElement('div');
+      div.className = 'folder-group';
+      div.innerHTML = `
+        <div class="folder-header">
+          <span class="folder-toggle" onclick="toggleFolder(this)">▶</span>
+          <span class="folder-name" onclick="openFolder(this, '${item.path}')">${item.name}</span>
+        </div>
+        <div class="folder-children"></div>
+      `;
+      container.appendChild(div);
+      const children = div.querySelector('.folder-children');
+      if (item.children && item.children.length) {
+        renderTree(item.children, children);
+      }
+    } else {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.textContent = item.name;
+      div.onclick = () => openFile(item.path, div);
+      container.appendChild(div);
+    }
+  });
+}
+
+function toggleFolder(el) {
+  const children = el.nextElementSibling;
+  const toggle = el.querySelector('.folder-toggle');
+  if (children.classList.contains('open')) {
+    children.classList.remove('open');
+    toggle.classList.remove('open');
+  } else {
+    children.classList.add('open');
+    toggle.classList.add('open');
+  }
+}
+
+async function openFolder(el, path) {
+  currentReaderPath = path;
+  document.getElementById('reader-title').textContent = path;
+  const content = document.getElementById('reader-content');
+  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">Loading folder contents...</div>';
+  try {
+    // Get the full tree and find the folder's children
+    const resp = await fetch('/api/tree');
+    const result = await resp.json();
+    const allItems = result.data || [];
+    // Find the matching folder in root items or search recursively
+    const findFolder = (nodes, targetPath) => {
+      for (const node of nodes) {
+        if ((node.path || node.name) === targetPath) {
+          return node.children || [];
+        }
+        if (node.children) {
+          const found = findFolder(node.children, targetPath);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const found = findFolder(allItems, path);
+    const items = found ? found : allItems;
+    if (items.length === 0) {
+      content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)"><div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">📭</div><div>Empty folder</div></div></div>';
+      return;
+    }
+    let html = '<div style="padding:0;">';
+    items.forEach(item => {
+      if (VAULT_EXCLUDE.includes(item.name)) return;
+      const isDir = item.type === 'dir' || item.type === 'directory';
+      const icon = isDir ? '📁' : getFileIcon(item.name);
+      const size = item.size ? formatSize(item.size) : '';
+      const safePath = item.path.replace(/'/g, '&#39;');
+      html += `<div class="file-item" data-path="${safePath}" onclick="${isDir ? 'openFolder(this,this.dataset.path)' : 'openFile(this.dataset.path,this)'}" style="padding:8px 16px;border-bottom:1px solid var(--border-secondary)">
+        <span style="margin-right:8px">${icon}</span>
+        <span class="file-name">${item.name}</span>
+        ${size ? `<span style="margin-left:auto;color:var(--text-muted);font-size:var(--font-size-xs)">${size}</span>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+    content.innerHTML = html;
+  } catch(e) {
+    content.innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function getFileIcon(name) {
+  if (name.endsWith('.md')) return '📄';
+  if (name.endsWith('.py')) return '🐍';
+  if (name.endsWith('.json')) return '📋';
+  if (name.endsWith('.html')) return '🌐';
+  if (name.endsWith('.js')) return '⚡';
+  if (name.endsWith('.css')) return '🎨';
+  if (name.endsWith('.pdf')) return '📕';
+  if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.webp')) return '🖼️';
+  return '📎';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+async function openFile(path, el) {
+  path = path.replace(/&#39;/g, "'");
+  currentReaderPath = path;
+  document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('reader-title').textContent = path;
+  const content = document.getElementById('reader-content');
+  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">Loading...</div>';
+  try {
+    const resp = await fetch('/api/file?path=' + encodeURIComponent(path));
+    const data = await resp.json();
+    if (data.html) {
+      content.innerHTML = `<div class="md-content">${data.html}</div>`;
+    } else if (data.content) {
+      content.innerHTML = `<pre style="white-space:pre-wrap;font-size:var(--font-size-sm);color:var(--text-primary)">${escapeHtml(data.content)}</pre>`;
+    } else {
+      content.innerHTML = `<div style="color:var(--red)">${data.error || 'Failed to load file'}</div>`;
+    }
+  } catch(e) {
+    content.innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+function closeReader() {
+  document.getElementById('reader-title').textContent = 'Select a file';
+  document.getElementById('reader-content').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+      <div style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">📂</div>
+        <div>Click a file to view its contents</div>
+      </div>
+    </div>`;
+}
+
+let currentReaderPath = '';
+function navigateUp() {
+  if (!currentReaderPath || currentReaderPath === '.') return;
+  const parts = currentReaderPath.split('/');
+  parts.pop();
+  const parent = parts.join('/') || '.';
+  openFolder(null, parent);
+}
+
+function refreshTree() { loadTree(); }
+document.addEventListener('DOMContentLoaded', loadTree);
+</script>
+</body>
+</html>

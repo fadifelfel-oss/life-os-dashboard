@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Clipper - Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+:root { --bg: #0d1117; --bg-card: #161b22; --bg-editor: #1c2128; --border: #30363d; --text: #e6edf3; --text-muted: #8b949e; --text-secondary: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149; --orange: #d29922; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+.header { display:flex; justify-content:space-between; align-items:center; padding:16px 24px; background:var(--bg-card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+.header h1 { font-size:18px; font-weight:700; }
+.content { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; margin-top: 32px; }
+h2:first-child { margin-top: 0; }
+p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 12px; }
+code { background: var(--bg-tertiary); padding: 3px 8px; border-radius: 4px; font-size: 13px; color: var(--accent); }
+
+/* Inbox styling */
+.inbox-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.inbox-count { font-size:13px; color:var(--text-muted); }
+.clip-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: border-color 0.2s;
+}
+.clip-card:hover { border-color: var(--accent-border); }
+.clip-icon { font-size: 20px; padding-top: 2px; }
+.clip-info { flex: 1; min-width: 0; }
+.clip-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clip-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.clip-source { color: var(--accent); text-decoration: none; }
+.clip-source:hover { text-decoration: underline; }
+.clip-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.clip-empty {
+  text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.clip-empty .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Processed section */
+.processed-toggle {
+  font-size: 13px; color: var(--text-muted); cursor: pointer;
+  padding: 8px 0; display: inline-flex; align-items: center; gap: 4px;
+}
+.processed-toggle:hover { color: var(--text); }
+.processed-list { margin-top: 8px; display: none; }
+.processed-list.show { display: block; }
+
+/* Refresh button */
+.refresh-btn {
+  padding: 6px 14px; font-size: 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); cursor: pointer; font-weight: 600;
+  transition: all 0.15s;
+}
+.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--bg-card); border: 1px solid var(--green);
+  border-radius: 8px; padding: 12px 18px; font-size: 13px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  display: none; z-index: 999;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1> Web Clipper</h1>
+  <span style="font-size:12px;color:var(--text-muted);">Unprocessed: <span id="header-count">0</span></span>
+</div>
+
+<div class="content">
+
+<h2> Unprocessed Clips</h2>
+<p>Clips from Obsidian Web Clipper land in <code>Clippings/</code>. Review and mark as done when processed.</p>
+
+<div class="inbox-header">
+  <span class="inbox-count" id="clip-count">Loading...</span>
+  <button class="refresh-btn" onclick="loadClips()">↻ Refresh</button>
+</div>
+
+<div id="clips-container">
+  <div class="clip-empty">
+    <div class="icon">📋</div>
+    <div>Loading clips...</div>
+  </div>
+</div>
+
+<!-- Processed history -->
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid var(--border);">
+  <div class="processed-toggle" onclick="toggleProcessed()">
+    <span id="processed-arrow">▶</span> Previously Processed
+  </div>
+  <div class="processed-list" id="processed-list">
+    <div style="color:var(--text-muted);font-size:13px;">Loading...</div>
+  </div>
+</div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+async function loadClips() {
+  const container = document.getElementById('clips-container');
+  try {
+    const resp = await fetch('/api/clippings');
+    const clips = await resp.json();
+    
+    document.getElementById('header-count').textContent = clips.length;
+    document.getElementById('clip-count').textContent = clips.length + ' clip' + (clips.length !== 1 ? 's' : '') + ' waiting';
+    
+    if (clips.length === 0) {
+      container.innerHTML = `
+        <div class="clip-empty">
+          <div class="icon">✅</div>
+          <div>All caught up! No unprocessed clips.</div>
+          <p style="margin-top:8px;">New clips from the web clipper appear here automatically.</p>
+        </div>`;
+      return;
+    }
+    
+    container.innerHTML = clips.map((clip, i) => {
+      const icon = clip.source.includes('youtube') || clip.source.includes('youtu.be') ? '🎬' : 
+                   clip.source.includes('github') ? '💻' :
+                   clip.source.includes('linkedin') ? '💼' : '📄';
+      const date = clip.created || new Date(clip.modified * 1000).toLocaleDateString();
+      const sourceDisplay = clip.source ? clip.source.replace(/^https?:\/\//, '').substring(0, 50) + (clip.source.length > 50 ? '...' : '') : 'No source';
+      
+      return `
+      <div class="clip-card" id="clip-${i}">
+        <div class="clip-icon">${icon}</div>
+        <div class="clip-info">
+          <div class="clip-title" title="${escapeHtml(clip.title)}">${escapeHtml(clip.title)}</div>
+          <div class="clip-meta">
+            <span>${date}</span>
+            <span>${formatSize(clip.size)}</span>
+            ${clip.source ? `<a href="${escapeHtml(clip.source)}" target="_blank" class="clip-source">${escapeHtml(sourceDisplay)}</a>` : ''}
+          </div>
+        </div>
+        <div class="clip-actions">
+          <button class="btn btn-sm" onclick="window.open('/knowledge/${escapeHtml(clip.path)}','_blank')">Open</button>
+          <button class="btn btn-sm btn-success" onclick="processClip('${escapeHtml(clip.name)}', ${i})">✅ Done</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = `<div class="clip-empty"><div class="icon">⚠️</div><div>Error loading clips: ${e.message}</div></div>`;
+  }
+}
+
+async function processClip(filename, index) {
+  const card = document.getElementById('clip-' + index);
+  if (card) card.style.opacity = '0.5';
+  try {
+    const resp = await fetch('/api/clippings/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: filename })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      showToast('Marked as processed');
+      loadClips();
+    } else {
+      showToast('Error: ' + (data.error || 'Failed'), true);
+      if (card) card.style.opacity = '1';
+    }
+  } catch(e) {
+    showToast('Connection error', true);
+    if (card) card.style.opacity = '1';
+  }
+}
+
+async function toggleProcessed() {
+  const list = document.getElementById('processed-list');
+  const arrow = document.getElementById('processed-arrow');
+  if (list.classList.contains('show')) {
+    list.classList.remove('show');
+    arrow.textContent = '▶';
+    return;
+  }
+  list.classList.add('show');
+  arrow.textContent = '▼';
+  
+  // Load processed clips
+  try {
+    const resp = await fetch('/api/tree?path=10_Sources/processed/clippings');
+    const data = await resp.json();
+    if (data && data.length) {
+      list.innerHTML = data.slice(-20).reverse().map(f => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border-secondary);">
+          <span>📄</span>
+          <span style="flex:1;">${f.name}</span>
+          <button class="btn btn-sm" onclick="window.open('/knowledge/10_Sources/processed/clippings/${f.name}','_blank')">Open</button>
+        </div>
+      `).join('');
+    } else {
+      list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No processed clips yet.</div>';
+    }
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Error loading</div>';
+  }
+}
+
+function showToast(msg, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 2500);
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', loadClips);
+</script>
+</body>
+</html>

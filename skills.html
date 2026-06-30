@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-3); padding: var(--space-4); }
+.skill-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.1s;
+}
+.skill-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.skill-name { font-size: var(--font-size-sm); font-weight: 600; margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-2); }
+.skill-desc { font-size: var(--font-size-xs); color: var(--text-muted); line-height: 1.5; }
+.skill-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: var(--space-2); }
+.skill-tag { background: var(--bg-tertiary); color: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+.skill-section { padding: var(--space-4); }
+.skill-section h2 { font-size: var(--font-size-md); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+
+/* Health Coach Board */
+.health-coach-board {
+  background: linear-gradient(135deg, #0a2e1a 0%, #0d1f1a 100%);
+  border: 1px solid #2d5a3d;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin: var(--space-4);
+}
+.hc-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.hc-header h2 { color: #00d4aa; font-size: var(--font-size-md); margin: 0; }
+.hc-header .badge { background: #00d4aa; color: #0a2e1a; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+.hc-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.hc-metric {
+  background: rgba(0,212,170,0.08);
+  border: 1px solid rgba(0,212,170,0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  text-align: center;
+}
+.hc-metric-value { font-size: 20px; font-weight: 700; color: #00d4aa; }
+.hc-metric-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.hc-log {
+  background: rgba(0,0,0,0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.hc-log-title { font-size: 12px; font-weight: 600; color: #00d4aa; margin-bottom: 8px; }
+.hc-log-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 11px;
+}
+.hc-log-entry:last-child { border: none; }
+.hc-log-date { color: var(--text-muted); }
+.hc-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.hc-btn {
+  background: rgba(0,212,170,0.15);
+  border: 1px solid rgba(0,212,170,0.3);
+  color: #00d4aa;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.hc-btn:hover { background: rgba(0,212,170,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+<div class="header-title">🧩 Skills Library</div>
+<div class="header-actions">
+<button class="btn btn-sm" onclick="refreshSkills()">↻ Refresh</button>
+</div>
+</div>
+
+<div class="skill-section">
+<h2>🏗️ FieldBridge HQ</h2>
+<div class="skills-grid" id="fb-skills"><div style="color:var(--text-muted)">Loading...</div></div>
+</div>
+
+<div class="skill-section">
+<h2>📦 Installed Skills</h2>
+<div class="skills-grid" id="installed-skills"><div style="color:var(--text-muted)">Loading...</div></div>
+</div>
+
+<!-- Health Coach Board -->
+<div class="health-coach-board">
+  <div class="hc-header">
+    <h2>💪 Health Coach</h2>
+    <span class="badge">ACTIVE</span>
+  </div>
+  <div class="hc-metrics">
+    <div class="hc-metric">
+      <div class="hc-metric-value">72</div>
+      <div class="hc-metric-label">Weight (kg)</div>
+    </div>
+    <div class="hc-metric">
+      <div class="hc-metric-value">4</div>
+      <div class="hc-metric-label">Workouts/week</div>
+    </div>
+    <div class="hc-metric">
+      <div class="hc-metric-value">7.2</div>
+      <div class="hc-metric-label">Sleep (hrs)</div>
+    </div>
+    <div class="hc-metric">
+      <div class="hc-metric-value">120/80</div>
+      <div class="hc-metric-label">Blood Pressure</div>
+    </div>
+  </div>
+  <div class="hc-log">
+    <div class="hc-log-title">📋 Recent Activity</div>
+    <div class="hc-log-entry"><span>🏋️ Upper Body</span><span class="hc-log-date">Jun 25</span></div>
+    <div class="hc-log-entry"><span>🏃 5K Run</span><span class="hc-log-date">Jun 23</span></div>
+    <div class="hc-log-entry"><span>🧘 Recovery + Stretch</span><span class="hc-log-date">Jun 22</span></div>
+    <div class="hc-log-entry"><span>🏋️ Lower Body</span><span class="hc-log-date">Jun 20</span></div>
+  </div>
+  <div class="hc-actions">
+    <button class="hc-btn" onclick="logWorkout()">+ Log Workout</button>
+    <button class="hc-btn" onclick="logWeight()">⚖️ Update Weight</button>
+    <button class="hc-btn" onclick="logSleep()">😴 Log Sleep</button>
+    <button class="hc-btn" onclick="openChat()">💬 Ask Coach</button>
+  </div>
+</div>
+</div>
+
+<script>
+const FB_ICONS = {
+  'fb-core': '🧠', 'fb-setup': '⚙️', 'fb-bid': '📋', 'fb-risk': '⚠️',
+  'fb-claims': '📝', 'fb-commercial': '💰', 'fb-field': '🏗️',
+  'fb-docs': '📄', 'fb-comms': '💬', 'fb-reports': '📊',
+  'fb-drawings': '📐', 'fb-schedule': '📅', 'fb-takeoff': '📏',
+  'fb-ingest': '📥', 'fb-meetingprep': '🎯'
+};
+
+let ALL_SKILLS = [];
+let skillsBySource = { vault: [], installed: [] };
+
+async function loadSkills() {
+  const res = await fetch('/api/skills');
+  const data = await res.json();
+  ALL_SKILLS = data.skills || data.data || [];
+  skillsBySource = {
+    vault: ALL_SKILLS.filter(s => s.type === 'vault' || s.source === 'vault'),
+    installed: ALL_SKILLS.filter(s => s.type === 'installed' || s.source === 'installed'),
+  };
+  renderAll();
+}
+
+function renderAll() {
+  // FieldBridge / vault skills
+  renderSkills('fb-skills', skillsBySource.vault, 'fb-');
+
+  // Installed skills grouped by category
+  const installed = skillsBySource.installed;
+  // Group installed skills by category
+  const categories = {};
+  installed.forEach(s => {
+    const cat = s.category || 'other';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(s);
+  });
+
+  // Render installed skills — group by category if multiple categories exist
+  const installedContainer = document.getElementById('installed-skills');
+  if (installedContainer) {
+    if (Object.keys(categories).length === 1) {
+      renderSkills('installed-skills', installed, '');
+    } else {
+      // Render all installed skills together, sorted by category then name
+      const sorted = installed.slice().sort((a, b) => {
+        const catCmp = (a.category || '').localeCompare(b.category || '');
+        if (catCmp !== 0) return catCmp;
+        return a.name.localeCompare(b.name);
+      });
+      renderSkills('installed-skills', sorted, '');
+    }
+  }
+}
+
+function renderSkills(containerId, skills, prefix) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!skills || skills.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted)">No skills found.</div>';
+    return;
+  }
+  container.innerHTML = skills.map(s => {
+    const desc = s.description || '';
+    const tags = s.category ? [s.category] : [];
+    return `
+    <div class="skill-card" onclick="showSkill('${prefix}${s.name}')">
+      <div class="skill-name">${s.name}</div>
+      <div class="skill-desc">${desc}</div>
+      <div class="skill-tags">${tags.map(t => `<span class="skill-tag">${t}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function showSkill(name) {
+  alert(`Skill: ${name}\n\nUsed by Hermes when needed — loaded on-demand during sessions.`);
+}
+
+function refreshSkills() { loadSkills(); }
+
+// Health Coach Actions
+function logWorkout() {
+  alert('Workout logging via Hermes chat: "Log gym session — upper body 45min"');
+}
+function logWeight() {
+  const w = prompt('Current weight (kg):');
+  if (w) alert(`Weight updated to ${w}kg ✅`);
+}
+function logSleep() {
+  const h = prompt('Hours of sleep last night:');
+  if (h) alert(`Sleep logged: ${h} hours ✅`);
+}
+function openChat() {
+  window.location.href = 'chat.html?coach=health';
+}
+
+document.addEventListener('DOMContentLoaded', loadSkills);
+</script>
+</body>
+</html>

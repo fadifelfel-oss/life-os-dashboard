@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💡 Hermes Agent — Use Cases & Docs</title>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2128;
+  --border: #30363d; --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #58a6ff; --red: #f85149; --green: #3fb950;
+  --purple: #bc8cff; --cyan: #39d2c0; --pink: #f778ba; --orange: #d29922; --yellow: #e3b341;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+.header { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 16px; font-weight: 700; }
+/* Back button styled via shared.css */
+
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab {
+  padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-muted); font-size: 12px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.tab:hover { color: var(--text); border-color: var(--accent); }
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Sections */
+.section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.section-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.section-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
+
+/* Use case cards */
+.use-case-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .use-case-grid { grid-template-columns: 1fr; } }
+
+.use-case-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; cursor: pointer; transition: all 0.15s;
+}
+.use-case-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.use-case-card .uc-icon { font-size: 24px; margin-bottom: 6px; }
+.use-case-card .uc-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.use-case-card .uc-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.use-case-card .uc-tags { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+.use-case-card .uc-tag {
+  font-size: 9px; padding: 2px 6px; border-radius: 4px;
+  background: rgba(88,166,255,0.1); color: var(--accent); font-weight: 600;
+}
+.use-case-card .uc-tag.new { background: rgba(63,185,80,0.1); color: var(--green); }
+.use-case-card .uc-tag.premium { background: rgba(188,140,255,0.1); color: var(--purple); }
+
+/* Detail panel */
+.detail-panel {
+  display: none; background: var(--bg); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 16px; margin-top: 10px;
+}
+.detail-panel.open { display: block; }
+.detail-panel h4 { font-size: 13px; margin-bottom: 8px; color: var(--accent); }
+.detail-panel p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 8px; }
+.detail-panel code {
+  background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 3px;
+  font-size: 11px; font-family: 'SF Mono', monospace; color: var(--cyan);
+}
+.detail-panel pre {
+  background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px;
+  font-size: 11px; font-family: 'SF Mono', monospace; color: var(--text);
+  overflow-x: auto; margin: 8px 0; line-height: 1.5;
+}
+.detail-panel .close-btn {
+  float: right; background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 16px;
+}
+.detail-panel .close-btn:hover { color: var(--red); }
+
+/* Docs links */
+.docs-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .docs-grid { grid-template-columns: 1fr; } }
+
+.docs-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; text-decoration: none; color: var(--text); display: block;
+  transition: all 0.15s;
+}
+.docs-card:hover { border-color: var(--accent); }
+.docs-card .doc-icon { font-size: 20px; margin-bottom: 6px; }
+.docs-card .doc-title { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+.docs-card .doc-desc { font-size: 11px; color: var(--text-muted); }
+.docs-card .doc-url { font-size: 10px; color: var(--accent); margin-top: 6px; }
+
+/* Search */
+.search-box {
+  width: 100%; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 13px; outline: none; margin-bottom: 14px;
+}
+.search-box:focus { border-color: var(--accent); }
+
+/* Life area icons */
+.life-area { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+
+/* Prompt templates */
+.prompt-box {
+  background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px; margin: 8px 0; font-size: 11px; font-family: 'SF Mono', monospace;
+  color: var(--text); line-height: 1.5; white-space: pre-wrap;
+}
+.prompt-box .label { color: var(--orange); font-weight: 700; font-size: 10px; text-transform: uppercase; }
+
+/* Status badge */
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.badge.green { background: rgba(63,185,80,0.15); color: var(--green); }
+.badge.blue { background: rgba(88,166,255,0.15); color: var(--accent); }
+.badge.purple { background: rgba(188,140,255,0.15); color: var(--purple); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1>💡 Hermes Agent — Use Cases & Docs</h1>
+  <a href="https://hermes-agent.nousresearch.com/docs" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;">📖 Full Docs →</a>
+</div>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('usecases', this)">💡 Use Cases</button>
+    <button class="tab" onclick="showTab('life', this)">🏠 Life Areas</button>
+    <button class="tab" onclick="showTab('prompts', this)">📝 Prompt Templates</button>
+    <button class="tab" onclick="showTab('docs', this)">📖 Documentation</button>
+    <button class="tab" onclick="showTab('new', this)">🆕 What's New</button>
+  </div>
+
+  <!-- ==================== USE CASES TAB ==================== -->
+  <div id="tab-usecases" class="tab-content">
+    <input type="text" class="search-box" placeholder="🔍 Search use cases..." oninput="searchUseCases(this.value)">
+    
+    <div class="section">
+      <div class="section-title">🔥 Most Popular</div>
+      <div class="use-case-grid" id="popular-cases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🤖 AI & Automation</div>
+      <div class="use-case-grid" id="ai-cases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">💼 Work & Career</div>
+      <div class="use-case-grid" id="work-cases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🏠 Personal & Family</div>
+      <div class="use-case-grid" id="personal-cases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🏗️ Construction & FieldBridge</div>
+      <div class="use-case-grid" id="construction-cases"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📈 Finance & Trading</div>
+      <div class="use-case-grid" id="finance-cases"></div>
+    </div>
+  </div>
+
+  <!-- ==================== LIFE AREAS TAB ==================== -->
+  <div id="tab-life" class="tab-content" style="display:none;">
+    <div class="section">
+      <div class="section-title">🏠 Your Life Areas — Mapped to Hermes Capabilities</div>
+      <div class="section-desc">Click each area to see specific use cases and prompts tailored to your life.</div>
+      <div id="life-areas"></div>
+    </div>
+  </div>
+
+  <!-- ==================== PROMPTS TAB ==================== -->
+  <div id="tab-prompts" class="tab-content" style="display:none;">
+    <div class="section">
+      <div class="section-title">📝 Ready-to-Use Prompt Templates</div>
+      <div class="section-desc">Copy these prompts and paste them into any Hermes session. Customize the bracketed parts.</div>
+      <div id="prompt-templates"></div>
+    </div>
+  </div>
+
+  <!-- ==================== DOCS TAB ==================== -->
+  <div id="tab-docs" class="tab-content" style="display:none;">
+    <div class="section">
+      <div class="section-title">📖 Hermes Agent Documentation</div>
+      <div class="section-desc">Official docs, guides, and references. All links open in a new tab.</div>
+      <div class="docs-grid">
+        <a href="https://hermes-agent.nousresearch.com/docs" target="_blank" class="docs-card">
+          <div class="doc-icon">📚</div>
+          <div class="doc-title">Full Documentation</div>
+          <div class="doc-desc">Complete Hermes Agent docs — setup, config, features</div>
+          <div class="doc-url">hermes-agent.nousresearch.com/docs</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/configuration" target="_blank" class="docs-card">
+          <div class="doc-icon">⚙️</div>
+          <div class="doc-title">Configuration Guide</div>
+          <div class="doc-desc">config.yaml reference, providers, models, tools</div>
+          <div class="doc-url">Configuration →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp" target="_blank" class="docs-card">
+          <div class="doc-icon">🔌</div>
+          <div class="doc-title">MCP Servers</div>
+          <div class="doc-desc">Connect external tools via Model Context Protocol</div>
+          <div class="doc-url">MCP Guide →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/cron" target="_blank" class="docs-card">
+          <div class="doc-icon">⏰</div>
+          <div class="doc-title">Cron Jobs</div>
+          <div class="doc-desc">Schedule automated tasks and recurring workflows</div>
+          <div class="doc-url">Cron Guide →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/memory" target="_blank" class="docs-card">
+          <div class="doc-icon">🧠</div>
+          <div class="doc-title">Memory System</div>
+          <div class="doc-desc">Persistent memory across sessions, user profiles</div>
+          <div class="doc-url">Memory Guide →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/messaging" target="_blank" class="docs-card">
+          <div class="doc-icon">💬</div>
+          <div class="doc-title">Messaging Platforms</div>
+          <div class="doc-desc">Telegram, Discord, Slack, WhatsApp setup guides</div>
+          <div class="doc-url">Messaging →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/integrations/providers" target="_blank" class="docs-card">
+          <div class="doc-icon">🌐</div>
+          <div class="doc-title">AI Providers</div>
+          <div class="doc-desc">20+ providers — OpenRouter, Anthropic, OpenAI, etc.</div>
+          <div class="doc-url">Providers →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/reference/tools-reference" target="_blank" class="docs-card">
+          <div class="doc-icon">🔧</div>
+          <div class="doc-title">Tools Reference</div>
+          <div class="doc-desc">All built-in tools — terminal, file, browser, web, etc.</div>
+          <div class="doc-url">Tools →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/reference/skills-catalog" target="_blank" class="docs-card">
+          <div class="doc-icon">📦</div>
+          <div class="doc-title">Skills Catalog</div>
+          <div class="doc-desc">Browse and install community skills</div>
+          <div class="doc-url">Skills →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/profiles" target="_blank" class="docs-card">
+          <div class="doc-icon">👤</div>
+          <div class="doc-title">Profiles</div>
+          <div class="doc-desc">Run multiple isolated Hermes instances</div>
+          <div class="doc-url">Profiles →</div>
+        </a>
+        <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/delegation" target="_blank" class="docs-card">
+          <div class="doc-icon">🤖</div>
+          <div class="doc-title">Delegation</div>
+          <div class="doc-desc">Spawn sub-agents for parallel work</div>
+          <div class="doc-url">Delegation →</div>
+        </a>
+        <a href="https://github.com/NousResearch/hermes-agent" target="_blank" class="docs-card">
+          <div class="doc-icon">🐙</div>
+          <div class="doc-title">GitHub Source</div>
+          <div class="doc-desc">Open source code, issues, contributions</div>
+          <div class="doc-url">github.com/NousResearch/hermes-agent</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== WHAT'S NEW TAB ==================== -->
+  <div id="tab-new" class="tab-content" style="display:none;">
+    <div class="section">
+      <div class="section-title">🆕 Latest Hermes Agent Updates</div>
+      <div id="whats-new"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// DATA — Use Cases
+// ============================================================
+const USE_CASES = {
+  popular: [
+    { icon: '📧', title: 'Email Management', desc: 'Read, draft, and send emails. Auto-categorize, summarize threads, draft responses.', tags: ['productivity','email'], prompt: 'Check my email for urgent messages from the last 24 hours. Summarize each thread and draft responses for anything that needs a reply.' },
+    { icon: '📅', title: 'Calendar & Scheduling', desc: 'Manage calendar, find meeting times, send invites, prep for meetings.', tags: ['productivity','calendar'], prompt: 'Look at my calendar for this week. Find any scheduling conflicts and suggest the best time for a 1-hour meeting with [person].' },
+    { icon: '📝', title: 'Document Writing', desc: 'Draft, edit, and format documents. Reports, proposals, letters, resumes.', tags: ['writing','career'], prompt: 'Draft a [type of document] about [tone: formal/casual]. Include sections for [topics]. Keep it under [length].' },
+    { icon: '🔍', title: 'Research & Analysis', desc: 'Deep research on any topic. Summarize findings, compare options, create reports.', tags: ['research','analysis'], prompt: 'Research [topic] thoroughly. Find the top 10 sources, summarize key findings, and create a comparison table of [options].' },
+    { icon: '💻', title: 'Code Generation', desc: 'Write, review, debug, and explain code. Any language, any framework.', tags: ['coding','dev'], prompt: 'Write a [language] script that [functionality]. Include error handling, comments, and tests. Explain how it works.' },
+    { icon: '🤖', title: 'Multi-Agent Workflows', desc: 'Spawn sub-agents to work in parallel. Coordinate complex multi-step tasks.', tags: ['advanced','automation','new'], prompt: 'I need to [complex task]. Break this into subtasks and delegate to parallel agents. Each agent should [specific instructions].' },
+  ],
+  ai: [
+    { icon: '🧠', title: 'AI Model Comparison', desc: 'Test the same prompt across multiple models. Compare quality, speed, cost.', tags: ['ai','comparison'], prompt: 'Run this prompt against GPT-4o, Claude Sonnet, and Gemini Flash. Compare the responses for quality, accuracy, and style. Create a comparison table.' },
+    { icon: '📊', title: 'Data Analysis', desc: 'Upload CSV/Excel files. Analyze data, create charts, find patterns.', tags: ['data','analysis'], prompt: 'Analyze the data in [file]. Find trends, outliers, and correlations. Create a summary report with key insights and recommendations.' },
+    { icon: '🌐', title: 'Web Scraping & Monitoring', desc: 'Scrape websites, monitor changes, track prices, aggregate content.', tags: ['web','automation'], prompt: 'Scrape [website] for [data]. Extract [fields] and save to a CSV. Set up a daily check for changes.' },
+    { icon: '🎨', title: 'Image Generation', desc: 'Generate images with DALL-E, Stable Diffusion. Edit and iterate.', tags: ['creative','image'], prompt: 'Generate an image of [description]. Style: [style]. Aspect ratio: [ratio]. Make it [mood/atmosphere].' },
+    { icon: '🔊', title: 'Voice & Audio', desc: 'Text-to-speech, speech-to-text, audio transcription, voice memos.', tags: ['voice','audio'], prompt: 'Transcribe the audio file at [path]. Summarize the key points and action items. Format as meeting notes.' },
+    { icon: '📱', title: 'Browser Automation', desc: 'Automate web tasks. Fill forms, click buttons, extract data, take screenshots.', tags: ['browser','automation'], prompt: 'Go to [website]. Log in with [credentials]. Navigate to [page]. Extract [data] and save to [file].' },
+  ],
+  work: [
+    { icon: '📋', title: 'Job Application Prep', desc: 'Tailor resume, write cover letters, prepare for interviews.', tags: ['career','job'], prompt: 'Here\'s a job posting: [paste]. Here\'s my resume: [paste]. Tailor my resume for this role and write a cover letter. Also prepare 5 likely interview questions with answers.' },
+    { icon: '📈', title: 'LinkedIn Content', desc: 'Write posts, articles, comments. Build your professional brand.', tags: ['career','social'], prompt: 'Write a LinkedIn post about [topic]. Tone: [professional/casual/inspirational]. Include a hook, 3 key points, and a call to action. Add relevant hashtags.' },
+    { icon: '💼', title: 'Proposal Writing', desc: 'Draft project proposals, SOWs, estimates, contracts.', tags: ['work','writing'], prompt: 'Draft a proposal for [project]. Include: executive summary, scope, timeline, deliverables, pricing, terms. Client: [name]. Budget range: [range].' },
+    { icon: '📊', title: 'Report Generation', desc: 'Create status reports, weekly summaries, KPI dashboards.', tags: ['work','reporting'], prompt: 'Create a weekly status report. Include: completed tasks, in-progress items, blockers, next week priorities, KPIs. Format as a professional document.' },
+    { icon: '🤝', title: 'Meeting Prep & Notes', desc: 'Prep agendas, take notes, extract action items, send follow-ups.', tags: ['work','meetings'], prompt: 'I have a meeting with [attendees] about [topic]. Create an agenda, prep talking points, and after the meeting, summarize notes and action items.' },
+    { icon: '🏗️', title: 'Construction PM Assistant', desc: 'RFIs, submittals, change orders, daily logs, inspections, claims.', tags: ['construction','fieldbridge'], help: 'Use the FieldBridge skills (FB-CORE, FB-RISK, FB-CLAIMS, etc.) for construction-specific workflows.' },
+  ],
+  personal: [
+    { icon: '👨‍👩‍👧‍👦', title: 'Family Management', desc: 'Track kids\' schedules, activities, school, health records.', tags: ['family','personal'], prompt: 'Help me organize this week for the kids. Activities: [list]. Create a schedule, shopping list, and reminder checklist.' },
+    { icon: '💪', title: 'Health & Fitness', desc: 'Track workouts, meal plans, health metrics, doctor prep.', tags: ['health','fitness'], prompt: 'Create a [duration] workout plan for [goal]. Include: warm-up, main exercises, cool-down. Track my progress and adjust weekly.' },
+    { icon: '💰', title: 'Budget & Finance', desc: 'Track expenses, create budgets, analyze spending, plan savings.', tags: ['finance','personal'], prompt: 'Here are my expenses for [month]: [list]. Categorize them, find where I can cut costs, and create a budget for next month.' },
+    { icon: '📚', title: 'Learning & Study', desc: 'Create study plans, summarize books, quiz yourself, learn new skills.', tags: ['learning','education'], prompt: 'I want to learn [topic]. Create a 30-day study plan with daily topics, resources, and practice exercises. Quiz me on what I\'ve learned.' },
+    { icon: '✈️', title: 'Travel Planning', desc: 'Plan trips, find flights/hotels, create itineraries, packing lists.', tags: ['travel','personal'], prompt: 'Plan a [duration] trip to [destination] for [people]. Budget: [amount]. Include: flights, hotels, activities, restaurants, packing list.' },
+    { icon: '🏠', title: 'Home Management', desc: 'Maintenance schedules, renovation planning, inventory, vendor management.', tags: ['home','personal'], prompt: 'Help me plan [home project]. Create a timeline, budget, materials list, and find local contractors. Track progress and expenses.' },
+  ],
+  construction: [
+    { icon: '📋', title: 'RFI Management', desc: 'Draft RFIs, track responses, link to drawings and specs.', tags: ['construction','fb-docs'], prompt: 'Draft an RFI for [project]. Issue: [description]. Related drawing: [number]. Spec section: [section]. Urgency: [high/medium/low].' },
+    { icon: '⚠️', title: 'Risk Register', desc: 'Identify risks, assess impact, create mitigation plans, track status.', tags: ['construction','fb-risk'], prompt: 'Create a risk register for [project]. Identify top 10 risks, assess probability and impact, assign owners, and create mitigation plans.' },
+    { icon: '📊', title: 'Progress Reports', desc: 'Daily logs, weekly summaries, owner reports, lender reports.', tags: ['construction','fb-reports'], prompt: 'Generate a weekly progress report for [project]. Include: work completed, % complete, upcoming work, issues, photos, weather delays.' },
+    { icon: '💰', title: 'Claims & EOT', desc: 'Document delays, compile evidence, draft EOT claims, disruption claims.', tags: ['construction','fb-claims'], prompt: 'Help me prepare an EOT claim for [project]. Delay cause: [description]. Impact: [days]. Compile evidence list and draft the claim letter.' },
+    { icon: '📐', title: 'Takeoff & Estimates', desc: 'Quantity takeoffs, cost estimates, BOQ generation.', tags: ['construction','fb-takeoff'], prompt: 'Perform a quantity takeoff for [trade] on [drawing set]. Calculate materials, labor, and equipment. Generate a BOQ and cost estimate.' },
+    { icon: '📅', title: 'Schedule Analysis', desc: 'Analyze CPM schedules, identify delays, track critical path.', tags: ['construction','fb-schedule'], prompt: 'Analyze the project schedule. Identify the critical path, float for each activity, and any delays. Create a recovery plan if behind schedule.' },
+  ],
+  finance: [
+    { icon: '📈', title: 'Trading Analysis', desc: 'Analyze charts, backtest strategies, generate Pine Script indicators.', tags: ['trading','analysis'], prompt: 'Analyze [ticker] on the [timeframe] chart. Identify key levels, trend, and potential entry/exit points. Use SMC/ICT methodology.' },
+    { icon: '📊', title: 'Portfolio Tracking', desc: 'Track investments, calculate returns, rebalance, tax planning.', tags: ['finance','investing'], prompt: 'Here\'s my portfolio: [list]. Calculate total return, allocation %, and suggest rebalancing to target: [targets].' },
+    { icon: '💱', title: 'Forex Analysis', desc: 'Analyze currency pairs, economic calendar, sentiment, correlations.', tags: ['trading','forex'], prompt: 'Analyze [currency pair]. Check economic calendar for relevant news. Identify key levels and bias for the week.' },
+    { icon: '📋', title: 'Financial Reports', desc: 'P&L statements, cash flow analysis, budget vs actual.', tags: ['finance','reporting'], prompt: 'Create a monthly P&L statement. Income: [sources]. Expenses: [categories]. Calculate net profit, margins, and compare to last month.' },
+    { icon: '🏦', title: 'Crypto Analysis', desc: 'Track crypto prices, on-chain data, DeFi yields, NFT floors.', tags: ['crypto','trading'], prompt: 'Analyze [crypto token]. Check price action, on-chain metrics, recent news, and provide a short-term outlook.' },
+    { icon: '📝', title: 'Tax Planning', desc: 'Estimate taxes, find deductions, organize receipts, prepare filings.', tags: ['finance','tax'], prompt: 'Help me estimate my tax liability for [year]. Income: [sources]. Deductions: [list]. Suggest tax-saving strategies.' },
+  ],
+};
+
+const LIFE_AREAS = [
+  {
+    icon: '💼', title: 'Career & Job Search', color: 'var(--orange)',
+    items: [
+      { title: 'Resume Tailoring', desc: 'Customize resume for each job application' },
+      { title: 'Cover Letters', desc: 'Draft compelling cover letters' },
+      { title: 'Interview Prep', desc: 'Practice questions, research companies' },
+      { title: 'LinkedIn Branding', desc: 'Posts, articles, profile optimization' },
+      { title: 'Salary Negotiation', desc: 'Research rates, draft negotiation scripts' },
+      { title: 'Recruiter Outreach', desc: 'Draft messages, follow-up sequences' },
+    ]
+  },
+  {
+    icon: '🏗️', title: 'FieldBridge HQ', color: 'var(--purple)',
+    items: [
+      { title: 'Client Proposals', desc: 'Draft proposals for specialty trade contractors' },
+      { title: 'Project Setup', desc: 'Configure new projects with FB-SETUP' },
+      { title: 'Risk Management', desc: 'Risk registers, inspections, NCRs' },
+      { title: 'Claims & EOT', desc: 'Delay documentation, disruption claims' },
+      { title: 'Content Pipeline', desc: 'LinkedIn posts, case studies, whitepapers' },
+      { title: 'Client Discovery', desc: 'Prep for discovery conversations' },
+    ]
+  },
+  {
+    icon: '👨‍👩‍👧‍👦', title: 'Family & Kids', color: 'var(--pink)',
+    items: [
+      { title: 'Activity Planning', desc: 'Organize kids\' weekly schedules' },
+      { title: 'School Communication', desc: 'Draft emails to teachers, prep for meetings' },
+      { title: 'Meal Planning', desc: 'Weekly menus, shopping lists, recipes' },
+      { title: 'Health Tracking', desc: 'Doctor prep, medication schedules, growth charts' },
+      { title: 'Family Budget', desc: 'Track expenses, plan for activities' },
+      { title: 'Travel with Kids', desc: 'Trip planning, packing lists, itineraries' },
+    ]
+  },
+  {
+    icon: '💪', title: 'Health & Fitness', color: 'var(--red)',
+    items: [
+      { title: 'Workout Plans', desc: 'Create and track exercise routines' },
+      { title: 'Meal Prep', desc: 'Nutrition plans, recipes, grocery lists' },
+      { title: 'Health Metrics', desc: 'Track weight, blood pressure, sleep' },
+      { title: 'Doctor Prep', desc: 'Symptom tracking, question lists, follow-ups' },
+      { title: 'Mental Health', desc: 'Journaling prompts, meditation guides' },
+      { title: 'Post-Surgery Recovery', desc: 'Track recovery milestones, pace activities' },
+    ]
+  },
+  {
+    icon: '📈', title: 'Trading & Finance', color: 'var(--cyan)',
+    items: [
+      { title: 'Chart Analysis', desc: 'SMC/ICT analysis, key levels, bias' },
+      { title: 'Pine Script', desc: 'Write and backtest TradingView indicators' },
+      { title: 'Trade Journal', desc: 'Log trades, review performance' },
+      { title: 'Economic Calendar', desc: 'Track news events, plan around them' },
+      { title: 'Portfolio Review', desc: 'Weekly/monthly performance analysis' },
+      { title: 'Tax Planning', desc: 'Track trades for tax reporting' },
+    ]
+  },
+  {
+    icon: '🤖', title: 'AI & Tech', color: 'var(--accent)',
+    items: [
+      { title: 'Model Exploration', desc: 'Test new AI models, compare capabilities' },
+      { title: 'Skill Development', desc: 'Create and improve Hermes skills' },
+      { title: 'Workflow Automation', desc: 'Set up cron jobs, MCP servers' },
+      { title: 'Code Projects', desc: 'Build tools, scripts, automations' },
+      { title: 'Research', desc: 'Deep dives on any topic' },
+      { title: 'Content Creation', desc: 'Blog posts, social media, documentation' },
+    ]
+  },
+];
+
+const PROMPT_TEMPLATES = [
+  { category: 'Job Search', prompts: [
+    { name: 'Resume Tailor', prompt: 'Here\'s a job posting:\n[paste job posting]\n\nHere\'s my current resume:\n[paste resume]\n\nTailor my resume for this specific role. Highlight relevant experience, match keywords from the posting, and suggest any gaps to address.' },
+    { name: 'Cover Letter', prompt: 'Write a cover letter for my application to [company] for the [role] position. My background: [brief background]. Tone: professional but personable. Keep it to 3 paragraphs.' },
+    { name: 'Interview Prep', prompt: 'I have an interview for [role] at [company]. Research the company and prepare:\n1. 10 likely interview questions\n2. My answers using the STAR method\n3. 5 questions I should ask them\n4. Key talking points about my background' },
+    { name: 'LinkedIn Post', prompt: 'Write a LinkedIn post about [topic]. It should be [tone], include a hook in the first line, 3-5 key insights, and a call to action. Add 5 relevant hashtags.' },
+  ]},
+  { category: 'Construction PM', prompts: [
+    { name: 'RFI Draft', prompt: 'Draft a professional RFI for [project name].\nIssue: [describe the issue]\nRelated Drawing: [number]\nSpec Section: [section]\nUrgency: [High/Medium/Low]\nImpact: [describe impact if not resolved]' },
+    { name: 'Risk Assessment', prompt: 'Create a risk register entry for [project].\nRisk: [description]\nProbability: [1-5]\nImpact: [1-5]\nMitigation: [plan]\nOwner: [name]\nStatus: [Open/Monitoring/Closed]' },
+    { name: 'Progress Report', prompt: 'Generate a weekly progress report for [project]. Include:\n- Work completed this week\n- Percent complete\n- Upcoming work next week\n- Issues/blockers\n- Weather delays\n- Safety incidents (if any)\n- Photos needed' },
+    { name: 'EOT Claim', prompt: 'Help me prepare an Extension of Time claim.\nProject: [name]\nContract duration: [days]\nDelay cause: [description]\nDelay period: [start] to [end]\nImpact: [affected activities]\nEvidence needed: [list documents]' },
+  ]},
+  { category: 'Personal', prompts: [
+    { name: 'Weekly Meal Plan', prompt: 'Create a meal plan for [number] people for 1 week.\nDietary restrictions: [list]\nBudget: [amount]\nPreferences: [likes/dislikes]\nInclude: breakfast, lunch, dinner, snacks\nGenerate a shopping list organized by store section.' },
+    { name: 'Email Draft', prompt: 'Draft a [formal/casual] email to [recipient] about [purpose]. Key points to cover:\n1. [point 1]\n2. [point 2]\n3. [point 3]\nTone: [professional/friendly/urgent]\nInclude a clear call to action.' },
+    { name: 'Travel Itinerary', prompt: 'Plan a [duration] trip to [destination] for [number] people.\nBudget: [amount]\nInterests: [list]\nInclude: flights, hotels, daily activities, restaurants, transportation\nCreate a day-by-day itinerary with time estimates.' },
+  ]},
+  { category: 'Trading', prompts: [
+    { name: 'Chart Analysis', prompt: 'Analyze [ticker/pair] on the [timeframe] chart using SMC/ICT methodology:\n1. Market structure (trend, BOS, CHoCH)\n2. Key levels (order blocks, FVG, liquidity)\n3. Entry/exit zones\n4. Risk management (stop loss, take profit)\n5. Bias: bullish/bearish/neutral' },
+    { name: 'Pine Script', prompt: 'Write a Pine Script v6 indicator for TradingView:\nName: [name]\nFunctionality: [describe what it does]\nInputs: [list user-configurable parameters]\nVisual: [how it should look on chart]\nAlerts: [alert conditions if any]' },
+    { name: 'Trade Journal', prompt: 'Log this trade:\nTicker: [symbol]\nDirection: [long/short]\nEntry: [price]\nStop Loss: [price]\nTake Profit: [price]\nPosition Size: [% of account]\nSetup: [description]\nEmotion: [confident/nervous/etc]\nOutcome: [result]\nLessons: [what I learned]' },
+  ]},
+];
+
+const WHATS_NEW = [
+  { date: '2025-06', title: 'DeepSeek V4 Flash', desc: 'New DeepSeek V4 Flash model — $0.04/1M, 1M context, blazing fast. Best value model on OpenRouter.', tag: 'new' },
+  { date: '2025-06', title: 'Qwen3.7 Plus', desc: 'Qwen3.7 Plus released — $0.30/1M, near flagship quality at a fraction of the cost.', tag: 'new' },
+  { date: '2025-06', title: 'GLM 5.2', desc: 'GLM 5.2 flagship — $0.80/1M, 1M context, best GLM model for Chinese/English tasks.', tag: 'new' },
+  { date: '2025-05', title: 'Gemini 2.5 Flash', desc: 'Google Gemini 2.5 Flash — $0.30/1M, vision capable, 1M context. Excellent quality.', tag: 'model' },
+  { date: '2025-05', title: 'MCP Native Client', desc: 'Hermes now has built-in MCP client. Connect MCP servers directly in config.yaml.', tag: 'feature' },
+  { date: '2025-04', title: 'Multi-Agent Delegation', desc: 'delegate_task tool — spawn parallel sub-agents for complex workflows.', tag: 'feature' },
+  { date: '2025-04', title: 'Cron Job Scheduler', desc: 'Built-in cron scheduler. Automate recurring tasks with natural language.', tag: 'feature' },
+  { date: '2025-03', title: 'Voice & TTS', desc: 'Text-to-speech and speech-to-text support. Voice messages on all platforms.', tag: 'feature' },
+];
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderUseCases() {
+  Object.keys(USE_CASES).forEach(cat => {
+    const container = document.getElementById(cat + '-cases');
+    if (!container) return;
+    container.innerHTML = '';
+    USE_CASES[cat].forEach(uc => {
+      const div = document.createElement('div');
+      div.className = 'use-case-card';
+      div.onclick = () => showDetail(uc);
+      div.innerHTML = `
+        <div class="uc-icon">${uc.icon}</div>
+        <div class="uc-title">${uc.title}</div>
+        <div class="uc-desc">${uc.desc}</div>
+        <div class="uc-tags">${uc.tags.map(t => `<span class="uc-tag ${t === 'new' ? 'new' : ''}">${t}</span>`).join('')}</div>
+      `;
+      container.appendChild(div);
+    });
+  });
+}
+
+function showDetail(uc) {
+  // Remove any existing detail
+  document.querySelectorAll('.detail-panel').forEach(el => el.remove());
+  
+  const card = event.currentTarget;
+  const div = document.createElement('div');
+  div.className = 'detail-panel open';
+  div.innerHTML = `
+    <button class="close-btn" onclick="this.parentElement.remove()">✕</button>
+    <h4>${uc.icon} ${uc.title}</h4>
+    <p>${uc.desc}</p>
+    ${uc.prompt ? `<div class="prompt-box"><span class="label">📋 Prompt Template</span>\n\n${uc.prompt}</div>` : ''}
+    ${uc.help ? `<p style="color:var(--purple);"><b>💡 Tip:</b> ${uc.help}</p>` : ''}
+    <button class="btn primary" onclick="copyPrompt('${uc.prompt?.replace(/'/g, "\\'") || ''}')">📋 Copy Prompt</button>
+  `;
+  card.after(div);
+}
+
+function copyPrompt(text) {
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => alert('✅ Prompt copied to clipboard!'));
+}
+
+function renderLifeAreas() {
+  const container = document.getElementById('life-areas');
+  container.innerHTML = '';
+  LIFE_AREAS.forEach(area => {
+    const div = document.createElement('div');
+    div.className = 'section';
+    div.style.marginBottom = '12px';
+    div.innerHTML = `
+      <div class="section-title">
+        <span style="font-size:24px;">${area.icon}</span>
+        <span style="color:${area.color};">${area.title}</span>
+      </div>
+      <div class="use-case-grid">
+        ${area.items.map(item => `
+          <div class="use-case-card" style="padding:10px;">
+            <div class="uc-title" style="font-size:12px;">${item.title}</div>
+            <div class="uc-desc" style="font-size:10px;">${item.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderPrompts() {
+  const container = document.getElementById('prompt-templates');
+  container.innerHTML = '';
+  PROMPT_TEMPLATES.forEach(cat => {
+    const div = document.createElement('div');
+    div.style.marginBottom = '16px';
+    div.innerHTML = `<div class="provider-group-title">${cat.category}</div>`;
+    cat.prompts.forEach(p => {
+      div.innerHTML += `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <b style="font-size:12px;">${p.name}</b>
+            <button class="btn green" onclick="copyPrompt(${JSON.stringify(p.prompt)})">📋 Copy</button>
+          </div>
+          <div class="prompt-box">${p.prompt}</div>
+        </div>
+      `;
+    });
+    container.innerHTML += div.innerHTML;
+  });
+}
+
+function renderWhatsNew() {
+  const container = document.getElementById('whats-new');
+  container.innerHTML = '';
+  WHATS_NEW.forEach(item => {
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:10px 0;border-bottom:1px solid var(--border);';
+    div.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <span class="badge ${item.tag === 'new' ? 'green' : item.tag === 'feature' ? 'blue' : 'purple'}">${item.date}</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;">${item.title}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${item.desc}</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function searchUseCases(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.use-case-card').forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+function showTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).style.display = '';
+  btn.classList.add('active');
+}
+
+// Init
+renderUseCases();
+renderLifeAreas();
+renderPrompts();
+renderWhatsNew();
+</script>
+</body>
+</html>

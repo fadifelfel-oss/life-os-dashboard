@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes Map — 3D Connections</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: #0a0a1a;
+  color: #e8e8f0;
+  overflow: hidden;
+}
+
+#canvas-container {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1;
+}
+
+.ui-overlay {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+}
+.ui-overlay > * { pointer-events: auto; }
+
+.top-bar {
+  top: 0; left: 0; right: 0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(10,10,26,0.95);
+}
+.top-bar h1 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.controls-bar {
+  bottom: 0; left: 0; right: 0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(0deg, rgba(10,10,26,0.95) 0%, transparent 100%);
+}
+
+.btn {
+  background: rgba(22,33,62,0.9);
+  border: 1px solid rgba(108,99,255,0.3);
+  color: #e8e8f0;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+}
+.btn:hover {
+  background: rgba(108,99,255,0.3);
+  border-color: #6c63ff;
+}
+.btn.active {
+  background: #6c63ff;
+  border-color: #6c63ff;
+}
+.btn-sm { padding: 6px 12px; font-size: 11px; }
+
+.legend {
+  position: fixed;
+  top: 70px;
+  left: 20px;
+  background: rgba(22,33,62,0.9);
+  border: 1px solid rgba(108,99,255,0.3);
+  border-radius: 12px;
+  padding: 14px;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  max-width: 200px;
+}
+.legend h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8888a8;
+  margin-bottom: 10px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.info-panel {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  width: 280px;
+  background: rgba(22,33,62,0.9);
+  border: 1px solid rgba(108,99,255,0.3);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  display: none;
+}
+.info-panel.visible { display: block; }
+.info-panel h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.info-panel .category-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.info-panel p {
+  font-size: 12px;
+  color: #8888a8;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.info-panel .connections-list {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.info-panel .conn-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+.info-panel .conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6c63ff;
+}
+
+.view-controls {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
+}
+.view-btn {
+  background: rgba(22,33,62,0.9);
+  border: 1px solid rgba(108,99,255,0.2);
+  color: #e8e8f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.2s;
+  text-align: left;
+}
+.view-btn:hover { background: rgba(108,99,255,0.2); }
+.view-btn.active { background: #6c63ff; }
+
+.stats-bar {
+  position: fixed;
+  bottom: 70px;
+  left: 20px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+.stat-chip {
+  background: rgba(22,33,62,0.9);
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+.stat-chip .num { color: #6c63ff; }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div class="ui-overlay top-bar">
+  <h1>🗺️ Hermes Map</h1>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <a href="index.html" class="btn btn-sm" style="text-decoration:none;">← Life OS</a>
+    <button class="btn btn-sm" onclick="resetView()">🎯 Reset View</button>
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Categories</h3>
+  <div class="legend-item"><div class="legend-dot" style="background:#00e5ff"></div> Core Hub</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff3333"></div> Communication</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffb800"></div> Data & Docs</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d500f9"></div> Intelligence</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div> Automation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff4081"></div> External Services</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c0c0c0"></div> Devices</div>
+</div>
+
+<div class="info-panel" id="infoPanel">
+  <h3 id="infoTitle"></h3>
+  <div class="category-badge" id="infoCategory"></div>
+  <p id="infoDesc"></p>
+  <div class="connections-list" id="infoConnections"></div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-chip">Nodes: <span class="num" id="statNodes">0</span></div>
+  <div class="stat-chip">Links: <span class="num" id="statLinks">0</span></div>
+  <div class="stat-chip">Automations: <span class="num" id="statAuto">0</span></div>
+</div>
+
+<div class="view-controls">
+  <button class="view-btn active" onclick="setView('perspective', this)">📐 Perspective</button>
+  <button class="view-btn" onclick="setView('top', this)">⬇️ Top</button>
+  <button class="view-btn" onclick="setView('front', this)">🫙 Front</button>
+  <button class="view-btn" onclick="filterCategory('all', this)">🏷️ All</button>
+</div>
+
+<div class="ui-overlay controls-bar">
+  <button class="btn" onclick="toggleAutoRotate()">🔄 Auto Rotate</button>
+  <button class="btn" onclick="toggleConnections()">🔗 Show Links</button>
+  <button class="btn" onclick="togglePulse()">💫 Pulse Flow</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Hermes Map Data — Services, Tools, and Their Connections
+const NODES = [
+  // Core Hub (center)
+  { id: 'hermes', name: 'Hermes Agent', category: 'core', desc: 'Central AI agent — orchestrates all tools, skills, and automations. Runs on Vultr VPS via OpenRouter.', size: 3.5, pos: [0, 0, 0] },
+  
+  // Communication
+  { id: 'telegram', name: 'Telegram', category: 'comm', desc: 'Primary input channel. Fadi sends voice/text messages, receives alerts and notifications.', size: 2.5, pos: [8, 3, 5] },
+  { id: 'gmail', name: 'Gmail', category: 'comm', desc: 'Email via Himalaya CLI. Daily monitoring for recruiter emails, job alerts, financial notifications.', size: 2.5, pos: [9, 2, 3] },
+  { id: 'whatsapp', name: 'WhatsApp', category: 'comm', desc: 'Secondary messaging channel. Family and quick coordination.', size: 1.8, pos: [10, 1, 4] },
+  { id: 'linkedin', name: 'LinkedIn', category: 'comm', desc: 'Job search primary channel. 2,477 connections. Posts published weekly for visibility.', size: 2.2, pos: [7, 4, 6] },
+  
+  // Data & Docs
+  { id: 'vault', name: 'Obsidian Vault', category: 'data', desc: 'OneDrive-synced knowledge base. 218 wiki pages, task management, project docs. Single source of truth.', size: 2.8, pos: [-6, 2, -4] },
+  { id: 'github', name: 'GitHub', category: 'data', desc: 'Version control for vault, Life OS skills, FieldBridge. Auto-synced via cron jobs.', size: 2.2, pos: [-8, 3, -3] },
+  { id: 'gdrive', name: 'Google Drive', category: 'data', desc: 'FieldBridge skill files, project documents. rclone sync every 5 min with Life OS.', size: 2.0, pos: [-7, 1, -5] },
+  { id: 'airtable', name: 'Airtable', category: 'data', desc: 'FieldBridge structured data. 32 tables — clients, projects, skills, financials.', size: 2.0, pos: [-5, 4, -5] },
+  
+  // Intelligence / AI
+  { id: 'openrouter', name: 'OpenRouter', category: 'ai', desc: 'Model routing layer. Access to 34+ models. Cost-optimized with free champions.', size: 2.5, pos: [3, -3, 8] },
+  { id: 'claude', name: 'Claude Cowork', category: 'ai', desc: 'Primary AI assistant on Windows. Deep reasoning, document analysis, complex tasks.', size: 2.3, pos: [5, -2, 7] },
+  { id: 'perplexity', name: 'Perplexity Pro', category: 'ai', desc: 'Research engine. Pre-paid to Jan 2027. Used for market research, competitor analysis.', size: 1.8, pos: [4, -4, 9] },
+  { id: 'lifeos', name: 'Life OS Dashboard', category: 'ai', desc: 'Custom web dashboard. 17+ tabs. Central UI for all personal automation.', size: 2.5, pos: [2, -2, 9] },
+  
+  // Automation
+  { id: 'cron', name: 'Cron Jobs', category: 'auto', desc: '8 scheduled tasks: email monitoring, calendar checks, vault sync, daily briefings.', size: 2.0, pos: [-3, 5, 2] },
+  { id: 'make', name: 'Make.com', category: 'auto', desc: 'No-code automation platform. Pre-paid to Apr 2027. Workflow triggers and integrations.', size: 2.0, pos: [-2, 6, 3] },
+  { id: 'rclone', name: 'rclone Sync', category: 'auto', desc: 'Bidirectional sync between VPS vault and Google Drive. Runs every 5 minutes.', size: 1.5, pos: [-4, 5, 1] },
+  { id: 'skills', name: 'Hermes Skills', category: 'auto', desc: '20+ custom skills. FieldBridge HQ, kanban, vault sync, session management. Self-developing.', size: 2.2, pos: [-1, 4, 4] },
+  
+  // External Services
+  { id: 'fieldbridge', name: 'FieldBridge HQ', category: 'external', desc: 'AI field intelligence platform. 15 skills, Airtable base, fractional consulting.', size: 2.5, pos: [6, -4, -3] },
+  { id: 'tradingview', name: 'TradingView', category: 'external', desc: 'Prop trading platform. Pine Script v6 SMC/ICT v1.1. Paper trading active.', size: 2.0, pos: [7, -3, -5] },
+  { id: 'vultr', name: 'Vultr VPS', category: 'external', desc: 'Hosting: 45.63.19.249. Hermes agent, Life OS server, all services.', size: 2.0, pos: [5, -5, -4] },
+  { id: 'jackman', name: 'Jackman Construction', category: 'external', desc: 'Current employer (on leave Jun-Aug 2026). KOC Tower, Mile & Creek projects.', size: 1.8, pos: [8, -4, -2] },
+  
+  // Devices
+  { id: 'windows', name: 'Windows PC', category: 'device', desc: 'Primary workstation. Claude Cowork, browser, Office, Procore.', size: 1.8, pos: [-8, -2, 3] },
+  { id: 'android', name: 'Android Phone', category: 'device', desc: 'Telegram, Wispr Flow voice capture, TradingView mobile, calendar.', size: 1.8, pos: [-9, -1, 2] },
+  { id: 'wispr', name: 'Wispr Flow', category: 'device', desc: 'Voice-to-text capture. Feeds directly to Hermes for note-taking and wiki creation.', size: 1.5, pos: [-7, -3, 4] },
+];
+
+// Connections: [from, to, type, label]
+// type: 'data' | 'trigger' | 'sync' | 'output'
+const LINKS = [
+  // Core connections
+  ['hermes', 'telegram', 'data', 'Messages in/out'],
+  ['hermes', 'gmail', 'data', 'Email monitoring'],
+  ['hermes', 'whatsapp', 'data', 'Quick messages'],
+  ['hermes', 'linkedin', 'data', 'Job alerts'],
+  ['hermes', 'vault', 'sync', 'Read/write knowledge'],
+  ['hermes', 'github', 'sync', 'Auto-commit vault'],
+  ['hermes', 'gdrive', 'sync', 'rclone bidir'],
+  ['hermes', 'airtable', 'data', 'FieldBridge CRUD'],
+  ['hermes', 'openrouter', 'data', 'Model routing'],
+  ['hermes', 'claude', 'data', 'AI assistant'],
+  ['hermes', 'perplexity', 'data', 'Research queries'],
+  ['hermes', 'lifeos', 'output', 'Dashboard UI'],
+  ['hermes', 'cron', 'trigger', 'Scheduled tasks'],
+  ['hermes', 'make', 'trigger', 'Workflow automations'],
+  ['hermes', 'rclone', 'sync', 'Cloud sync'],
+  ['hermes', 'skills', 'data', 'Skill loading'],
+  ['hermes', 'fieldbridge', 'data', 'Consulting platform'],
+  ['hermes', 'tradingview', 'data', 'Market data'],
+  ['hermes', 'vultr', 'data', 'VPS hosting'],
+  ['hermes', 'jackman', 'data', 'Project data'],
+  ['hermes', 'windows', 'data', 'Desktop access'],
+  ['hermes', 'android', 'data', 'Mobile access'],
+  ['hermes', 'wispr', 'data', 'Voice capture'],
+  
+  // Cross-service connections
+  ['telegram', 'gmail', 'trigger', 'Email alerts → TG'],
+  ['gmail', 'vault', 'output', 'Clippings → Wiki'],
+  ['gmail', 'linkedin', 'trigger', 'Job alerts'],
+  ['linkedin', 'vault', 'data', 'Profile content'],
+  ['vault', 'github', 'sync', 'Version control'],
+  ['vault', 'gdrive', 'sync', 'Backup'],
+  ['vault', 'airtable', 'data', 'Project records'],
+  ['cron', 'gmail', 'trigger', 'Daily scan'],
+  ['cron', 'telegram', 'output', 'Alerts'],
+  ['cron', 'vault', 'sync', 'Daily backup'],
+  ['rclone', 'gdrive', 'sync', 'Bidirectional'],
+  ['skills', 'airtable', 'data', 'FB operations'],
+  ['skills', 'fieldbridge', 'data', 'FB skills'],
+  ['fieldbridge', 'airtable', 'data', 'All records'],
+  ['fieldbridge', 'linkedin', 'output', 'Company posts'],
+  ['openrouter', 'lifeos', 'data', 'Model pricing'],
+  ['wispr', 'vault', 'output', 'Voice → Wiki'],
+  ['wispr', 'telegram', 'output', 'Voice → Chat'],
+  ['android', 'telegram', 'data', 'Mobile input'],
+  ['android', 'wispr', 'data', 'Voice capture'],
+  ['windows', 'claude', 'data', 'Local AI'],
+  ['windows', 'lifeos', 'data', 'Dashboard'],
+  ['vultr', 'lifeos', 'output', 'Hosting'],
+  ['vultr', 'hermes', 'data', 'Agent runtime'],
+  ['make', 'gmail', 'trigger', 'Email workflows'],
+  ['make', 'airtable', 'output', 'Data sync'],
+  ['cron', 'skills', 'trigger', 'Skill execution'],
+];
+
+// Category colors
+const CAT_COLORS = {
+  'core':      0x00e5ff,  // electric cyan
+  'comm':      0xff3333,  // vivid red
+  'data':      0xffb800,  // golden amber
+  'ai':        0xd500f9,  // neon purple
+  'auto':      0x00e676,  // material green
+  'external':  0xff4081,  // pink accent
+  'device':    0xc0c0c0,  // silver
+};
+
+const CAT_NAMES = {
+  'core': 'Core Hub',
+  'comm': 'Communication',
+  'data': 'Data & Docs',
+  'ai': 'Intelligence',
+  'auto': 'Automation',
+  'external': 'External Services',
+  'device': 'Devices',
+};
+
+let scene, camera, renderer, controls;
+let nodeMeshes = [];
+let linkMeshes = [];
+let autoRotate = true;
+let showLinks = true;
+let pulseFlow = false;
+let currentFilter = 'all';
+let raycaster, mouse;
+
+init();
+animate();
+
+function init() {
+  const container = document.getElementById('canvas-container');
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a1a);
+  scene.fog = new THREE.Fog(0x0a0a1a, 25, 60);
+
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(18, 12, 18);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.maxPolarAngle = Math.PI / 2.0;
+  controls.minDistance = 8;
+  controls.maxDistance = 45;
+  controls.target.set(0, 0, 0);
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.5;
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x404060, 0.6));
+  
+  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(10, 20, 10);
+  scene.add(dir);
+  
+  const light1 = new THREE.PointLight(0x00e5ff, 0.4, 40);
+  light1.position.set(-10, 5, -10);
+  scene.add(light1);
+  
+  const light2 = new THREE.PointLight(0xff4081, 0.4, 40);
+  light2.position.set(10, -5, 10);
+  scene.add(light2);
+
+  // Build nodes
+  NODES.forEach(node => {
+    const geometry = new THREE.SphereGeometry(node.size * 0.4, 24, 24);
+    const color = CAT_COLORS[node.category] || 0x888888;
+    const material = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.15,
+      roughness: 0.3,
+      metalness: 0.2,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(node.pos[0], node.pos[1], node.pos[2]);
+    mesh.userData = node;
+    scene.add(mesh);
+    nodeMeshes.push(mesh);
+
+    // Glow ring for core
+    if (node.category === 'core') {
+      const ringGeo = new THREE.RingGeometry(node.size * 0.6, node.size * 0.8, 32);
+      const ringMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(mesh.position);
+      ring.rotation.x = Math.PI / 2;
+      scene.add(ring);
+    }
+  });
+
+  // Build links
+  LINKS.forEach(link => {
+    const [fromId, toId, type, label] = link;
+    const fromNode = NODES.find(n => n.id === fromId);
+    const toNode = NODES.find(n => n.id === toId);
+    if (!fromNode || !toNode) return;
+
+    const color = type === 'trigger' ? 0x6c63ff :
+                  type === 'sync' ? 0x00d4aa :
+                  type === 'output' ? 0xf4a261 :
+                  0x555577;
+
+    // Create curved line
+    const mid = new THREE.Vector3(
+      (fromNode.pos[0] + toNode.pos[0]) / 2,
+      (fromNode.pos[1] + toNode.pos[1]) / 2 + 1.5,
+      (fromNode.pos[2] + toNode.pos[2]) / 2
+    );
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(...fromNode.pos),
+      mid,
+      new THREE.Vector3(...toNode.pos)
+    );
+    const points = curve.getPoints(20);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: type === 'trigger' ? 0.6 : 0.25,
+    });
+    const line = new THREE.Line(geometry, material);
+    line.userData = { from: fromId, to: toId, type, label };
+    scene.add(line);
+    linkMeshes.push(line);
+  });
+
+  // Raycaster
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+  renderer.domElement.addEventListener('click', onNodeClick);
+
+  window.addEventListener('resize', onResize);
+
+  // Update stats
+  document.getElementById('statNodes').textContent = NODES.length;
+  document.getElementById('statLinks').textContent = LINKS.length;
+  document.getElementById('statAuto').textContent = LINKS.filter(l => l[2] === 'trigger' || l[2] === 'sync').length;
+}
+
+function onNodeClick(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(nodeMeshes);
+  
+  if (intersects.length > 0) {
+    const node = intersects[0].object.userData;
+    showNodeInfo(node);
+  }
+}
+
+function showNodeInfo(node) {
+  const panel = document.getElementById('infoPanel');
+  document.getElementById('infoTitle').textContent = node.name;
+  
+  const badge = document.getElementById('infoCategory');
+  badge.textContent = CAT_NAMES[node.category] || node.category;
+  badge.style.background = '#' + (CAT_COLORS[node.category] || 0x888888).toString(16).padStart(6, '0') + '30';
+  badge.style.color = '#' + (CAT_COLORS[node.category] || 0x888888).toString(16).padStart(6, '0');
+  
+  document.getElementById('infoDesc').textContent = node.desc;
+  
+  // Find connections
+  const conns = LINKS.filter(l => l[0] === node.id || l[1] === node.id);
+  const connHtml = conns.map(c => {
+    const other = c[0] === node.id ? c[1] : c[0];
+    const otherNode = NODES.find(n => n.id === other);
+    const typeIcon = c[2] === 'trigger' ? '⚡' : c[2] === 'sync' ? '🔄' : c[2] === 'output' ? '📤' : '📎';
+    return `<div class="conn-item"><span class="conn-dot"></span>${typeIcon} ${otherNode?.name || other} <span style="color:#8888a8;margin-left:auto;font-size:10px;">${c[3]}</span></div>`;
+  }).join('');
+  
+  document.getElementById('infoConnections').innerHTML = connHtml;
+  panel.classList.add('visible');
+}
+
+function setView(view, btn) {
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  
+  switch(view) {
+    case 'perspective':
+      camera.position.set(18, 12, 18);
+      break;
+    case 'top':
+      camera.position.set(0, 30, 0.1);
+      break;
+    case 'front':
+      camera.position.set(0, 2, 25);
+      break;
+  }
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
+function resetView() {
+  setView('perspective');
+}
+
+function toggleAutoRotate() {
+  autoRotate = !autoRotate;
+  controls.autoRotate = autoRotate;
+  event.target.classList.toggle('active', autoRotate);
+}
+
+function toggleConnections() {
+  showLinks = !showLinks;
+  linkMeshes.forEach(l => l.visible = showLinks);
+  event.target.classList.toggle('active', showLinks);
+}
+
+function togglePulse() {
+  pulseFlow = !pulseFlow;
+  event.target.classList.toggle('active', pulseFlow);
+  if (pulseFlow) pulseAnimation();
+}
+
+function pulseAnimation() {
+  if (!pulseFlow) return;
+  
+  const time = Date.now() * 0.001;
+  linkMeshes.forEach((line, i) => {
+    const offset = (time + i * 0.1) % 1;
+    line.material.opacity = 0.1 + Math.sin(offset * Math.PI) * 0.5;
+  });
+  
+  if (pulseFlow) requestAnimationFrame(pulseAnimation);
+}
+
+function filterCategory(cat, btn) {
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  
+  currentFilter = cat;
+  
+  nodeMeshes.forEach(mesh => {
+    if (cat === 'all') {
+      mesh.visible = true;
+    } else {
+      mesh.visible = mesh.userData.category === cat;
+    }
+  });
+  
+  linkMeshes.forEach(line => {
+    const fromNode = NODES.find(n => n.id === line.userData.from);
+    const toNode = NODES.find(n => n.id === line.userData.to);
+    if (cat === 'all') {
+      line.visible = showLinks;
+    } else {
+      line.visible = showLinks && (fromNode?.category === cat || toNode?.category === cat);
+    }
+  });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  
+  // Subtle node floating
+  const time = Date.now() * 0.001;
+  nodeMeshes.forEach((mesh, i) => {
+    mesh.position.y += Math.sin(time + i) * 0.001;
+  });
+  
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Expose to global scope
+window.setView = setView;
+window.resetView = resetView;
+window.toggleAutoRotate = toggleAutoRotate;
+window.toggleConnections = toggleConnections;
+window.togglePulse = togglePulse;
+window.filterCategory = filterCategory;
+</script>
+</body>
+</html>

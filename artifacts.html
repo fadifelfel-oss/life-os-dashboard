@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artifacts - Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+:root { --bg: #0d1117; --bg-card: #161b22; --bg-editor: #1c2128; --border: #30363d; --text: #e6edf3; --text-muted: #8b949e; --accent: #58a6ff; }
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+.header { display:flex; justify-content:space-between; align-items:center; padding:16px 24px; background:var(--bg-card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+.header h1 { font-size: 18px; font-weight: 700; }
+
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: calc(100vh - 70px); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+/* Editor panel */
+.editor-panel { display: flex; flex-direction: column; background: var(--bg); }
+.editor-tabs { display: flex; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.editor-tab { padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); background: none; border-top: none; border-left: none; border-right: none; }
+.editor-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.editor-content { flex: 1; position: relative; }
+.editor-textarea { width: 100%; height: 100%; background: var(--bg-editor); color: var(--text); border: none; padding: 16px; font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.6; resize: none; outline: none; tab-size: 2; }
+.editor-textarea:focus { outline: none; }
+
+/* Preview panel */
+.preview-panel { display: flex; flex-direction: column; background: var(--bg); }
+.preview-header { padding: 10px 16px; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: var(--bg-card); display: flex; justify-content: space-between; align-items: center; }
+.preview-header span { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.preview-iframe { flex: 1; width: 100%; border: none; background: #fff; }
+
+/* Templates bar */
+.templates-bar { padding: 10px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+.template-btn { padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; transition: all 0.15s; font-weight: 500; }
+.template-btn:hover { border-color: var(--accent); color: var(--accent); }
+.template-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Action buttons */
+.action-bar { padding: 10px 16px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.action-btn { padding: 8px 16px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; font-weight: 600; transition: all 0.15s; }
+.action-btn:hover { border-color: var(--accent); }
+.action-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.action-btn.primary:hover { opacity: 0.9; }
+
+/* Empty state */
+.empty-preview { flex:1; display:flex; align-items:center; justify-content:center; background:#fff; color:#888; text-align:center; padding:40px; }
+.empty-preview div { max-width: 300px; }
+.empty-preview .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-preview .text { font-size: 14px; }
+.empty-preview .sub { font-size: 12px; margin-top: 8px; color: #aaa; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1> Live Artifacts</h1>
+  <button class="template-btn" onclick="runCode()" style="font-size:13px;padding:8px 20px;background:var(--accent);color:#fff;border-color:var(--accent);">▶ Run</button>
+</div>
+
+<div class="templates-bar">
+  <button class="template-btn active" data-template="html" onclick="loadTemplate('html')">HTML Preview</button>
+  <button class="template-btn" data-template="mermaid" onclick="loadTemplate('mermaid')">Mermaid Diagram</button>
+  <button class="template-btn" data-template="markdown" onclick="loadTemplate('markdown')">Markdown</button>
+  <button class="template-btn" data-template="chart" onclick="loadTemplate('chart')">Chart.js</button>
+  <button class="template-btn" data-template="react" onclick="loadTemplate('react')">React</button>
+  <button class="template-btn" data-template="dashboard" onclick="loadTemplate('dashboard')">Dashboard</button>
+</div>
+
+<div class="layout">
+  <!-- Editor -->
+  <div class="editor-panel">
+    <div class="editor-tabs">
+      <button class="editor-tab active" onclick="switchTab('html')">HTML</button>
+      <button class="editor-tab" onclick="switchTab('css')">CSS</button>
+      <button class="editor-tab" onclick="switchTab('js')">JS</button>
+    </div>
+    <div class="editor-content">
+      <textarea class="editor-textarea" id="editor-html" spellcheck="false" placeholder="<!-- HTML here -->" oninput="autoRun()"></textarea>
+      <textarea class="editor-textarea" id="editor-css" spellcheck="false" style="display:none;" placeholder="/* CSS here */" oninput="autoRun()"></textarea>
+      <textarea class="editor-textarea" id="editor-js" spellcheck="false" style="display:none;" placeholder="// JavaScript here" oninput="autoRun()"></textarea>
+    </div>
+    <div class="action-bar">
+      <button class="action-btn primary" onclick="runCode()">▶ Run</button>
+      <button class="action-btn" onclick="copyCode()"> Copy</button>
+      <button class="action-btn" onclick="resetCode()"> Reset</button>
+      <button class="action-btn" onclick="fullscreenPreview()"> Fullscreen</button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-panel">
+    <div class="preview-header">
+      <span>Preview</span>
+      <span id="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);"></span>
+    </div>
+    <div class="empty-preview" id="empty-state">
+      <div>
+        <div class="icon">🎨</div>
+        <div class="text">Write code • See it live</div>
+        <div class="sub">Your output renders here in real-time</div>
+      </div>
+    </div>
+    <iframe class="preview-iframe" id="preview-frame" style="display:none;" sandbox="allow-scripts allow-modals allow-same-origin"></iframe>
+  </div>
+</div>
+
+<script>
+let autoRunTimer = null;
+let currentTemplate = 'html';
+
+// === TEMPLATES ===
+const templates = {
+  html: { html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Preview</title>\n  <style>\n    body { font-family: system-ui, sans-serif; padding: 40px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; min-height: 100vh; }\n    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }\n    p { font-size: 1.1rem; opacity: 0.9; }\n    .card { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 24px; backdrop-filter: blur(10px); margin-top: 24px; }\n  </style>\n</head>\n<body>\n  <h1> Hello, Life OS</h1>\n  <p>Your artifact renders here</p>\n  <div class="card">\n    <p>Edit the code to see it change in real-time</p>\n  </div>\n</body>\n</html>', css: '', js: '' },
+
+  mermaid: { html: '<!DOCTYPE html>\n<html>\n<head>\n  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><\/script>\n  <style>body{margin:0;padding:40px;background:#1a1b2e;text-align:center;}svg{max-width:100%;height:auto;}<\/style>\n</head>\n<body>\n<div class="mermaid">\ngraph TD\n    A[Fadi\'s Vault] --> B[Wiki Pages]\n    A --> C[Life OS]\n    A --> D[FieldBridge]\n    B --> E[196 Pages]\n    C --> F[Dashboard]\n    C --> G[Knowledge Graph]\n    C --> H[Task Board]\n    D --> I[15 Skills]\n    D --> J[32 Tables]\n    E --> K[7 Domains]\n    G --> L[800+ Connections]\n</div>\n<script>mermaid.initialize({startOnLoad:true,theme:"dark",themeVariables:{primaryColor:"#58a6ff",primaryTextColor:"#fff",primaryBorderColor:"#58a6ff",lineColor:"#58a6ff",secondaryColor:"#3fb950",tertiaryColor:"#bc8cff"}})<\/script>\n</body>\n</html>', css: '', js: '' },
+
+  markdown: { html: '<!DOCTYPE html>\n<html>\n<head>\n  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown-dark.css">\n  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>\n  <style>body{padding:40px;background:#0d1117;}.markdown-body{max-width:800px;margin:0 auto;}<\/style>\n</head>\n<body>\n<div class="markdown-body" id="content"></div>\n<script>\ndocument.getElementById("content").innerHTML = marked.parse(`\n# Fadi Life OS\n\n## Knowledge Base Stats\n| Metric | Value |\n|--------|-------|\n| Wiki Pages | 196 |\n| Domains | 7 |\n| Connections | 800+ |\n| Skills | 100 |\n\n### Priority Stack\n1. **P1** — New PM role (Aug 6 deadline)\n2. **P2** — FieldBridge revenue\n3. **P3** — Side income\n4. **P4** — Prop trading\n\n> Built by OWL on Hermes Agent\n`);\n<\/script>\n</body>\n</html>', css: '', js: '' },
+
+  chart: { html: '<!DOCTYPE html>\n<html>\n<head>\n  <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>\n  <style>body{margin:0;padding:40px;background:#0d1117;}canvas{max-width:600px;margin:0 auto;display:block;}<\/style>\n</head>\n<body>\n<canvas id="myChart"></canvas>\n<script>\nnew Chart(document.getElementById("myChart"), {\n  type: "radar",\n  data: {\n    labels: ["Schedule", "Budget", "Risk", "Quality", "Comms", "Safety"],\n    datasets: [\n      { label: "Project A", data: [85, 72, 65, 90, 78, 88], borderColor: "#58a6ff", backgroundColor: "rgba(88,166,255,0.1)" },\n      { label: "Project B", data: [70, 88, 55, 75, 92, 80], borderColor: "#3fb950", backgroundColor: "rgba(63,185,80,0.1)" }\n    ]\n  },\n  options: {\n    responsive: true,\n    plugins: { legend: { labels: { color: "#e6edf3" } } },\n    scales: {\n      r: { angleLines: { color: "#30363d" }, grid: { color: "#30363d" }, pointLabels: { color: "#8b949e" }, ticks: { color: "#8b949e" } }\n    }\n  }\n});\n<\/script>\n</body>\n</html>', css: '', js: '' },
+
+  react: { html: '<!DOCTYPE html>\n<html>\n<head>\n  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"><\/script>\n  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"><\/script>\n  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"><\/script>\n  <style>body{margin:0;padding:40px;background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;}#root{max-width:600px;margin:0 auto;}<\/style>\n</head>\n<body>\n<div id="root"></div>\n<script type="text/babel">\nconst App = () => (\n  <div style={{textAlign:"center"}}>\n    <h1 style={{fontSize:"2rem",marginBottom:"1rem"}}>  Life OS Dashboard</h1>\n    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"12px",marginTop:"24px"}}>\n      {[" Pages","  Skills"," Projects"].map((item,i) => (\n        <div key={i} style={{background:"#161b22",padding:"20px",borderRadius:"12px",border:"1px solid #30363d"}}>\n          <div style={{fontSize:"24px",fontWeight:"800",color:"#58a6ff"}}>{[196,100,4][i]}</div>\n          <div style={{fontSize:"12px",color:"#8b949e",marginTop:"4px"}}>{item}</div>\n        </div>\n      ))}\n    </div>\n  </div>\n);\nReactDOM.createRoot(document.getElementById("root")).render(<App />);\n<\/script>\n</body>\n</html>', css: '', js: '' },
+
+  dashboard: { html: '<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    *{margin:0;padding:0;box-sizing:border-box;}\n    body{font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;padding:40px;}\n    h1{font-size:1.5rem;margin-bottom:24px;}\n    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px;}\n    .card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;text-align:center;}\n    .card .val{font-size:2rem;font-weight:800;color:#58a6ff;}\n    .card .lbl{font-size:12px;color:#8b949e;margin-top:4px;text-transform:uppercase;letter-spacing:0.05em;}\n    .bar{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;}\n    .bar .pct{font-weight:700;font-size:14px;min-width:40px;}\n    .bar .track{flex:1;height:8px;background:#1c2128;border-radius:4px;overflow:hidden;}\n    .bar .fill{height:100%;border-radius:4px;}\n    .bar .label{font-size:12px;color:#8b949e;min-width:80px;text-align:right;}\n  </style>\n</head>\n<body>\n  <h1>  Project Health Dashboard</h1>\n  <div class="grid">\n    <div class="card"><div class="val">92%</div><div class="lbl">Schedule</div></div>\n    <div class="card"><div class="val">87%</div><div class="lbl">Budget</div></div>\n    <div class="card"><div class="val">78%</div><div class="lbl">Quality</div></div>\n    <div class="card"><div class="val">156</div><div class="lbl">Open RFIs</div></div>\n  </div>\n  <h2 style="font-size:1rem;margin-bottom:12px;">Progress by Phase</h2>\n  <div class="bar"><span class="pct">95%</span><div class="track"><div class="fill" style="width:95%;background:#3fb950;"></div></div><span class="label">Foundation</span></div>\n  <div class="bar"><span class="pct">72%</span><div class="track"><div class="fill" style="width:72%;background:#58a6ff;"></div></div><span class="label">Structure</span></div>\n  <div class="bar"><span class="pct">45%</span><div class="track"><div class="fill" style="width:45%;background:#d29922;"></div></div><span class="label">MEP</span></div>\n  <div class="bar"><span class="pct">18%</span><div class="track"><div class="fill" style="width:18%;background:#f85149;"></div></div><span class="label">Finishes</span></div>\n</body>\n</html>', css: '', js: '' }
+};
+
+function loadTemplate(name) {
+  currentTemplate = name;
+  document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-template="${name}"]`).classList.add('active');
+  const t = templates[name];
+  document.getElementById('editor-html').value = t.html;
+  document.getElementById('editor-css').value = t.css;
+  document.getElementById('editor-js').value = t.js;
+  switchTab('html');
+  runCode();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.editor-textarea').forEach(t => t.style.display = 'none');
+  if (tab === 'html') {
+    document.querySelector('.editor-tab:nth-child(1)').classList.add('active');
+    document.getElementById('editor-html').style.display = 'block';
+  } else if (tab === 'css') {
+    document.querySelector('.editor-tab:nth-child(2)').classList.add('active');
+    document.getElementById('editor-css').style.display = 'block';
+  } else {
+    document.querySelector('.editor-tab:nth-child(3)').classList.add('active');
+    document.getElementById('editor-js').style.display = 'block';
+  }
+}
+
+function runCode() {
+  const html = document.getElementById('editor-html').value;
+  const css = document.getElementById('editor-css').value;
+  const js = document.getElementById('editor-js').value;
+
+  const iframe = document.getElementById('preview-frame');
+  const empty = document.getElementById('empty-state');
+
+  // Show iframe, hide empty state
+  iframe.style.display = 'block';
+  empty.style.display = 'none';
+
+  if (!html.trim()) {
+    iframe.style.display = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+
+  const doc = `<!DOCTYPE html>
+<html>
+<head>
+  <style>${css}</style>
+</head>
+<body>
+  ${html}
+  <script>
+    try { ${js}; } catch(e) { console.error(e); }
+  <\/script>
+</body>
+</html>`;
+
+  iframe.srcdoc = doc;
+
+  // Update status
+  document.getElementById('status-dot').style.background = '#3fb950';
+  setTimeout(() => { document.getElementById('status-dot').style.background = '#3fb950'; }, 300);
+}
+
+function autoRun() {
+  clearTimeout(autoRunTimer);
+  autoRunTimer = setTimeout(runCode, 500);
+}
+
+function copyCode() {
+  const active = document.querySelector('.editor-textarea:not([style*="display: none"])');
+  if (active) {
+    navigator.clipboard.writeText(active.value).then(() => {
+      document.getElementById('status-dot').style.background = '#d29922';
+    });
+  }
+}
+
+function resetCode() {
+  loadTemplate(currentTemplate);
+}
+
+function fullscreenPreview() {
+  const iframe = document.getElementById('preview-frame');
+  if (iframe.requestFullscreen) {
+    iframe.requestFullscreen();
+  }
+}
+
+// Init with HTML template
+document.addEventListener('DOMContentLoaded', () => loadTemplate('html'));
+</script>
+</body>
+</html>

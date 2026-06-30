@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command Center — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<!-- COMMAND CENTER — Life OS Home -->
+<div class="container" id="dashboardContainer" style="max-width:900px;margin:0 auto;padding:0 16px;">
+
+<!-- Hero Strip: Days to Deadline -->
+<div class="cmd-hero">
+  <div class="cmd-hero-left">
+    <div class="cmd-days" id="cmdDays">--</div>
+    <div class="cmd-days-label">days to Aug 6 deadline</div>
+  </div>
+  <div class="cmd-hero-right">
+    <div class="cmd-hero-stat"><span class="cmd-stat-num" id="cmdApps">0</span><span class="cmd-stat-label">Apps sent</span></div>
+    <div class="cmd-hero-stat"><span class="cmd-stat-num" id="cmdRecruiters">0</span><span class="cmd-stat-label">Recruiters</span></div>
+    <div class="cmd-hero-stat"><span class="cmd-stat-num" id="cmdPosts">2</span><span class="cmd-stat-label">LinkedIn posts</span></div>
+  </div>
+</div>
+
+<!-- Quick Capture -->
+<div class="cmd-capture">
+  <div class="cmd-capture-input-wrap">
+    <input type="text" id="cmdCaptureInput" class="cmd-capture-input" placeholder="💭 Type a thought, task, or note — press Enter to save to inbox" onkeydown="if(event.key==='Enter')cmdCapture()">
+    <button class="cmd-capture-btn" onclick="cmdCapture()">→</button>
+    <button class="voice-btn" id="voiceBtn" onclick="startVoiceCapture()" title="Voice capture (click to start/stop)">🎙️</button>
+  </div>
+  <div class="cmd-capture-hint" id="captureHint">Saved to local inbox • Access from Tasks tab</div>
+</div>
+
+<!-- Today's Big 3 -->
+<div class="cmd-section">
+  <div class="cmd-section-header">
+    <span>🎯 Today's Priorities</span>
+    <span class="cmd-section-count" id="cmdTodayCount">3 items</span>
+  </div>
+  <div class="cmd-priorities" id="cmdPriorities">
+    <div class="cmd-priority-item high"><span class="cmd-priority-dot"></span><span class="cmd-priority-text">Update LinkedIn headline + About section</span></div>
+    <div class="cmd-priority-item high"><span class="cmd-priority-dot"></span><span class="cmd-priority-text">Send first recruiter message</span></div>
+    <div class="cmd-priority-item medium"><span class="cmd-priority-dot"></span><span class="cmd-priority-text">Submit at least 1 job application</span></div>
+  </div>
+</div>
+
+<!-- Quick Launch -->
+<div class="cmd-section">
+  <div class="cmd-section-header"><span>⚡ Quick Launch</span></div>
+  <div class="cmd-launch-grid">
+    <button class="cmd-launch-btn" onclick="navigateTo('tasks')">
+      <span class="cmd-launch-icon">✅</span>
+      <span class="cmd-launch-name">Tasks</span>
+      <span class="cmd-launch-count" id="cmdTaskCount">--</span>
+    </button>
+    <button class="cmd-launch-btn" onclick="navigateTo('brain')">
+      <span class="cmd-launch-icon">🧠</span>
+      <span class="cmd-launch-name">3D Brain</span>
+      <span class="cmd-launch-count">196 nodes</span>
+    </button>
+    <button class="cmd-launch-btn" onclick="navigateTo('sessions')">
+      <span class="cmd-launch-icon">💬</span>
+      <span class="cmd-launch-name">Chat</span>
+      <span class="cmd-launch-count">OWL</span>
+    </button>
+    <button class="cmd-launch-btn" onclick="navigateTo('files')">
+      <span class="cmd-launch-icon">📁</span>
+      <span class="cmd-launch-name">Files</span>
+      <span class="cmd-launch-count">Vault</span>
+    </button>
+    <button class="cmd-launch-btn" onclick="navigateTo('models')">
+      <span class="cmd-launch-icon">🤖</span>
+      <span class="cmd-launch-name">Models</span>
+      <span class="cmd-launch-count">25</span>
+    </button>
+    <button class="cmd-launch-btn" onclick="navigateTo('skills')">
+      <span class="cmd-launch-icon">🧩</span>
+      <span class="cmd-launch-name">Skills</span>
+      <span class="cmd-launch-count">15+</span>
+    </button>
+  </div>
+</div>
+
+<!-- Alerts / Status -->
+<div class="cmd-section">
+  <div class="cmd-section-header"><span>🔔 Status</span></div>
+  <div class="cmd-alerts" id="cmdAlerts">
+    <div class="cmd-alert warn">⚠️ <strong>P1 Job Search:</strong> 0 applications sent — URGENT</div>
+    <div class="cmd-alert info">📌 <strong>FieldBridge:</strong> SSL issue on fieldbridgehq.com — fix before driving traffic</div>
+    <div class="cmd-alert ok">✅ <strong>Vault:</strong> Synced to GitHub</div>
+  </div>
+</div>
+
+<!-- CSS -->
+<style>
+.cmd-hero {
+  display: flex; justify-content: space-between; align-items: center;
+  background: linear-gradient(135deg, rgba(88,166,255,0.1) 0%, rgba(188,140,255,0.08) 100%);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-xl); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3);
+}
+.cmd-hero-left { text-align: center; }
+.cmd-days { font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1; }
+.cmd-days-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.cmd-hero-right { display: flex; gap: var(--space-5); }
+.cmd-hero-stat { text-align: center; }
+.cmd-stat-num { display: block; font-size: 24px; font-weight: 700; color: var(--text-primary); }
+.cmd-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.cmd-capture { margin-bottom: var(--space-4); }
+.cmd-capture-input-wrap { display: flex; gap: 8px; }
+.cmd-capture-input {
+  flex: 1; background: var(--bg-secondary); border: 2px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 14px 18px; font-size: 14px; color: var(--text-primary);
+  outline: none; transition: border-color 0.2s;
+}
+.cmd-capture-input:focus { border-color: var(--accent); }
+.cmd-capture-input::placeholder { color: var(--text-muted); }
+.cmd-capture-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-lg);
+  padding: 0 20px; font-size: 20px; cursor: pointer; font-weight: 700; transition: opacity 0.2s;
+}
+.cmd-capture-btn:hover { opacity: 0.85; }
+.cmd-capture-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px; }
+
+/* Voice capture button */
+.voice-btn {
+  background: var(--bg-tertiary); border: 2px solid var(--border-primary); color: var(--text-secondary);
+  border-radius: var(--radius-lg); padding: 12px 16px; font-size: 18px; cursor: pointer;
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+}
+.voice-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.voice-btn.recording { background: var(--red-bg); border-color: var(--red); color: var(--red); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+.cmd-capture-input-wrap { display: flex; gap: 8px; flex-wrap: wrap; }
+.cmd-section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; font-weight: 800; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2);
+}
+.cmd-section-count { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+.cmd-priorities { display: flex; flex-direction: column; gap: 6px; }
+.cmd-priority-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 10px 14px; cursor: pointer;
+  transition: border-color 0.2s, transform 0.1s;
+}
+.cmd-priority-item:hover { border-color: var(--accent-border); transform: translateX(2px); }
+.cmd-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cmd-priority-item.high .cmd-priority-dot { background: var(--red); }
+.cmd-priority-item.medium .cmd-priority-dot { background: var(--orange); }
+.cmd-priority-item.low .cmd-priority-dot { background: var(--green); }
+.cmd-priority-text { font-size: 14px; font-weight: 500; }
+
+.cmd-launch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cmd-launch-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 12px 8px; cursor: pointer;
+  transition: all 0.2s;
+}
+.cmd-launch-btn:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.cmd-launch-icon { font-size: 28px; }
+.cmd-launch-name { font-size: 12px; font-weight: 600; }
+.cmd-launch-count { font-size: 10px; color: var(--text-muted); }
+
+.cmd-alerts { display: flex; flex-direction: column; gap: 6px; }
+.cmd-alert {
+  font-size: 12px; padding: 10px 14px; border-radius: var(--radius-md);
+  border-left: 3px solid;
+}
+.cmd-alert.warn { background: rgba(248,81,73,0.08); border-left-color: var(--red); }
+.cmd-alert.info { background: rgba(88,166,255,0.08); border-left-color: var(--accent); }
+.cmd-alert.ok { background: rgba(63,185,80,0.08); border-left-color: var(--green); }
+
+@media (max-width: 768px) {
+  .cmd-hero { flex-direction: column; gap: 16px; text-align: center; }
+  .cmd-launch-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+
+<script>
+// Quick Capture to localStorage inbox
+function cmdCapture() {
+  const input = document.getElementById('cmdCaptureInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const inbox = JSON.parse(localStorage.getItem('cmd-inbox') || '[]');
+  inbox.unshift({ text, time: new Date().toISOString(), done: false });
+  localStorage.setItem('cmd-inbox', JSON.stringify(inbox.slice(0, 100)));
+  input.value = '';
+  // Visual feedback
+  input.placeholder = '✅ Saved! Type another...';
+  setTimeout(() => { input.placeholder = '💭 Type a thought, task, or note — press Enter to save to inbox'; }, 2000);
+}
+
+// Voice Capture
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+async function startVoiceCapture() {
+  const btn = document.getElementById('voiceBtn');
+  const hint = document.getElementById('captureHint');
+  const input = document.getElementById('cmdCaptureInput');
+  
+  if (isRecording) {
+    stopRecording();
+    return;
+  }
+  
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+    
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      await transcribeAudio(blob);
+      stream.getTracks().forEach(t => t.stop());
+    };
+    
+    mediaRecorder.start();
+    isRecording = true;
+    btn.classList.add('recording');
+    btn.textContent = '⏹️';
+    hint.textContent = '🎙️ Recording... Click to stop';
+    input.placeholder = '🎙️ Listening...';
+    
+  } catch (err) {
+    console.error('Mic access denied:', err);
+    hint.textContent = '❌ Microphone access denied';
+    setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  isRecording = false;
+  const btn = document.getElementById('voiceBtn');
+  btn.classList.remove('recording');
+  btn.textContent = '🎙️';
+}
+
+async function transcribeAudio(blob) {
+  const hint = document.getElementById('captureHint');
+  const input = document.getElementById('cmdCaptureInput');
+  
+  hint.textContent = '⏳ Transcribing...';
+  
+  try {
+    const formData = new FormData();
+    formData.append('audio', blob, 'voice-capture.webm');
+    
+    const resp = await fetch('/api/transcribe', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await resp.json();
+    
+    if (data.success && data.text) {
+      input.value = data.text;
+      hint.textContent = `✅ Captured: "${data.text.slice(0, 50)}..."`;
+      // Auto-save after 2 seconds
+      setTimeout(() => {
+        cmdCapture();
+        hint.textContent = 'Saved to local inbox • Access from Tasks tab';
+      }, 2000);
+    } else {
+      hint.textContent = '❌ Transcription failed';
+      setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
+    }
+  } catch (err) {
+    console.error('Transcription error:', err);
+    hint.textContent = '❌ Transcription error';
+    setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
+  }
+}
+
+// Load task count
+fetch('/api/tasks').then(r => r.json()).then(d => {
+  const todo = (d.data || []).filter(t => !t.completed).length;
+  const el = document.getElementById('cmdTaskCount');
+  if (el) el.textContent = todo + ' open';
+}).catch(() => {});
+
+// Calculate days to deadline
+const deadline = new Date('2026-08-06');
+const today = new Date();
+const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+const daysEl = document.getElementById('cmdDays');
+if (daysEl) daysEl.textContent = daysLeft > 0 ? daysLeft : 0;
+</script>
+
+</div><!-- /container -->
+
+</body>
+</html>

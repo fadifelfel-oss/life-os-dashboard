@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Generation — Life OS</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <div class="header">
+    <a href="index.html" class="header-back">← Life OS</a>
+    <h1>🎨 Image Generation</h1>
+  </div>
+
+  <div class="imagegen-layout">
+    <div class="imagegen-controls">
+      <div class="control-group">
+        <label for="prompt">Describe the image</label>
+        <textarea id="prompt" placeholder="A cat wearing a helmet, riding a bicycle through a futuristic city"></textarea>
+      </div>
+      <div class="control-group">
+        <label for="method">Method</label>
+        <select id="method">
+          <option value="p5js">p5.js Sketch (Recommended)</option>
+          <option value="search">Web Search</option>
+          <option value="upload">Upload & Modify</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="size">Image Size</label>
+        <select id="size">
+          <option value="256x256">256x256</option>
+          <option value="512x512">512x512</option>
+          <option value="1024x1024">1024x1024</option>
+        </select>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="generate-btn">Generate Image</button>
+        <button class="btn" id="clear-btn">Clear</button>
+      </div>
+      <div class="model-info">
+        <strong>How it works:</strong><br>
+        • <strong>p5.js Sketch</strong>: Generates code to draw your description using shapes and colors<br>
+        • <strong>Web Search</strong>: Searches for images matching your description<br>
+        • <strong>Upload & Modify</strong>: Upload an image and describe changes to make
+      </div>
+    </div>
+
+    <div class="imagegen-preview">
+      <div class="imagegen-preview-header">
+        <h2>Preview</h2>
+        <div class="btn-group" style="gap: var(--space-1);">
+          <button class="btn" id="download-btn">Download</button>
+          <button class="btn" id="fullscreen-btn">Fullscreen</button>
+        </div>
+      </div>
+      <div class="imagegen-preview-content">
+        <div class="placeholder">Your generated image will appear here</div>
+        <div class="generated-image" id="image-container"></div>
+        <img id="output-image" style="display:none;">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MODEL_API_KEY = "life-os-dashboard-2026";
+    const HERMES_API = "http://127.0.0.1:8642";
+
+    let currentImage = null;
+
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) {
+        alert('Please enter a description');
+        return;
+      }
+
+      const method = document.getElementById('method').value;
+      const size = document.getElementById('size').value;
+
+      document.getElementById('generate-btn').disabled = true;
+      document.getElementById('generate-btn').textContent = 'Generating...';
+
+      try {
+        if (method === 'p5js') {
+          await generateP5Sketch(prompt, size);
+        } else if (method === 'search') {
+          await searchImages(prompt);
+        } else if (method === 'upload') {
+          alert('Upload feature coming soon - please use p5.js or search for now');
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Generation failed: ' + error.message);
+      } finally {
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('generate-btn').textContent = 'Generate Image';
+      }
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      document.getElementById('prompt').value = '';
+      document.getElementById('image-container').innerHTML = '';
+      document.getElementById('output-image').style.display = 'none';
+      document.getElementById('output-image').src = '';
+      currentImage = null;
+    });
+
+    document.getElementById('download-btn').addEventListener('click', () => {
+      if (!currentImage) {
+        alert('No image to download');
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = currentImage;
+      link.download = 'image-generation-' + Date.now() + '.png';
+      link.click();
+    });
+
+    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+      const img = document.getElementById('output-image');
+      if (!img.src) return;
+      const win = window.open();
+      win.document.write('<img src="' + img.src + '" style="max-width:100%;max-height:100vh;">');
+      win.document.title = 'Fullscreen Image';
+    });
+
+    async function generateP5Sketch(prompt, size) {
+      // Ask Hermes to generate p5.js code for the description
+      const width = size.split('x')[0];
+      const height = size.split('x')[1];
+
+      const response = await fetch(`${HERMES_API}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${MODEL_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'owl-alpha',
+          messages: [{
+            role: 'user',
+            content: `Create a p5.js sketch that visually represents: "${prompt}". The canvas should be ${width}x${height} pixels. Use simple shapes, colors, and positioning to convey the idea. Only return the JavaScript code inside the setup() and draw() functions, no HTML or p5.js library code. Make it clear and recognizable.`
+          }],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to generate sketch');
+
+      const data = await response.json();
+      let code = data.choices[0].message.content.trim();
+
+      // Extract code if wrapped in markdown
+      const codeMatch = code.match(/```(?:javascript)?\n([\s\S]*?)```/);
+      if (codeMatch) {
+        code = codeMatch[1].trim();
+      }
+
+      // Create HTML with p5.js
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+        </head>
+        <body>
+          <script>
+            function setup() {
+              createCanvas(${width}, ${height});
+              background(255);
+              ${code}
+            }
+            function draw() {
+              // No animation needed
+              noLoop();
+            }
+          </script>
+        </body>
+        </html>
+      `;
+
+      // Create an iframe to render the sketch
+      const iframe = document.createElement('iframe');
+      iframe.srcdoc = html;
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.border = 'none';
+
+      const container = document.getElementById('image-container');
+      container.innerHTML = '';
+      container.appendChild(iframe);
+
+      // Wait for iframe to load, then capture as image
+      return new Promise((resolve) => {
+        iframe.onload = () => {
+          // Give it a moment to render
+          setTimeout(() => {
+            try {
+              const canvas = iframe.contentWindow.document.querySelector('canvas');
+              if (canvas) {
+                const dataUrl = canvas.toDataURL('image/png');
+                currentImage = dataUrl;
+                document.getElementById('output-image').src = dataUrl;
+                document.getElementById('output-image').style.display = 'block';
+                // Also show in container for consistency
+                container.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:100%;border-radius:4px;">`;
+              } else {
+                throw new Error('No canvas found in iframe');
+              }
+            } catch (e) {
+              console.error('Failed to capture canvas:', e);
+              // Fallback: show the iframe itself
+              container.innerHTML = '';
+              container.appendChild(iframe);
+            }
+          }, 1000);
+        };
+      });
+    }
+
+    async function searchImages(prompt) {
+      // Use Hermes to search the web for images
+      const response = await fetch(`${HERMES_API}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${MODEL_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'owl-alpha',
+          messages: [{
+            role: 'user',
+            content: `Search for images related to: "${prompt}". Return up to 5 image URLs that are directly accessible (ending in .jpg, .png, .gif, etc.). If you cannot access real search, provide a helpful response about what images one might find. Format as a simple list of URLs, one per line.`
+          }],
+          temperature: 0.7,
+          max_tokens: 300
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to search');
+
+      const data = await response.json();
+      let content = data.choices[0].message.content.trim();
+
+      // Extract URLs
+      const urls = content.match(/https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)/gi);
+      if (urls && urls.length > 0) {
+        // Show first image
+        const url = urls[0];
+        currentImage = url;
+        document.getElementById('output-image').src = url;
+        document.getElementById('output-image').style.display = 'block';
+        document.getElementById('image-container').innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;border-radius:4px;">`;
+        return;
+      }
+
+      // If no URLs found, show the response as text
+      document.getElementById('image-container').innerHTML = `<div class="placeholder">${escapeHtml(content)}</div>`;
+      document.getElementById('output-image').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

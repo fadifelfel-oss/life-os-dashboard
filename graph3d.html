@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧠 3D Brain — Knowledge Graph</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+body { margin: 0; overflow: hidden; background: #0d1117; font-family: var(--font-sans); }
+#graph-container { width: 100vw; height: 100vh; }
+
+/* Header overlay */
+.graph-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, rgba(13,17,23,0.95) 0%, rgba(13,17,23,0) 100%);
+  pointer-events: none;
+}
+.graph-header > * { pointer-events: auto; }
+.graph-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.graph-controls { display: flex; gap: 8px; }
+
+/* Sidebar */
+.graph-sidebar {
+  position: fixed; top: 60px; left: 12px; z-index: 10; width: 220px;
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100vh - 140px); overflow-y: auto;
+}
+.sidebar-panel {
+  background: rgba(22,27,34,0.9); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 12px; backdrop-filter: blur(8px);
+}
+.sidebar-panel h3 {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-tertiary); margin: 0 0 8px; font-weight: 700;
+}
+.toggle-btn {
+  background: var(--bg-primary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm); padding: 6px 10px; font-size: 11px;
+  color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+}
+.toggle-btn:hover { border-color: var(--accent); }
+.toggle-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+.slider-row { margin-bottom: 8px; }
+.slider-row label { font-size: 10px; color: var(--text-tertiary); display: flex; justify-content: space-between; margin-bottom: 2px; }
+.slider-row input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.domain-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.domain-tag {
+  font-size: 10px; padding: 3px 8px; border-radius: 12px; cursor: pointer;
+  border: 1px solid transparent; font-weight: 500; transition: all 0.2s;
+}
+.domain-tag.active { border-color: currentColor; }
+.domain-tag.inactive { opacity: 0.3; }
+
+/* Stats bar */
+.graph-stats {
+  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 10;
+  display: flex; gap: 16px;
+  background: rgba(22,27,34,0.9); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl); padding: 8px 20px; backdrop-filter: blur(8px);
+}
+.stat-item { font-size: 11px; color: var(--text-secondary); }
+.stat-item strong { color: var(--text-primary); font-size: 13px; }
+
+/* Tooltip */
+.tooltip {
+  position: fixed; z-index: 100; pointer-events: none;
+  background: rgba(22,27,34,0.95); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 8px 12px;
+  font-size: 12px; color: var(--text-primary);
+  max-width: 250px; display: none;
+  box-shadow: var(--shadow-lg);
+}
+.tooltip .tt-title { font-weight: 700; margin-bottom: 2px; }
+.tooltip .tt-domain { font-size: 10px; color: var(--text-tertiary); }
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: #0d1117; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px; transition: opacity 0.5s;
+}
+.loading-overlay.done { opacity: 0; pointer-events: none; }
+.loading-text { font-size: 14px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-text" id="loadingText">Loading vault data...</div>
+</div>
+
+<div class="graph-header">
+  <div class="graph-title">🧠 Knowledge Brain — 3D Graph</div>
+  <div class="graph-controls">
+    <a href="index.html" class="toggle-btn" style="text-decoration:none;">← Life OS</a>
+    <button class="toggle-btn" onclick="resetView()">⟲ Reset</button>
+    <button class="toggle-btn" id="btn-rotate" onclick="toggleAutoRotate()">🔄 Auto-Rotate</button>
+  </div>
+</div>
+
+<div class="graph-sidebar">
+  <div class="sidebar-panel">
+    <h3>🎛️ Display</h3>
+    <div class="slider-row">
+      <label>Node size <span id="nodeSizeVal">1.5x</span></label>
+      <input type="range" min="0.5" max="3" step="0.1" value="1.5" id="nodeSize" oninput="setNodeSize(this.value)">
+    </div>
+    <div class="slider-row">
+      <label>Link distance <span id="linkDistVal">80</span></label>
+      <input type="range" min="20" max="200" step="10" value="80" id="linkDist" oninput="setLinkDist(this.value)">
+    </div>
+    <div style="display:flex;gap:4px;margin-top:8px;">
+      <button class="toggle-btn active" id="btn-labels" onclick="toggleLabels()">Labels</button>
+      <button class="toggle-btn active" id="btn-links" onclick="toggleLinks()">Links</button>
+      <button class="toggle-btn active" id="btn-particles" onclick="toggleParticles()">Particles</button>
+    </div>
+  </div>
+
+  <div class="sidebar-panel">
+    <h3>🔍 Discovery</h3>
+    <button class="toggle-btn" style="width:100%;margin-bottom:4px;" id="btn-opps" onclick="toggleOpportunities()">💡 Cross-Domain Opportunities</button>
+    <button class="toggle-btn" style="width:100%;" id="btn-hubs" onclick="toggleHubs()">🎯 Hub Finder</button>
+  </div>
+
+  <div class="sidebar-panel">
+    <h3>📁 Domains</h3>
+    <div class="domain-filters" id="domainFilters"></div>
+  </div>
+</div>
+
+<div class="graph-stats">
+  <span class="stat-item">📄 Nodes: <strong id="statNodes">0</strong></span>
+  <span class="stat-item">🔗 Links: <strong id="statLinks">0</strong></span>
+  <span class="stat-item">🌐 Domains: <strong id="statDomains">0</strong></span>
+  <span class="stat-item">💰 Opportunities: <strong id="statOpps">0</strong></span>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tt-title"></div>
+  <div class="tt-domain"></div>
+</div>
+
+<div id="graph-container"></div>
+
+<!-- Three.js -->
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+// ============================================================
+// 3D KNOWLEDGE BRAIN — Pure Three.js Implementation
+// ============================================================
+
+let scene, camera, renderer, raycaster, mouse;
+let nodeMeshes = [], linkLines = [], particleSystems = [];
+let nodes = [], links = [], domains = {};
+let autoRotate = false, autoRotateInterval = null;
+let showLabels = true, showLinks = true, showParticles = true;
+let showOpportunities = false, showHubs = false;
+let nodeSizeMult = 1.5;
+let activeDomains = new Set();
+let hoveredNode = null;
+let isDragging = false, prevMouse = { x: 0, y: 0 };
+let cameraTheta = 0, cameraPhi = Math.PI / 4, cameraRadius = 600;
+let targetTheta = 0, targetPhi = Math.PI / 4, targetRadius = 600;
+
+// Domain colors — maximum contrast, easily distinguishable
+const DOMAIN_COLORS = {
+  'ai-tools': '#00e5ff',    // electric cyan
+  'career': '#ff3333',      // vivid red
+  'construction': '#ffb800', // golden amber
+  'fieldbridgehq': '#d500f9', // neon purple
+  'general': '#c0c0c0',     // silver
+  'health': '#00e676',      // material green
+  'trading': '#ff4081',     // pink accent
+  'default': '#00e5ff'
+};
+
+async function init() {
+  const loadingText = document.getElementById('loadingText');
+  
+  // Fetch wiki data
+  let pages;
+  try {
+    const resp = await fetch('/api/wiki');
+    if (!resp.ok) throw new Error('API error');
+    const data = await resp.json();
+    pages = data.data || [];
+  } catch(e) {
+    loadingText.textContent = '⚠️ Error: ' + e.message;
+    return;
+  }
+
+  loadingText.textContent = `Building graph from ${pages.length} wiki pages...`;
+
+  // Build graph data
+  const graphData = buildGraphData(pages);
+  nodes = graphData.nodes;
+  links = graphData.links;
+
+  // Setup Three.js
+  setupScene();
+  buildGraph(nodes, links);
+  updateStats();
+  buildDomainFilters();
+
+  // Hide loading
+  setTimeout(() => {
+    document.getElementById('loading').classList.add('done');
+  }, 500);
+
+  // Start animation loop
+  animate();
+}
+
+function buildGraphData(pages) {
+  const nodeMap = {};
+  const nodes = [];
+  const links = [];
+  const domains = new Set();
+
+  pages.forEach(p => {
+    const domain = p.domain || 'general';
+    domains.add(domain);
+    const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS.default;
+    const node = {
+      id: p.id || p.name,
+      title: p.title || p.name,
+      domain,
+      color,
+      val: Math.max(2, Math.min(8, (p.links || 0) * 0.5 + (p.words || 0) * 0.001)),
+      isOpportunity: false,
+      connections: 0,
+    };
+    nodeMap[node.id] = node;
+    nodes.push(node);
+  });
+
+  // Build links from wikilinks
+  pages.forEach(p => {
+    const sourceId = p.id || p.name;
+    const raw = p.rawContent || '';
+    const wikiLinks = [...raw.matchAll(/\[\[([^\]]+)\]\]/g)];
+    wikiLinks.forEach(match => {
+      const targetName = match[1].trim();
+      const target = pages.find(pg => pg.title === targetName || pg.name === targetName || pg.id === targetName);
+      if (target) {
+        const targetId = target.id || target.name;
+        if (nodeMap[sourceId] && nodeMap[targetId] && sourceId !== targetId) {
+          const crossDomain = (p.domain || 'general') !== (target.domain || 'general');
+          links.push({ source: sourceId, target: targetId, crossDomain });
+          nodeMap[sourceId].connections++;
+          nodeMap[targetId].connections++;
+        }
+      }
+    });
+  });
+
+  // Mark cross-domain opportunity nodes
+  const linkCounts = {};
+  links.forEach(l => {
+    linkCounts[l.source] = (linkCounts[l.source] || 0) + 1;
+    linkCounts[l.target] = (linkCounts[l.target] || 0) + 1;
+  });
+  const threshold = 3;
+  links.forEach(l => {
+    if (l.crossDomain) {
+      if (linkCounts[l.source] >= threshold) nodeMap[l.source].isOpportunity = true;
+      if (linkCounts[l.target] >= threshold) nodeMap[l.target].isOpportunity = true;
+    }
+  });
+
+  return { nodes, links, domains: [...domains] };
+}
+
+function setupScene() {
+  const container = document.getElementById('graph-container');
+  
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1117);
+  scene.fog = new THREE.Fog(0x0d1117, 400, 1200);
+
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+  updateCameraPosition();
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambient);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+  dir.position.set(100, 200, 100);
+  scene.add(dir);
+  
+  // Colored accent lights for better color differentiation
+  const light1 = new THREE.PointLight(0x00e5ff, 0.3, 500); // cyan from one side
+  light1.position.set(-200, 100, -200);
+  scene.add(light1);
+  
+  const light2 = new THREE.PointLight(0xff4081, 0.3, 500); // pink from other side
+  light2.position.set(200, -100, 200);
+  scene.add(light2);
+
+  // Raycaster for hover
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  // Events
+  renderer.domElement.addEventListener('mousedown', onMouseDown);
+  renderer.domElement.addEventListener('mousemove', onMouseMove);
+  renderer.domElement.addEventListener('mouseup', onMouseUp);
+  renderer.domElement.addEventListener('wheel', onWheel);
+  window.addEventListener('resize', onResize);
+}
+
+function updateCameraPosition() {
+  camera.position.x = cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+  camera.position.y = cameraRadius * Math.cos(cameraPhi);
+  camera.position.z = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+  camera.lookAt(0, 0, 0);
+}
+
+function buildGraph(nodes, links) {
+  // Simple force-directed layout (custom implementation)
+  // Initialize random positions
+  nodes.forEach(n => {
+    n.x = (Math.random() - 0.5) * 400;
+    n.y = (Math.random() - 0.5) * 400;
+    n.z = (Math.random() - 0.5) * 400;
+    n.vx = 0; n.vy = 0; n.vz = 0;
+  });
+
+  const nodeMap = {};
+  nodes.forEach(n => nodeMap[n.id] = n);
+
+  // Run simulation for ~200 ticks
+  for (let tick = 0; tick < 200; tick++) {
+    // Repulsion between all nodes
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        let dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
+        const force = 800 / (dist * dist);
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        const fz = (dz / dist) * force;
+        a.vx += fx; a.vy += fy; a.vz += fz;
+        b.vx -= fx; b.vy -= fy; b.vz -= fz;
+      }
+    }
+    // Attraction along links
+    links.forEach(l => {
+      const a = typeof l.source === 'object' ? l.source : nodeMap[l.source];
+      const b = typeof l.target === 'object' ? l.target : nodeMap[l.target];
+      if (!a || !b) return;
+      let dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      let dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
+      const force = (dist - 80) * 0.01;
+      const fx = (dx / dist) * force;
+      const fy = (dy / dist) * force;
+      const fz = (dz / dist) * force;
+      a.vx += fx; a.vy += fy; a.vz += fz;
+      b.vx -= fx; b.vy -= fy; b.vz -= fz;
+    });
+    // Center gravity
+    nodes.forEach(n => {
+      n.vx -= n.x * 0.005;
+      n.vy -= n.y * 0.005;
+      n.vz -= n.z * 0.005;
+      // Apply velocity with damping
+      n.x += n.vx * 0.3;
+      n.y += n.vy * 0.3;
+      n.z += n.vz * 0.3;
+      n.vx *= 0.7; n.vy *= 0.7; n.vz *= 0.7;
+    });
+  }
+
+  // Create node meshes
+  nodes.forEach(node => {
+    const geometry = node.isOpportunity 
+      ? new THREE.OctahedronGeometry(node.val * nodeSizeMult * 1.2)
+      : new THREE.SphereGeometry(node.val * nodeSizeMult, 16, 16);
+    const material = new THREE.MeshStandardMaterial({
+      color: node.isOpportunity ? 0x3fb950 : parseInt(node.color.replace('#', ''), 16),
+      emissive: 0x000000,
+      emissiveIntensity: 0,
+      roughness: 0.4,
+      metalness: 0.1,
+      transparent: node.isOpportunity,
+      opacity: node.isOpportunity ? 0.6 : 1.0,
+      wireframe: node.isOpportunity,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(node.x, node.y, node.z);
+    mesh.userData = node;
+    scene.add(mesh);
+    nodeMeshes.push(mesh);
+
+    // Glow for opportunity nodes
+    if (node.isOpportunity) {
+      const glowGeo = new THREE.SphereGeometry(node.val * nodeSizeMult * 2, 16, 16);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0x3fb950, transparent: true, opacity: 0.15
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.copy(mesh.position);
+      scene.add(glow);
+    }
+  });
+
+  // Create link lines
+  links.forEach(link => {
+    const source = typeof link.source === 'object' ? link.source : nodeMap[link.source];
+    const target = typeof link.target === 'object' ? link.target : nodeMap[link.target];
+    if (!source || !target) return;
+
+    const points = [new THREE.Vector3(source.x, source.y, source.z), new THREE.Vector3(target.x, target.y, target.z)];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: link.crossDomain ? 0x3fb950 : 0x555555,
+      transparent: true,
+      opacity: link.crossDomain ? 0.6 : 0.3,
+    });
+    const line = new THREE.Line(geometry, material);
+    line.userData = { source, target, crossDomain: link.crossDomain };
+    scene.add(line);
+    linkLines.push(line);
+  });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Smooth camera
+  if (autoRotate) {
+    targetTheta += 0.003;
+  }
+  cameraTheta += (targetTheta - cameraTheta) * 0.05;
+  cameraPhi += (targetPhi - cameraPhi) * 0.05;
+  cameraRadius += (targetRadius - cameraRadius) * 0.05;
+  updateCameraPosition();
+
+  // Pulse opportunity nodes
+  const t = Date.now() * 0.003;
+  nodeMeshes.forEach(mesh => {
+    if (mesh.userData.isOpportunity) {
+      const scale = 1 + Math.sin(t * 2) * 0.2;
+      mesh.scale.set(scale, scale, scale);
+    }
+  });
+
+  renderer.render(scene, camera);
+}
+
+// === CONTROLS ===
+
+function toggleAutoRotate() {
+  autoRotate = !autoRotate;
+  document.getElementById('btn-rotate').classList.toggle('active', autoRotate);
+}
+
+function resetView() {
+  targetTheta = 0;
+  targetPhi = Math.PI / 4;
+  targetRadius = 600;
+}
+
+function setNodeSize(val) {
+  nodeSizeMult = parseFloat(val);
+  document.getElementById('nodeSizeVal').textContent = val + 'x';
+  // Rebuild node sizes
+  nodeMeshes.forEach(mesh => {
+    const baseVal = mesh.userData.val;
+    mesh.scale.setScalar(nodeSizeMult);
+  });
+}
+
+function setLinkDist(val) {
+  document.getElementById('linkDistVal').textContent = val;
+}
+
+function toggleLabels() {
+  showLabels = !showLabels;
+  document.getElementById('btn-labels').classList.toggle('active', showLabels);
+}
+
+function toggleLinks() {
+  showLinks = !showLinks;
+  document.getElementById('btn-links').classList.toggle('active', showLinks);
+  linkLines.forEach(l => l.visible = showLinks);
+}
+
+function toggleParticles() {
+  showParticles = !showParticles;
+  document.getElementById('btn-particles').classList.toggle('active', showParticles);
+}
+
+function toggleOpportunities() {
+  showOpportunities = !showOpportunities;
+  document.getElementById('btn-opps').classList.toggle('active', showOpportunities);
+  linkLines.forEach(l => {
+    if (l.userData.crossDomain) {
+      l.material.opacity = showOpportunities ? 0.8 : 0.3;
+      l.material.color.setHex(showOpportunities ? 0x3fb950 : 0x555555);
+    }
+  });
+  if (showOpportunities) {
+    // Dim non-cross-domain links to highlight opportunities
+    linkLines.forEach(l => {
+      if (!l.userData.crossDomain) l.material.opacity = 0.05;
+    });
+  } else {
+    linkLines.forEach(l => {
+      l.material.opacity = l.userData.crossDomain ? 0.6 : 0.3;
+    });
+  }
+}
+
+function toggleHubs() {
+  showHubs = !showHubs;
+  document.getElementById('btn-hubs').classList.toggle('active', showHubs);
+  nodeMeshes.forEach(mesh => {
+    if (showHubs) {
+      const isHub = mesh.userData.connections >= 5;
+      mesh.material.emissive.setHex(isHub ? 0xbc8cff : 0x000000);
+      mesh.material.emissiveIntensity = isHub ? 0.5 : 0;
+    } else {
+      mesh.material.emissive.setHex(0x000000);
+    }
+  });
+}
+
+function buildDomainFilters() {
+  const container = document.getElementById('domainFilters');
+  const domainSet = new Set();
+  nodes.forEach(n => domainSet.add(n.domain));
+  
+  domainSet.forEach(domain => {
+    activeDomains.add(domain);
+    const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS.default;
+    const tag = document.createElement('span');
+    tag.className = 'domain-tag active';
+    tag.style.background = color + '20';
+    tag.style.color = color;
+    tag.textContent = domain;
+    tag.onclick = () => {
+      if (activeDomains.has(domain)) {
+        activeDomains.delete(domain);
+        tag.classList.remove('active');
+        tag.classList.add('inactive');
+      } else {
+        activeDomains.add(domain);
+        tag.classList.add('active');
+        tag.classList.remove('inactive');
+      }
+      // Filter visibility
+      nodeMeshes.forEach(mesh => {
+        const visible = activeDomains.has(mesh.userData.domain);
+        mesh.visible = visible;
+      });
+      linkLines.forEach(l => {
+        const sDomain = l.userData.source.domain;
+        const tDomain = l.userData.target.domain;
+        l.visible = activeDomains.has(sDomain) && activeDomains.has(tDomain) && showLinks;
+      });
+    };
+    container.appendChild(tag);
+  });
+}
+
+function updateStats() {
+  document.getElementById('statNodes').textContent = nodes.length;
+  document.getElementById('statLinks').textContent = links.length;
+  const domainSet = new Set(nodes.map(n => n.domain));
+  document.getElementById('statDomains').textContent = domainSet.size;
+  const oppCount = nodes.filter(n => n.isOpportunity).length;
+  document.getElementById('statOpps').textContent = oppCount;
+}
+
+// === MOUSE INTERACTION ===
+
+function onMouseDown(e) {
+  isDragging = true;
+  prevMouse.x = e.clientX;
+  prevMouse.y = e.clientY;
+}
+
+function onMouseMove(e) {
+  // Update mouse for raycasting
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  if (isDragging) {
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    targetTheta -= dx * 0.005;
+    targetPhi = Math.max(0.1, Math.min(Math.PI - 0.1, targetPhi - dy * 0.005));
+    prevMouse.x = e.clientX;
+    prevMouse.y = e.clientY;
+  } else {
+    // Hover detection
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(nodeMeshes.filter(m => m.visible));
+    const tooltip = document.getElementById('tooltip');
+    if (intersects.length > 0) {
+      const node = intersects[0].object.userData;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+      tooltip.querySelector('.tt-title').textContent = (node.isOpportunity ? '💰 ' : '') + node.title;
+      tooltip.querySelector('.tt-domain').textContent = node.domain + ' • ' + node.connections + ' links';
+      document.body.style.cursor = 'pointer';
+      hoveredNode = node;
+    } else {
+      tooltip.style.display = 'none';
+      document.body.style.cursor = 'default';
+      hoveredNode = null;
+    }
+  }
+}
+
+function onMouseUp(e) {
+  isDragging = false;
+  // Check for click (not drag)
+  if (hoveredNode) {
+    // Zoom to node
+    const node = hoveredNode;
+    targetTheta = Math.atan2(node.x, node.z);
+    targetPhi = Math.acos(node.y / Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z));
+    targetRadius = 200;
+  }
+}
+
+function onWheel(e) {
+  targetRadius = Math.max(100, Math.min(1500, targetRadius + e.deltaY * 0.5));
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Start
+init();
+</script>
+</body>
+</html>

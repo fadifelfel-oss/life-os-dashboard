@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔑 Connectors & API Keys — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.keys-layout { display: grid; grid-template-columns:1fr 320px; gap:var(--space-5); padding:var(--space-4); }
+@media (max-width: 768px) { .keys-layout { grid-template-columns:1fr; } }
+
+.provider-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border-left: 3px solid var(--red);
+  transition: border-color 0.2s;
+}
+.provider-card.connected { border-left-color: var(--green); }
+.provider-card.error { border-left-color: var(--red); }
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.provider-icon { font-size: 20px; }
+.provider-name { font-size: var(--font-size-sm); font-weight: 700; flex: 1; }
+.provider-url { font-size: 11px; color: var(--text-muted); }
+
+.provider-body { display: flex; gap: var(--space-2); align-items: center; }
+.provider-input { flex: 1; }
+.provider-actions { display: flex; gap: var(--space-2); flex-shrink: 0; }
+
+.test-result {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  display: none;
+}
+.test-result.show { display: block; }
+.test-result.ok { background: rgba(63,185,80,0.1); color: var(--green); }
+.test-result.err { background: rgba(248,81,73,0.1); color: var(--red); }
+
+.pool-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+.pool-badge.active { background: rgba(63,185,80,0.15); color: var(--green); }
+.pool-badge.exhausted { background: rgba(248,81,73,0.15); color: var(--red); }
+
+.stats-row { display: grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:var(--space-3); margin-bottom:var(--space-4); }
+.stat-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-3); text-align: center; }
+.stat-val { font-size: 1.5em; font-weight: 700; }
+.stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+
+.sidebar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  height: fit-content;
+  position: sticky;
+  top: 80px;
+}
+.sidebar-section { margin-bottom: var(--space-4); }
+.sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: var(--space-2); }
+
+.add-provider-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.add-provider-row input { flex: 1; min-width: 100px; }
+
+.keys-sidebar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  height: fit-content;
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-4));
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+<div class="header-title">🔑 Connectors & API Keys</div>
+<div class="header-actions">
+<button class="btn btn-sm" onclick="refreshAll()">↻ Refresh</button>
+<button class="btn btn-sm btn-success" onclick="testAll()">⚡ Test All</button>
+</div>
+</div>
+
+<div class="stats-row">
+<div class="stat-box">
+<div class="stat-val" id="stat-connected">—</div>
+<div class="stat-label">Connected</div>
+</div>
+<div class="stat-box">
+<div class="stat-val" id="stat-missing">—</div>
+<div class="stat-label">Missing</div>
+</div>
+<div class="stat-box">
+<div class="stat-val" id="stat-pool">—</div>
+<div class="stat-label">Pool Keys</div>
+</div>
+<div class="stat-box">
+<div class="stat-val" id="stat-tested">—</div>
+<div class="stat-label">Tested OK</div>
+</div>
+</div>
+
+<div class="keys-layout">
+<div>
+<div id="providers-list"><div style="color:var(--text-muted);padding:20px;">Loading providers...</div></div>
+
+<div style="margin-top:var(--space-5);">
+<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);font-weight:700;margin-bottom:var(--space-2);">Add New Provider</div>
+<div class="add-provider-row">
+<input type="text" class="input" id="new-provider-name" placeholder="Provider name (e.g. together.ai)">
+<input type="password" class="input" id="new-provider-key" placeholder="API key">
+<button class="btn btn-primary" onclick="addProvider()">+ Connect</button>
+</div>
+<div id="new-provider-result" class="test-result"></div>
+</div>
+</div>
+
+<div class="keys-sidebar">
+<div class="sidebar-section">
+<div class="sidebar-title">Credential Pool</div>
+<div id="pool-list"><div style="color:var(--text-muted);font-size:11px;">Loading...</div></div>
+</div>
+<div class="sidebar-section">
+<div class="sidebar-title">Quick Actions</div>
+<div style="display:flex;flex-direction:column;gap:6px;">
+<button class="btn btn-success btn-sm" onclick="testAll()">⚡ Test All Providers</button>
+<button class="btn btn-sm" onclick="exportConfig()">📤 Export Config</button>
+<button class="btn btn-danger btn-sm" onclick="clearAll()">🗑️ Remove All</button>
+</div>
+</div>
+<div class="sidebar-section">
+<div class="sidebar-title">How It Works</div>
+<div style="font-size:11px;color:var(--text-secondary);line-height:1.8;">
+<div>🔑 Keys write to <code>.env</code> + <code>auth.json</code></div>
+<div>⚡ Test pings the provider API directly</div>
+<div>🟢 Green = connected, 🔴 Red = missing</div>
+<div>💡 After adding a key, restart gateway to activate</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+let providers = [];
+let pool = { providers: [], total_keys: 0 };
+let testsPassed = 0;
+
+async function loadProviders() {
+  try {
+    const resp = await fetch('/api/providers');
+    const result = await resp.json();
+    providers = result.data || [];
+    renderProviders();
+    updateStats();
+  } catch(e) {
+    document.getElementById('providers-list').innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+async function loadPool() {
+  try {
+    const resp = await fetch('/api/auth');
+    pool = await resp.json();
+    renderPool();
+  } catch(e) {
+    document.getElementById('pool-list').innerHTML = `<div style="color:var(--text-muted)">${e.message}</div>`;
+  }
+}
+
+function renderProviders() {
+  const list = document.getElementById('providers-list');
+  testsPassed = 0;
+  
+  list.innerHTML = providers.map(p => {
+    const statusClass = p.hasKey ? 'connected' : 'error';
+    const statusIcon = p.hasKey ? '✅' : '❌';
+    const poolInfo = p.source === 'pool' ? `<span class="pool-badge active">${p.keyPreview}</span>` : '';
+    const keyVal = p.keyPreview || '';
+    
+    return `
+      <div class="provider-card ${statusClass}" id="card-${p.id}">
+        <div class="provider-header">
+          <span class="provider-icon">${p.icon}</span>
+          <span class="provider-name">${p.name}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${p.url || ''}</span>
+          ${poolInfo}
+        </div>
+        <div class="provider-body">
+          <input type="password" class="provider-input input" id="key-${p.id}"
+                 placeholder="Enter ${p.envVar || 'API key'}" value="${keyVal}"
+                 oninput="updateCardStatus('${p.id}')">
+          <button class="btn btn-ghost btn-sm" onclick="toggleKey('${p.id}')">👁️</button>
+          <button class="btn btn-success btn-sm" onclick="testProvider('${p.id}')">⚡ Test</button>
+          <button class="btn btn-danger btn-sm" onclick="removeKey('${p.id}')">🗑️</button>
+        </div>
+        <div class="test-result" id="test-${p.id}"></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPool() {
+  const list = document.getElementById('pool-list');
+  if (!pool.providers.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:11px;">No pooled credentials</div>';
+    return;
+  }
+  list.innerHTML = pool.providers.map(p => {
+    const status = p.active > 0 ? 'active' : 'exhausted';
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid var(--border-secondary);">
+      <span>${p.name}</span>
+      <span class="pool-badge ${status}">${p.active}/${p.total}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateCardStatus(id) {
+  const card = document.getElementById('card-' + id);
+  const input = document.getElementById('key-' + id);
+  if (input.value.trim()) card.classList.add('connected');
+  else card.classList.remove('connected');
+}
+
+function toggleKey(id) {
+  const el = document.getElementById('key-' + id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+async function testProvider(id) {
+  const result = document.getElementById('test-' + id);
+  const keyVal = document.getElementById('key-' + id).value.trim();
+  
+  if (!keyVal) {
+    result.className = 'test-result show err';
+    result.textContent = '❌ No key entered';
+    return;
+  }
+  
+  result.className = 'test-result show';
+  result.textContent = '⏳ Testing...';
+  
+  try {
+    const resp = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'test', provider: id })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      result.className = 'test-result show ok';
+      result.textContent = data.message;
+      testsPassed++;
+    } else {
+      result.className = 'test-result show err';
+      result.textContent = data.message;
+    }
+    updateStats();
+  } catch(e) {
+    result.className = 'test-result show err';
+    result.textContent = '❌ ' + e.message;
+  }
+}
+
+async function testAll() {
+  testsPassed = 0;
+  for (const p of providers) {
+    if (p.hasKey) {
+      await testProvider(p.id);
+    }
+  }
+}
+
+async function removeKey(id) {
+  const card = document.getElementById('card-' + id);
+  const input = document.getElementById('key-' + id);
+  input.value = '';
+  card.classList.remove('connected');
+  
+  try {
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'remove', provider: id })
+    });
+    updateStats();
+  } catch(e) {}
+}
+
+async function addProvider() {
+  const name = document.getElementById('new-provider-name').value.trim();
+  const key = document.getElementById('new-provider-key').value.trim();
+  const result = document.getElementById('new-provider-result');
+  
+  if (!name || !key) {
+    result.className = 'test-result show err';
+    result.textContent = 'Enter provider name and API key';
+    return;
+  }
+  
+  // Guess provider ID from name
+  const pid = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  try {
+    const resp = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', provider: pid, key: key })
+    });
+    const data = await resp.json();
+    result.className = 'test-result show ' + (data.ok ? 'ok' : 'err');
+    result.textContent = data.message;
+    
+    if (data.ok) {
+      document.getElementById('new-provider-name').value = '';
+      document.getElementById('new-provider-key').value = '';
+      refreshAll();
+    }
+  } catch(e) {
+    result.className = 'test-result show err';
+    result.textContent = '❌ ' + e.message;
+  }
+}
+
+function updateStats() {
+  const connected = providers.filter(p => p.hasKey).length;
+  document.getElementById('stat-connected').textContent = connected;
+  document.getElementById('stat-missing').textContent = providers.length - connected;
+  document.getElementById('stat-pool').textContent = pool.total_keys || 0;
+  document.getElementById('stat-tested').textContent = testsPassed;
+}
+
+function refreshAll() {
+  loadProviders();
+  loadPool();
+}
+
+function exportConfig() {
+  const config = {};
+  providers.forEach(p => {
+    const val = document.getElementById('key-' + p.id)?.value;
+    if (val) config[p.id] = val;
+  });
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'api-keys.json'; a.click();
+}
+
+function clearAll() {
+  if (!confirm('Remove ALL provider keys?')) return;
+  providers.forEach(p => removeKey(p.id));
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', refreshAll);
+</script>
+</body>
+</html>

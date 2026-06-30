@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🤖 Models & Token Tracker — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Models page specific */
+.models-layout { display: grid; grid-template-columns:1fr 320px; gap:var(--space-5); }
+@media (max-width: 900px) { .models-layout { grid-template-columns:1fr; } }
+
+/* Mobile model cards — single column */
+@media (max-width: 768px) {
+  .models-layout .grid-2 { grid-template-columns: 1fr !important; }
+  .model-card { padding: var(--space-3); }
+  .model-header { flex-wrap: wrap; }
+  .model-stats { flex-wrap: wrap; gap: var(--space-1); }
+  .score-bar { width: 40px; }
+  .keys-sidebar { position: static; margin-top: var(--space-4); }
+  .compare-grid { grid-template-columns: 1fr; }
+  .token-chart { height: 80px; }
+  .usage-row { flex-wrap: wrap; gap: 4px; }
+  .usage-model { width: 100%; }
+}
+
+.model-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.model-card:hover {
+  border-color: var(--accent-border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.model-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.model-card.free-card {
+  border-color: var(--green);
+  background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02));
+  box-shadow: 0 0 12px rgba(34,197,94,0.15);
+}
+
+.model-card.free-card:hover {
+  border-color: var(--green);
+  box-shadow: 0 0 20px rgba(34,197,94,0.3);
+}
+
+.model-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.model-icon { font-size: 22px; }
+.model-name { font-size: var(--font-size-md); font-weight: 700; flex: 1; }
+.model-ctx {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  background: var(--bg-primary);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.model-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.model-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.score-bar {
+  width: 60px;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-bar-fill { height: 100%; border-radius: 3px; }
+
+/* Token tracker specific */
+.token-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.chart-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  transition: height 0.3s ease;
+  min-height: 4px;
+  position: relative;
+}
+
+.chart-bar:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.usage-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.usage-row:last-child { border-bottom: none; }
+.usage-model { flex: 1; font-weight: 600; }
+.usage-tokens { font-family: var(--font-mono); color: var(--accent); font-size: var(--font-size-xs); }
+.usage-cost { font-family: var(--font-mono); color: var(--green); font-size: var(--font-size-xs); }
+.usage-time { font-size: var(--font-size-xs); color: var(--text-tertiary); white-space: nowrap; }
+
+/* Cost calculator */
+.calc-result {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  text-align: center;
+  margin-top: var(--space-3);
+}
+
+.calc-result .big { font-size: 32px; font-weight: 800; color: var(--green); }
+.calc-result .sub { font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: var(--space-1); }
+
+/* Cost table */
+.cost-table { width: 100%; font-size: var(--font-size-xs); border-collapse: collapse; }
+.cost-table th { padding: var(--space-2); text-align: left; color: var(--text-secondary); border-bottom: 1px solid var(--border-primary); font-weight: 600; }
+.cost-table td { padding: var(--space-2); border-bottom: 1px solid var(--border-secondary); font-family: var(--font-mono); }
+.cost-table tr:hover td { background: var(--bg-tertiary); }
+
+/* Compare */
+.compare-grid { display: grid; grid-template-columns:repeat(2,1fr); gap:var(--space-3); }
+.compare-slot {
+  background: var(--bg-primary);
+  border: 2px dashed var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  text-align: center;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.compare-slot.filled { border-style: solid; border-color: var(--accent-border); }
+.compare-slot .icon { font-size: 28px; margin-bottom: var(--space-1); }
+.compare-slot .name { font-size: var(--font-size-sm); font-weight: 700; }
+.compare-slot .detail { font-size: var(--font-size-xs); color: var(--text-secondary); }
+
+/* Provider filter */
+.provider-chips { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-3); }
+
+/* Sidebar on models page */
+.models-sidebar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  height: fit-content;
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-4));
+}
+
+.sidebar-section { margin-bottom: var(--space-4); }
+.sidebar-section-title { font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: var(--space-2); }
+
+/* Filter buttons */
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin: 2px;
+}
+
+.filter-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1>🤖 Models & Token Consumption Tracker</h1>
+  <span style="font-size:11px;color:var(--text-muted);" id="model-count">Loading models…</span>
+</div>
+
+<div class="container">
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('models', this)">🤖 Model Selector</button>
+    <button class="tab" onclick="showTab('tracker', this)">📊 Token Tracker</button>
+    <button class="tab" onclick="showTab('compare', this)">⚖️ Compare</button>
+    <button class="tab" onclick="showTab('calculator', this)">🧮 Cost Calculator</button>
+  </div>
+
+  <!-- MODELS TAB -->
+  <div id="tab-models" class="tab-content">
+    <div class="models-layout">
+      <div>
+        <input type="text" class="input" placeholder="🔍 Search models by name, provider, or tag..." oninput="filterModels(this.value)" style="margin-bottom:var(--space-3);">
+        <div class="provider-chips" id="provider-chips"></div>
+        <div id="models-list"></div>
+      </div>
+      <div class="models-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Quick Filters</div>
+          <div>
+            <span class="filter-btn active" onclick="setFilter('all', this)">🌐 All</span>
+            <span class="filter-btn" onclick="setFilter('free', this)">🏆 Free Champions</span>
+            <span class="filter-btn" onclick="setFilter('reasoning', this)">🧠 Reasoning</span>
+            <span class="filter-btn" onclick="setFilter('coding', this)">💻 Coding</span>
+            <span class="filter-btn" onclick="setFilter('chat', this)">💬 Chat</span>
+            <span class="filter-btn" onclick="setFilter('vision', this)">👁️ Vision</span>
+            <span class="filter-btn" onclick="setFilter('budget', this)">💰 Budget</span>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Compare Queue <span id="compare-count" style="color:var(--accent);">(0/4)</span></div>
+          <div id="compare-queue"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:var(--space-2);" onclick="showTab('compare', document.querySelectorAll('.tab')[2])">⚖️ Compare</button>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Legend</div>
+          <div style="font-size:11px;color:var(--text-secondary);line-height:1.8;">
+            <div>🏆 #1-3 — Top ranked in category</div>
+            <div>⚡ Fast • 🐢 Slow</div>
+            <div>🔵 Score 90+ — Excellent</div>
+            <div>🟢 Score 80-89 — Very Good</div>
+            <div>⚪ Score <80 — Good</div>
+            <div>🟢 Price — Free / Cheap</div>
+            <div>🔵 Price — Premium</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRACKER TAB -->
+  <div id="tab-tracker" class="tab-content" style="display:none;">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-tokens">0</div>
+        <div class="stat-label">Total Tokens</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-cost">$0.00</div>
+        <div class="stat-label">Total Cost</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-calls">0</div>
+        <div class="stat-label">API Calls</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-models">0</div>
+        <div class="stat-label">Models Used</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📈 Usage by Model</div>
+      <div class="token-chart" id="usage-chart"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📜 Usage Log</div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="addUsageEntry()">+ Log Usage</button>
+        <button class="btn" onclick="exportUsage()">📤 Export</button>
+        <button class="btn" onclick="importUsage()">📥 Import</button>
+        <button class="btn btn-danger" onclick="clearUsage()">🗑️ Clear</button>
+      </div>
+      <div id="usage-log"></div>
+    </div>
+  </div>
+
+  <!-- COMPARE TAB -->
+  <div id="tab-compare" class="tab-content" style="display:none;">
+    <div class="section">
+      <div class="section-title">⚖️ Model Comparison</div>
+      <div class="section-desc">Select models from the Model Selector tab, then compare here.</div>
+      <div class="compare-grid" id="compare-grid"></div>
+      <div style="margin-top:var(--space-4);text-align:center;">
+        <button class="btn btn-primary btn-lg" onclick="runComparison()">⚖️ Run Comparison</button>
+      </div>
+    </div>
+    <div id="compare-results"></div>
+  </div>
+
+  <!-- CALCULATOR TAB -->
+  <div id="tab-calculator" class="tab-content" style="display:none;">
+    <div class="section">
+      <div class="section-title">🧮 Cost Calculator</div>
+      <div class="grid grid-3" style="gap:var(--space-3);margin-bottom:var(--space-3);">
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:4px;">Model</label>
+          <select class="input" id="calc-model" onchange="calcCost()"></select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:4px;">Tokens per call</label>
+          <input type="number" class="input" id="calc-tokens" value="10000" oninput="calcCost()">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:4px;">Calls per day</label>
+          <input type="number" class="input" id="calc-calls" value="10" oninput="calcCost()">
+        </div>
+      </div>
+      <div class="calc-result">
+        <div class="big" id="calc-result">$0.00</div>
+        <div class="sub">per day • <span id="calc-monthly">$0.00</span> per month</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📊 Cost Comparison (per call)</div>
+      <div style="overflow-x:auto;">
+        <table class="cost-table" id="cost-table"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+// === MODELS DATA — loaded from Hermes API or fallback ===
+let MODELS = [];
+let hermesModelIds = new Set();
+
+async function loadModelsFromHermes() {
+  try {
+    const resp = await fetch('/api/models');
+    if (resp.ok) {
+      const data = await resp.json();
+      const hermesModels = data.data || [];
+      MODELS = hermesModels.map(m => {
+        const pricing = m.pricing || {};
+        const pp = parseFloat(pricing.prompt) || 0;
+        const pc = parseFloat(pricing.completion) || 0;
+        const avgPrice = (pp + pc) / 2;
+        return {
+          id: m.id,
+          name: m.name || m.id,
+          icon: getModelIcon(m.id, m.name),
+          provider: m.provider || detectProvider(m.id),
+          arena: m.score || m.arena || m.mmlu || 80,
+          mmlu: m.mmlu || 0,
+          ctx: m.context_length || m.ctx || 128,
+          pp: pp,
+          pc: pc,
+          tags: m.category ? [m.category, ...(m.speed ? [m.speed] : [])] : generateTags(m.id, avgPrice),
+          active: m.active !== false,
+          maxTokens: m.max_tokens || m.maxTokens || 0,
+          category: m.category || 'general',
+          bestFor: m.bestFor || [],
+          rank: m.rank || 99,
+          speed: m.speed || 'medium',
+        };
+      });
+      hermesModelIds = new Set(MODELS.map(m => m.id));
+      return true;
+    }
+  } catch(e) {
+    console.log('Hermes API not available, using fallback');
+  }
+  return false;
+}
+
+function generateTags(id, avgPrice) {
+  const tags = [];
+  if (avgPrice === 0) tags.push('free');
+  else if (avgPrice < 0.000001) tags.push('cheap');
+  else if (avgPrice > 0.00001) tags.push('premium');
+  if (id.includes('flash') || id.includes('lite')) tags.push('flash');
+  if (id.includes('reasoner') || id.includes('r1') || id.includes('thinking')) tags.push('reasoning');
+  if (id.includes('coder') || id.includes('code')) tags.push('coding');
+  if (id.includes('vision') || id.includes('multimodal')) tags.push('vision');
+  if (id.includes('llama') || id.includes('large')) tags.push('large');
+  return tags;
+}
+
+function detectProvider(id) {
+  if (id.includes('google') || id.includes('gemini')) return 'Google';
+  if (id.includes('deepseek')) return 'DeepSeek';
+  if (id.includes('qwen') || id.includes('alibaba')) return 'Alibaba';
+  if (id.includes('openai') || id.includes('gpt')) return 'OpenAI';
+  if (id.includes('anthropic') || id.includes('claude')) return 'Anthropic';
+  if (id.includes('z-ai') || id.includes('glm')) return 'Z.AI';
+  if (id.includes('meta') || id.includes('llama')) return 'Meta';
+  if (id.includes('mistral')) return 'Mistral';
+  if (id.includes('nvidia')) return 'NVIDIA';
+  if (id.includes('openrouter')) return 'OpenRouter';
+  return 'Other';
+}
+
+function getModelIcon(id, name) {
+  const n = (name || id).toLowerCase();
+  if (n.includes('gemini')) return '✨';
+  if (n.includes('gpt')) return '🧠';
+  if (n.includes('claude')) return '🤖';
+  if (n.includes('deepseek')) return '🔮';
+  if (n.includes('qwen')) return '💻';
+  if (n.includes('llama')) return '🦙';
+  if (n.includes('owl')) return '🦉';
+  if (n.includes('mistral')) return '🌊';
+  if (n.includes('glm') || n.includes('z-ai')) return '🟢';
+  if (n.includes('nova')) return '📦';
+  if (n.includes('nemotron')) return '⚡';
+  return '🔧';
+}
+
+// Fallback models (when Hermes API unavailable)
+const FALLBACK_MODELS = [
+  { id:'openrouter/owl-alpha', name:'owl-alpha', icon:'🦉', provider:'OpenRouter', arena:1200, mmlu:82, ctx:1048, pp:0, pc:0, tags:['free','reasoning'] },
+  { id:'google/gemini-2.5-flash-lite', name:'Gemini 2.5 Flash Lite', icon:'⚡', provider:'Google', arena:1280, mmlu:82, ctx:1048, pp:0.0000001, pc:0.0000004, tags:['cheap','flash','fast'] },
+  { id:'google/gemini-2.5-flash', name:'Gemini 2.5 Flash', icon:'✨', provider:'Google', arena:1340, mmlu:87, ctx:1048, pp:0.0000003, pc:0.0000025, tags:['cheap','flash','strong'] },
+  { id:'deepseek/deepseek-chat', name:'DeepSeek V3', icon:'🔮', provider:'DeepSeek', arena:1310, mmlu:88.5, ctx:131, pp:0.00000027, pc:0.0000011, tags:['cheap','strong'] },
+  { id:'deepseek/deepseek-reasoner', name:'DeepSeek R1', icon:'🧪', provider:'DeepSeek', arena:1360, mmlu:90.8, ctx:65, pp:0.00000055, pc:0.0000022, tags:['cheap','reasoning'] },
+  { id:'deepseek/deepseek-v4-flash', name:'DeepSeek V4 Flash', icon:'⚡', provider:'DeepSeek', arena:1350, mmlu:90, ctx:1048, pp:0.00000004, pc:0.0000001, tags:['cheap','flash','fast'] },
+  { id:'qwen/qwen3-coder:free', name:'Qwen3 Coder', icon:'💻', provider:'Alibaba', arena:1280, mmlu:86.5, ctx:1048, pp:0, pc:0, tags:['free','coding'] },
+  { id:'nvidia/nemotron-3-super-120b-a12b:free', name:'Nemotron Super 120B', icon:'⚡', provider:'NVIDIA', arena:1250, mmlu:84, ctx:1000, pp:0, pc:0, tags:['free','large'] },
+  { id:'z-ai/glm-5.2', name:'GLM 5.2', icon:'🟢', provider:'Z.AI', arena:1320, mmlu:86, ctx:1048, pp:0.0000008, pc:0.00000123, tags:['premium','large-ctx'] },
+  { id:'openai/gpt-4o-mini', name:'GPT-4o Mini', icon:'🧠', provider:'OpenAI', arena:1250, mmlu:82.2, ctx:128, pp:0.00000015, pc:0.0000006, tags:['cheap','fast'] },
+  { id:'anthropic/claude-sonnet-4', name:'Claude Sonnet 4', icon:'🤖', provider:'Anthropic', arena:1380, mmlu:90.8, ctx:1000, pp:0.000003, pc:0.000015, tags:['premium','strong'] },
+  { id:'google/gemini-2.5-pro', name:'Gemini 2.5 Pro', icon:'✨', provider:'Google', arena:1370, mmlu:89.2, ctx:1000, pp:0.00000125, pc:0.00001, tags:['premium','large-ctx'] },
+];
+
+async function initModels() {
+  const loaded = await loadModelsFromHermes();
+  if (!loaded) MODELS = FALLBACK_MODELS;
+  document.getElementById('model-count').textContent = `${MODELS.length} models • Track • Compare • Calculate`;
+  renderProviderChips();
+  renderModels();
+  renderUsage();
+}
+
+let currentFilter = 'all';
+let currentProvider = 'all';
+let compareSelection = [];
+let usageLog = [];
+try { usageLog = JSON.parse(localStorage.getItem('fb-usage-log') || '[]'); } catch(e) {}
+
+// === RENDER MODELS ===
+function renderModels() {
+  const list = document.getElementById('models-list');
+  const search = document.querySelector('.input[placeholder*="Search"]')?.value?.toLowerCase() || '';
+  
+  let filtered = MODELS.filter(m => {
+    if (search && !m.name.toLowerCase().includes(search) && !m.provider.toLowerCase().includes(search) && !(m.best_for || '').toLowerCase().includes(search)) return false;
+    if (currentFilter !== 'all' && m.category !== currentFilter) return false;
+    if (currentProvider !== 'all' && m.provider !== currentProvider) return false;
+    return true;
+  });
+
+  // Sort by rank within each category
+  filtered.sort((a, b) => (a.rank || 99) - (b.rank || 99));
+
+  const groups = {};
+  filtered.forEach(m => {
+    const key = m.category || 'general';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(m);
+  });
+
+  const categoryLabels = {
+    free: '🏆 Free Champions — Best zero-cost models',
+    reasoning: '🧠 Reasoning — Deep thinking & analysis',
+    coding: '💻 Coding — Code generation & debugging',
+    chat: '💬 Chat — Conversation & general use',
+    vision: '👁️ Vision — Image & diagram understanding',
+    budget: '💰 Budget — Best value models',
+    general: '🔧 Other Models'
+  };
+
+  list.innerHTML = '';
+  Object.keys(groups).forEach(cat => {
+    const label = categoryLabels[cat] || `🔧 ${cat}`;
+    list.innerHTML += `<div style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-primary);padding:18px 0 8px;font-weight:800;border-bottom:2px solid var(--border-primary);margin-bottom:8px;">${label}</div>`;
+    list.innerHTML += '<div class="grid grid-2" style="gap:10px;margin-bottom:16px;">';
+    groups[cat].forEach(m => {
+      const pp = m.pp;
+      const pc = m.pc;
+      const fmtP = (v) => v === 0 ? 'FREE' : '$' + (v * 1000000).toFixed(2);
+      const priceStr = fmtP(pp) + ' / ' + fmtP(pc);
+      const priceColor = (pp + pc) === 0 ? 'var(--green)' : (pp + pc) < 0.000002 ? 'var(--cyan)' : 'var(--text-muted)';
+      const scoreColor = m.score >= 90 ? 'var(--green)' : m.score >= 80 ? 'var(--accent)' : 'var(--text-muted)';
+      const barWidth = Math.min(100, ((m.score || 0) / 100) * 100);
+      const ctxK = m.ctx >= 1000 ? (m.ctx / 1000).toFixed(0) + 'K' : m.ctx + '';
+      const maxK = m.maxTokens >= 1000 ? (m.maxTokens / 1000).toFixed(0) + 'K' : m.maxTokens + '';
+      const isSelected = compareSelection.includes(m.id);
+
+      const bestForText = typeof m.best_for === 'string' ? m.best_for : (m.best_for || []).slice(0, 3).join(', ');
+      const speedIcon = m.speed === 'fastest' ? '⚡⚡' : m.speed === 'fast' ? '⚡' : m.speed === 'slow' ? '🐢' : '';
+      const rankBadge = m.rank && m.rank <= 3 ? `<span style="font-size:10px;background:var(--accent-bg);color:var(--accent);border-radius:4px;padding:1px 5px;font-weight:700;">#${m.rank}</span>` : '';
+
+      list.innerHTML += `
+        <div class="model-card ${cat === 'free' ? 'free-card' : ''} ${isSelected ? 'selected' : ''}" onclick="toggleCompare('${m.id}')">
+          <div class="model-header">
+            <span class="model-icon">${cat === 'free' ? '🏆' : cat === 'reasoning' ? '🧠' : cat === 'coding' ? '💻' : cat === 'chat' ? '💬' : cat === 'vision' ? '👁️' : cat === 'budget' ? '💰' : '🔧'}</span>
+            <span class="model-name">${m.name}</span>
+            ${cat === 'free' ? '<span style="font-size:10px;background:var(--green);color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;margin-left:4px;">FREE</span>' : ''}
+            ${rankBadge}
+            ${speedIcon ? `<span style="font-size:10px;">${speedIcon}</span>` : ''}
+          </div>
+          <div class="model-meta">
+            <span>${m.provider}</span>
+            <span style="color:var(--text-tertiary);">•</span>
+            <span style="font-size:10px;color:var(--text-tertiary);">Ctx: ${ctxK}</span>
+            ${maxK ? `<span style="font-size:10px;color:var(--text-tertiary);">• Out: ${maxK}</span>` : ''}
+          </div>
+          <div class="model-stats" style="margin-bottom:6px;">
+            <span style="font-size:14px;font-weight:800;color:${scoreColor};">${m.score}</span>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${barWidth}%;background:${scoreColor};"></div></div>
+            <span style="font-size:11px;font-weight:600;color:${priceColor};margin-left:auto;text-align:right;line-height:1.4;">in: ${fmtP(pp)}<br>out: ${fmtP(pc)}</span>
+          </div>
+          ${bestForText ? `<div style="font-size:11px;color:var(--text-secondary);line-height:1.4;">${bestForText}</div>` : ''}
+        </div>
+      `;
+    });
+    list.innerHTML += '</div>';
+  });
+
+  if (!filtered.length) list.innerHTML = '<div class="empty"><div class="icon">🔍</div><div>No models match</div></div>';
+  document.getElementById('compare-count').textContent = `(${compareSelection.length}/4)`;
+  renderCompareQueue();
+}
+
+function renderProviderChips() {
+  const providers = [...new Set(MODELS.map(m => m.provider))].sort();
+  const c = document.getElementById('provider-chips');
+  c.innerHTML = `<span class="filter-btn active" onclick="setProvider('all', this)">All</span>`;
+  providers.forEach(p => { c.innerHTML += `<span class="filter-btn" onclick="setProvider('${p}', this)">${p}</span>`; });
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderModels();
+}
+
+function setProvider(p, el) {
+  currentProvider = p;
+  document.querySelectorAll('#provider-chips .filter-btn').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderModels();
+}
+
+function filterModels() { renderModels(); }
+
+// === COMPARE ===
+function toggleCompare(id) {
+  const idx = compareSelection.indexOf(id);
+  if (idx >= 0) compareSelection.splice(idx, 1);
+  else if (compareSelection.length < 4) compareSelection.push(id);
+  else { Notify.error('Max 4 models'); return; }
+  renderModels();
+}
+
+function renderCompareQueue() {
+  const q = document.getElementById('compare-queue');
+  q.innerHTML = '';
+  compareSelection.forEach(id => {
+    const m = MODELS.find(x => x.id === id);
+    if (!m) return;
+    q.innerHTML += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;"><span>${m.icon}</span><span style="flex:1;">${m.name}</span><button class="btn btn-sm btn-danger" onclick="toggleCompare('${id}')" style="padding:1px 4px;">✕</button></div>`;
+  });
+  if (!compareSelection.length) q.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">Click models to add</div>';
+}
+
+function renderCompareGrid() {
+  const g = document.getElementById('compare-grid');
+  g.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const m = MODELS.find(x => x.id === compareSelection[i]);
+    g.innerHTML += `<div class="compare-slot ${m ? 'filled' : ''}">${m ? `<div class="icon">${m.icon}</div><div class="name">${m.name}</div><div class="detail">${m.provider} • ${m.ctx >= 1000 ? (m.ctx/1000).toFixed(0)+'K' : m.ctx+'K'} ctx</div>` : '<div style="color:var(--text-muted);font-size:12px;">Select model</div>'}</div>`;
+  }
+}
+
+function runComparison() {
+  if (compareSelection.length < 2) { Notify.error('Select at least 2 models'); return; }
+  const models = compareSelection.map(id => MODELS.find(m => m.id === id)).filter(Boolean);
+  const c = document.getElementById('compare-results');
+  c.innerHTML = '<div class="section"><div class="section-title">⚖️ Results</div><div style="overflow-x:auto;"><table class="cost-table"><tr style="border-bottom:1px solid var(--border-primary);"><th style="padding:6px 8px;text-align:left;color:var(--text-secondary);">Metric</th>' + models.map(m => `<th style="padding:6px 8px;text-align:center;">${m.icon} ${m.name}</th>`).join('') + '</tr>';
+  [['Arena', m => m.arena], ['MMLU', m => m.mmlu + '%'], ['Context', m => m.ctx >= 1000 ? (m.ctx/1000).toFixed(0)+'K' : m.ctx+'K'], ['Price/1M', m => m.pp === 0 ? 'FREE' : '$'+((m.pp+m.pc)/2*1000000).toFixed(2)], ['Tags', m => m.tags.join(', ')]].forEach(([label, fn]) => {
+    c.querySelector('table').innerHTML += `<tr style="border-bottom:1px solid var(--border-secondary);"><td style="padding:6px 8px;color:var(--text-secondary);font-weight:600;">${label}</td>${models.map(m => `<td style="padding:6px 8px;text-align:center;">${fn(m)}</td>`).join('')}</tr>`;
+  });
+  c.innerHTML += '</table></div></div>';
+}
+
+// === TOKEN TRACKER ===
+function renderUsage() {
+  const log = document.getElementById('usage-log');
+  const totalTokens = usageLog.reduce((s, e) => s + (e.tokens || 0), 0);
+  const totalCost = usageLog.reduce((s, e) => s + (e.cost || 0), 0);
+  document.getElementById('stat-tokens').textContent = formatNumber(totalTokens);
+  document.getElementById('stat-cost').textContent = '$' + totalCost.toFixed(4);
+  document.getElementById('stat-calls').textContent = usageLog.length;
+  document.getElementById('stat-models').textContent = new Set(usageLog.map(e => e.model)).size;
+
+  // Chart
+  const byModel = {};
+  usageLog.forEach(e => { byModel[e.model] = (byModel[e.model] || 0) + (e.tokens || 0); });
+  const maxT = Math.max(...Object.values(byModel), 1);
+  const chart = document.getElementById('usage-chart');
+  chart.innerHTML = '';
+  Object.entries(byModel).sort((a,b) => b[1]-a[1]).slice(0,10).forEach(([model, tokens]) => {
+    const pct = (tokens / maxT) * 100;
+    const color = `hsl(${200 + Math.random()*160}, 60%, 55%)`;
+    chart.innerHTML += `<div class="chart-bar" style="height:${pct}%;background:${color};" title="${model}: ${formatNumber(tokens)} tokens"></div>`;
+  });
+
+  // Log
+  if (!usageLog.length) { log.innerHTML = '<div class="empty"><div class="icon">📊</div><div>No usage data yet</div></div>'; return; }
+  log.innerHTML = '';
+  usageLog.slice().reverse().forEach(e => {
+    log.innerHTML += `<div class="usage-row"><span class="usage-model">${e.model}</span><span class="usage-tokens">${formatNumber(e.tokens||0)} tok</span><span class="usage-cost">$${(e.cost||0).toFixed(4)}</span><span class="usage-time">${e.time||'—'}</span></div>`;
+  });
+}
+
+function addUsageEntry() {
+  const model = prompt('Model name:', 'openrouter/owl-alpha'); if (!model) return;
+  const tokens = parseInt(prompt('Total tokens:', '5000')) || 0;
+  const m = MODELS.find(x => x.id === model);
+  const price = m ? (m.pp + m.pc) / 2 : 0.000001;
+  usageLog.push({ model, tokens, cost: tokens * price, time: new Date().toLocaleString() });
+  localStorage.setItem('fb-usage-log', JSON.stringify(usageLog));
+  renderUsage();
+  Notify.success('Usage logged!');
+}
+
+function exportUsage() {
+  const blob = new Blob([JSON.stringify(usageLog, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'usage-log.json'; a.click();
+  Notify.success('Exported!');
+}
+
+function importUsage() {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+  input.onchange = e => { const reader = new FileReader(); reader.onload = ev => { try { usageLog = JSON.parse(ev.target.result); localStorage.setItem('fb-usage-log', JSON.stringify(usageLog)); renderUsage(); Notify.success('Imported!'); } catch(err) { Notify.error('Invalid file'); } }; reader.readAsText(e.target.files[0]); };
+  input.click();
+}
+
+function clearUsage() {
+  if (!confirm('Clear all usage data?')) return;
+  usageLog = []; localStorage.removeItem('fb-usage-log'); renderUsage(); Notify.success('Cleared!');
+}
+
+// === CALCULATOR ===
+function initCalculator() {
+  const sel = document.getElementById('calc-model');
+  sel.innerHTML = '';
+  MODELS.forEach(m => { const p = (m.pp+m.pc)/2; sel.innerHTML += `<option value="${m.id}">${m.icon} ${m.name} — ${p===0?'FREE':'$'+(p*1000000).toFixed(2)+'/1M'}</option>`; });
+  calcCost(); renderCostTable();
+}
+
+function calcCost() {
+  const m = MODELS.find(x => x.id === document.getElementById('calc-model').value);
+  const tokens = parseInt(document.getElementById('calc-tokens').value) || 0;
+  const calls = parseInt(document.getElementById('calc-calls').value) || 1;
+  if (!m) return;
+  const price = (m.pp + m.pc) / 2;
+  const daily = tokens * price * calls;
+  document.getElementById('calc-result').textContent = '$' + daily.toFixed(4);
+  document.getElementById('calc-monthly').textContent = '$' + (daily * 30).toFixed(2);
+}
+
+function renderCostTable() {
+  const tokens = [1000, 5000, 10000, 50000, 100000];
+  const t = document.getElementById('cost-table');
+  t.innerHTML = '<tr><th>Model</th>' + tokens.map(tok => `<th>${formatNumber(tok)}</th>`).join('') + '</tr>';
+  MODELS.filter(m => m.pp > 0 || m.pc > 0).sort((a,b) => (a.pp+a.pc)-(b.pp+b.pc)).forEach(m => {
+    const p = (m.pp + m.pc) / 2;
+    t.innerHTML += `<tr><td>${m.icon} ${m.name}</td>` + tokens.map(tok => `<td>$${(tok*p).toFixed(4)}</td>`).join('') + '</tr>';
+  });
+}
+
+document.querySelectorAll('.filter-btn').forEach(b => {
+  b.style.padding = '6px 14px';
+  b.style.fontSize = '12px';
+  b.style.fontWeight = '700';
+});
+function showTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).style.display = '';
+  btn.classList.add('active');
+  if (tab === 'tracker') renderUsage();
+  if (tab === 'calculator') initCalculator();
+  if (tab === 'compare') renderCompareGrid();
+}
+
+// Init
+initModels();
+</script>
+</body>
+</html>

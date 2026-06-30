@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat — Hermes Agent</title>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown-dark.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --chat-sidebar-w: 260px;
+  --chat-toolbar-h: 48px;
+  --chat-input-bg: #1a1d24;
+  --chat-user-bg: #2563eb;
+  --chat-ai-bg: #1e2230;
+  --chat-border: #2a2f3a;
+  --chat-text: #e8eaed;
+  --chat-text-muted: #9aa0a6;
+  --chat-accent: #58a6ff;
+  --chat-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --health-green: #22c55e;
+  --health-blue: #3b82f6;
+  --health-orange: #f59e0b;
+  --health-red: #ef4444;
+  --health-purple: #a855f7;
+}
+
+html, body { height: 100%; margin: 0; font-family: var(--chat-font); background: #0f1118; color: var(--chat-text); }
+
+/* === CHAT LAYOUT === */
+.chat-app {
+  display: grid;
+  grid-template-columns: var(--chat-sidebar-w) 1fr;
+  grid-template-rows: 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* When coach panel is active, main area becomes a column with messages + panel + input */
+.chat-app.with-coach .chat-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr;
+}
+
+.chat-app.with-coach .chat-messages {
+  grid-row: 1;
+}
+
+.chat-app.with-coach .coach-panel {
+  grid-row: 2;
+  max-height: 280px;
+  border-top: 2px solid var(--health-green);
+}
+
+.chat-app.with-coach .chat-input-wrap {
+  grid-row: 3;
+}
+
+/* === SIDEBAR === */
+.chat-sidebar {
+  background: #131620;
+  border-right: 1px solid var(--chat-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-brand {
+  padding: 16px;
+  border-bottom: 1px solid var(--chat-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-brand h1 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--chat-text);
+}
+
+.sidebar-brand .logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.sidebar-section-label {
+  padding: 12px 16px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chat-text-muted);
+}
+
+.sidebar-sessions {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 16px;
+}
+
+.sidebar-session {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+  font-size: 13px;
+  color: #c9d1d9;
+}
+
+.sidebar-session:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.sidebar-session.active {
+  background: rgba(88,166,255,0.1);
+  color: var(--chat-accent);
+  font-weight: 600;
+}
+
+.sidebar-session .session-time {
+  font-size: 10px;
+  color: var(--chat-text-muted);
+  margin-top: 2px;
+}
+
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--chat-border);
+  font-size: 12px;
+  color: var(--chat-text-muted);
+}
+
+.sidebar-footer a {
+  color: var(--chat-accent);
+  text-decoration: none;
+}
+
+.sidebar-footer a:hover {
+  text-decoration: underline;
+}
+
+/* === NEW CHAT BUTTON === */
+.new-chat-btn {
+  margin: 8px 16px 4px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--chat-border);
+  background: transparent;
+  color: var(--chat-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.new-chat-btn:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--chat-accent);
+}
+
+/* === MAIN AREA === */
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #0f1118;
+}
+
+/* === TOOLBAR === */
+.chat-toolbar {
+  height: var(--chat-toolbar-h);
+  border-bottom: 1px solid var(--chat-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  background: #131620;
+  flex-shrink: 0;
+}
+
+.toolbar-select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--chat-border);
+  background: #1a1d24;
+  color: var(--chat-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  max-width: 180px;
+}
+
+.toolbar-select:focus {
+  outline: none;
+  border-color: var(--chat-accent);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--chat-border);
+}
+
+.toolbar-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--chat-border);
+  background: transparent;
+  color: var(--chat-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.toolbar-btn:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--chat-text);
+}
+
+.toolbar-btn.active {
+  background: rgba(88,166,255,0.1);
+  color: var(--chat-accent);
+  border-color: rgba(88,166,255,0.3);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+/* === MESSAGES AREA === */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* === MESSAGE BUBBLES === */
+.message-row {
+  display: flex;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 24px;
+  gap: 12px;
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+.message-avatar.user {
+  background: #2563eb;
+}
+
+.message-avatar.assistant {
+  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+}
+
+.message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.message-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--chat-text);
+}
+
+.message-time {
+  font-size: 11px;
+  color: var(--chat-text-muted);
+}
+
+.message-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--chat-text);
+}
+
+.message-body p {
+  margin: 0 0 12px;
+}
+
+.message-body p:last-child {
+  margin-bottom: 0;
+}
+
+.message-body h1, .message-body h2, .message-body h3 {
+  font-weight: 700;
+  margin: 16px 0 8px;
+  color: var(--chat-text);
+}
+
+.message-body h1 { font-size: 1.5em; }
+.message-body h2 { font-size: 1.3em; }
+.message-body h3 { font-size: 1.1em; }
+
+.message-body strong {
+  font-weight: 700;
+  color: #fff;
+}
+
+.message-body ul, .message-body ol {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+
+.message-body li {
+  margin: 4px 0;
+}
+
+.message-body code:not(pre code) {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.message-body pre {
+  background: #0d1117;
+  border: 1px solid var(--chat-border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+  position: relative;
+}
+
+.message-body pre code {
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.message-body blockquote {
+  border-left: 3px solid var(--chat-accent);
+  padding-left: 16px;
+  margin: 12px 0;
+  color: var(--chat-text-muted);
+  font-style: italic;
+}
+
+.message-body a {
+  color: var(--chat-accent);
+  text-decoration: underline;
+}
+
+/* === USER MESSAGE (no avatar, right-aligned) === */
+.message-row.user {
+  justify-content: flex-end;
+}
+
+.message-row.user .message-content {
+  max-width: 600px;
+  background: var(--chat-user-bg);
+  border-radius: 16px 16px 4px 16px;
+  padding: 12px 16px;
+}
+
+.message-row.user .message-body {
+  color: #fff;
+}
+
+.message-row.user .message-avatar {
+  display: none;
+}
+
+/* === TYPING INDICATOR === */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  background: var(--chat-text-muted);
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* === INPUT AREA === */
+.chat-input-wrap {
+  border-top: 1px solid var(--chat-border);
+  padding: 12px 24px 16px;
+  background: #0f1118;
+}
+
+.chat-input-container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  background: var(--chat-input-bg);
+  border: 1px solid var(--chat-border);
+  border-radius: 16px;
+  padding: 10px 16px;
+  transition: border-color 0.2s;
+}
+
+.chat-input-container:focus-within {
+  border-color: var(--chat-accent);
+  box-shadow: 0 0 0 3px rgba(88,166,255,0.1);
+}
+
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--chat-text);
+  font-size: 15px;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  max-height: 150px;
+  min-height: 24px;
+}
+
+.chat-input::placeholder {
+  color: var(--chat-text-muted);
+}
+
+.chat-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--chat-accent);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.chat-send-btn:hover {
+  opacity: 0.85;
+}
+
+.chat-send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.chat-input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--chat-text-muted);
+}
+
+/* === ARTIFACTS PANEL === */
+.artifacts-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 400px;
+  height: 100vh;
+  background: #131620;
+  border-left: 1px solid var(--chat-border);
+  z-index: 300;
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.artifacts-panel.open {
+  right: 0;
+}
+
+.artifacts-header {
+  height: var(--chat-toolbar-h);
+  border-bottom: 1px solid var(--chat-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+}
+
+.artifacts-header h2 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  flex: 1;
+}
+
+.artifacts-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--chat-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artifacts-close:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--chat-text);
+}
+
+.artifacts-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.artifact-item {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--chat-border);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.artifact-item:hover {
+  border-color: var(--chat-accent);
+  background: rgba(88,166,255,0.04);
+}
+
+.artifact-item .artifact-icon {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.artifact-item .artifact-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.artifact-item .artifact-meta {
+  font-size: 11px;
+  color: var(--chat-text-muted);
+}
+
+.artifact-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: none;
+}
+
+.artifact-preview.active {
+  display: block;
+}
+
+.artifact-preview pre {
+  background: #0d1117;
+  border: 1px solid var(--chat-border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* === COPY BUTTON ON CODE === */
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--chat-border);
+  border-radius: 4px;
+  color: var(--chat-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+
+pre:hover .copy-btn {
+  opacity: 1;
+}
+
+.copy-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: var(--chat-text);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .chat-app {
+    grid-template-columns: 1fr;
+  }
+  .chat-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 400;
+    transform: translateX(-100%);
+  }
+  .chat-sidebar.open {
+    transform: translateX(0);
+  }
+  .artifacts-panel {
+    width: 100%;
+    right: -100%;
+  }
+  .message-row {
+    padding: 0 16px;
+  }
+}
+
+/* === SCROLLBAR === */
+.chat-messages::-webkit-scrollbar { width: 6px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--chat-border); border-radius: 3px; }
+.chat-messages::-webkit-scrollbar-thumb:hover { background: var(--chat-text-muted); }
+
+/* === HIGHLIGHT.JS OVERRIDES FOR CLAUDE STYLE === */
+.hljs { background: transparent !important; }
+
+/* === COACH BOARD === */
+.coach-panel {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  background: #131620;
+  border-top: 1px solid var(--chat-border);
+}
+
+.coach-panel.active {
+  display: flex;
+}
+
+.coach-panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--chat-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1a1d24;
+}
+
+.coach-panel-header .coach-icon {
+  font-size: 22px;
+}
+
+.coach-panel-header .coach-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--chat-text);
+}
+
+.coach-panel-header .coach-subtitle {
+  font-size: 11px;
+  color: var(--chat-text-muted);
+}
+
+.coach-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+/* Health Coach Metrics */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  background: #1a1d24;
+  border: 1px solid var(--chat-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.metric-card .metric-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.metric-card .metric-label {
+  font-size: 10px;
+  color: var(--chat-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.metric-card .metric-change {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.metric-card .metric-change.up { color: var(--health-green); }
+.metric-card .metric-change.down { color: var(--health-red); }
+
+/* Workout Log */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chat-text-muted);
+  margin: 16px 0 8px;
+}
+
+.workout-item {
+  background: #1a1d24;
+  border: 1px solid var(--chat-border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.workout-item:hover {
+  border-color: var(--health-green);
+}
+
+.workout-item .workout-date {
+  font-size: 11px;
+  color: var(--health-green);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.workout-item .workout-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.workout-item .workout-details {
+  font-size: 12px;
+  color: var(--chat-text-muted);
+  line-height: 1.5;
+}
+
+.workout-item .workout-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--chat-text-muted);
+}
+
+.workout-item .workout-stats span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Quick Log Button */
+.quick-log-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--chat-border);
+  background: transparent;
+  color: var(--chat-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  margin-top: 8px;
+}
+
+.quick-log-btn:hover {
+  border-color: var(--health-green);
+  color: var(--health-green);
+  background: rgba(34,197,94,0.05);
+}
+
+/* Coach Selector in Toolbar */
+.coach-selector {
+  position: relative;
+}
+
+.coach-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--chat-border);
+  background: #1a1d24;
+  color: var(--chat-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.coach-selector-btn:hover {
+  border-color: var(--chat-accent);
+}
+
+.coach-selector-btn .coach-emoji {
+  font-size: 16px;
+}
+
+.coach-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 200px;
+  background: #1a1d24;
+  border: 1px solid var(--chat-border);
+  border-radius: 10px;
+  z-index: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: none;
+  overflow: hidden;
+}
+
+.coach-dropdown.open {
+  display: block;
+}
+
+.coach-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 13px;
+  color: var(--chat-text);
+}
+
+.coach-dropdown-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.coach-dropdown-item.active {
+  background: rgba(88,166,255,0.1);
+  color: var(--chat-accent);
+  font-weight: 600;
+}
+
+.coach-dropdown-item .coach-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Coach-specific chat messages */
+.message-row.coach .message-avatar.assistant {
+  background: linear-gradient(135deg, var(--health-green), var(--health-blue));
+}
+
+.message-row.coach .message-name::after {
+  content: ' 🏋️';
+  font-size: 12px;
+}
+</style>
+</head>
+<body>
+
+<div class="chat-app">
+  <!-- SIDEBAR -->
+  <aside class="chat-sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-icon">🦉</div>
+      <h1>Hermes Chat</h1>
+    </div>
+    <button class="new-chat-btn" onclick="startNewChat()">
+      <span>+</span> New Chat
+    </button>
+    <div class="sidebar-section-label">Today</div>
+    <div class="sidebar-sessions" id="sessionList">
+      <div class="sidebar-session active">
+        <div>Getting started with Life OS</div>
+        <div class="session-time">2:34 PM</div>
+      </div>
+      <div class="sidebar-session">
+        <div>Review vault structure</div>
+        <div class="session-time">11:20 AM</div>
+      </div>
+    </div>
+    <div class="sidebar-section-label">Yesterday</div>
+    <div class="sidebar-sessions">
+      <div class="sidebar-session">
+        <div>FieldBridge website mockups</div>
+        <div class="session-time">Yesterday</div>
+      </div>
+      <div class="sidebar-session">
+        <div>API keys setup</div>
+        <div class="session-time">Yesterday</div>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <a href="index.html">← Life OS</a>
+      <span style="margin-left:auto;font-size:11px;">v2.0</span>
+    </div>
+  </aside>
+
+  <!-- MAIN CHAT AREA -->
+  <main class="chat-main">
+    <!-- TOOLBAR -->
+    <div class="chat-toolbar">
+      <button class="toolbar-btn" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+
+      <!-- COACH SELECTOR -->
+      <div class="coach-selector">
+        <button class="coach-selector-btn" onclick="toggleCoachDropdown()" id="coachSelectorBtn">
+          <span class="coach-emoji" id="currentCoachEmoji">🦉</span>
+          <span id="currentCoachName">Life OS</span>
+        </button>
+        <div class="coach-dropdown" id="coachDropdown">
+          <div class="coach-dropdown-item active" onclick="switchCoach('lifeos')" data-coach="lifeos">
+            <span class="coach-dot" style="background:#58a6ff;"></span> Life OS
+          </div>
+          <div class="coach-dropdown-item" onclick="switchCoach('health')" data-coach="health">
+            <span class="coach-dot" style="background:#22c55e;"></span> 🏋️ Health Coach
+          </div>
+        </div>
+      </div>
+
+      <select class="toolbar-select" id="modelSelect" onchange="setModel(this.value)">
+        <option value="">Loading models...</option>
+      </select>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" id="kbToggle" onclick="toggleKB()" title="Toggle Knowledge Base">
+        🧠 <span style="font-size:11px;">KB</span>
+      </button>
+      <button class="toolbar-btn" id="thinkingToggle" onclick="toggleThinking()" title="Toggle thinking mode">
+        💭 <span style="font-size:11px;">Think</span>
+      </button>
+      <div class="toolbar-spacer"></div>
+      <button class="toolbar-btn" id="artifactsToggle" onclick="toggleArtifacts()" title="Toggle artifacts panel">
+        📎 <span style="font-size:11px;">Artifacts</span>
+      </button>
+      <button class="toolbar-btn" title="Settings" onclick="Notify.info('Settings coming soon')">
+        ⚙️
+      </button>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="chat-messages" id="messages">
+      <div class="message-row assistant">
+        <div class="message-avatar assistant">🦉</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="message-name">Hermes</span>
+            <span class="message-time">2:34 PM</span>
+          </div>
+          <div class="message-body">
+            <p>Hey Fadi 👋 I'm your autonomous agent. I can help you with:</p>
+            <ul>
+              <li><strong>Your vault</strong> — search, browse, and manage notes</li>
+              <li><strong>Tasks & priorities</strong> — today's action items and deadlines</li>
+              <li><strong>FieldBridge</strong> — client meetings, proposals, project tracking</li>
+              <li><strong>Research</strong> — web searches, summaries, analysis</li>
+            </ul>
+            <p>What can I help you with?</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEALTH COACH BOARD -->
+    <div class="coach-panel" id="healthPanel">
+      <div class="coach-panel-header">
+        <span class="coach-icon">🏋️</span>
+        <div>
+          <div class="coach-name">Health Coach</div>
+          <div class="coach-subtitle">Your fitness & wellness partner</div>
+        </div>
+      </div>
+      <div class="coach-panel-body">
+        <!-- Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">72<span style="font-size:14px;">kg</span></div>
+            <div class="metric-label">Weight</div>
+            <div class="metric-change down">▼ 0.3kg</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">4</div>
+            <div class="metric-label">Workouts</div>
+            <div class="metric-change up">This week</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">7.2<span style="font-size:14px;">h</span></div>
+            <div class="metric-label">Sleep</div>
+            <div class="metric-change up">+0.5h</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">142<span style="font-size:10px;">/90</span></div>
+            <div class="metric-label">BP Today</div>
+            <div class="metric-change up">Normal</div>
+          </div>
+        </div>
+
+        <!-- Recent Workouts -->
+        <div class="section-title">Recent Workouts</div>
+        <div class="workout-item">
+          <div class="workout-date">Today — Upper Body</div>
+          <div class="workout-name">Push Day</div>
+          <div class="workout-details">Bench Press, Overhead Press, Incline Dumbbell, Tricep Dips</div>
+          <div class="workout-stats">
+            <span>⏱️ 45 min</span>
+            <span>🔥 420 cal</span>
+            <span>💪 6 exercises</span>
+          </div>
+        </div>
+        <div class="workout-item">
+          <div class="workout-date">Yesterday — Lower Body</div>
+          <div class="workout-name">Leg Day</div>
+          <div class="workout-details">Squats, Romanian Deadlift, Leg Press, Calf Raises</div>
+          <div class="workout-stats">
+            <span>⏱️ 50 min</span>
+            <span>🔥 480 cal</span>
+            <span>💪 5 exercises</span>
+          </div>
+        </div>
+        <div class="workout-item">
+          <div class="workout-date">Jun 22 — Cardio</div>
+          <div class="workout-name">HIIT Run</div>
+          <div class="workout-details">5km warm-up, 8x400m intervals, 2km cool-down</div>
+          <div class="workout-stats">
+            <span>⏱️ 35 min</span>
+            <span>🔥 380 cal</span>
+            <span>❤️ 155 avg</span>
+          </div>
+        </div>
+
+        <button class="quick-log-btn" onclick="quickLogWorkout()">+ Quick Log Workout</button>
+
+        <!-- Quick Actions -->
+        <div class="section-title">Quick Actions</div>
+        <div class="workout-item" style="border-left:3px solid var(--health-blue);" onclick="sendCoachMessage('Log my weight for today')">
+          <div class="workout-name">⚖️ Log Weight</div>
+          <div class="workout-details">Record today's weight measurement</div>
+        </div>
+        <div class="workout-item" style="border-left:3px solid var(--health-orange);" onclick="sendCoachMessage('Log my sleep for last night')">
+          <div class="workout-name">😴 Log Sleep</div>
+          <div class="workout-details">Track sleep duration and quality</div>
+        </div>
+        <div class="workout-item" style="border-left:3px solid var(--health-purple);" onclick="sendCoachMessage('Generate a workout plan for this week')">
+          <div class="workout-name">📋 Plan Workout</div>
+          <div class="workout-details">AI-generated routine based on your goals</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT -->
+    <div class="chat-input-wrap">
+      <div class="chat-input-container">
+        <textarea
+          class="chat-input"
+          id="chatInput"
+          placeholder="Message Hermes..."
+          rows="1"
+          oninput="autoResize(this)"
+          onkeydown="handleKey(event)"
+        ></textarea>
+        <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">▶</button>
+      </div>
+      <div class="chat-input-footer">
+        <span>Enter to send · Shift+Enter for new line · Drag files to attach</span>
+        <span id="tokenStatus">0 tokens</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ARTIFACTS PANEL -->
+<div class="artifacts-panel" id="artifactsPanel">
+  <div class="artifacts-header">
+    <h2>📎 Artifacts</h2>
+    <button class="artifacts-close" onclick="toggleArtifacts()">✕</button>
+  </div>
+  <div class="artifacts-list" id="artifactsList">
+    <div class="artifact-item">
+      <div class="artifact-icon">📄</div>
+      <div class="artifact-name">welcome.md</div>
+      <div class="artifact-meta">Markdown · 2 min ago</div>
+    </div>
+    <div class="artifact-item">
+      <div class="artifact-icon">📊</div>
+      <div class="artifact-name">task-dashboard.html</div>
+      <div class="artifact-meta">HTML · 15 min ago</div>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+// === STATE ===
+let currentModel = 'owl-alpha';
+let kbEnabled = false;
+let thinkingEnabled = false;
+let artifactsOpen = false;
+let currentCoach = 'lifeos';
+
+// === COACH SYSTEM ===
+const COACHES = {
+  lifeos: {
+    emoji: '🦉',
+    name: 'Life OS',
+    color: '#58a6ff',
+    systemPrompt: 'You are Fadi\'s autonomous AI agent. Help with vault, tasks, FieldBridge, and research.',
+    avatarClass: 'assistant'
+  },
+  health: {
+    emoji: '🏋️',
+    name: 'Health Coach',
+    color: '#22c55e',
+    systemPrompt: 'You are Fadi\'s Health & Fitness Coach. You help with workout routines, nutrition, weight tracking, sleep, and overall wellness. You are motivating, data-driven, and aware of Fadi\'s construction PM lifestyle (long hours, travel, stress). Always suggest realistic plans.',
+    avatarClass: 'coach'
+  }
+};
+
+function toggleCoachDropdown() {
+  document.getElementById('coachDropdown').classList.toggle('open');
+}
+
+function switchCoach(coachId) {
+  currentCoach = coachId;
+  const coach = COACHES[coachId];
+
+  // Update toolbar
+  document.getElementById('currentCoachEmoji').textContent = coach.emoji;
+  document.getElementById('currentCoachName').textContent = coach.name;
+
+  // Update dropdown active state
+  document.querySelectorAll('.coach-dropdown-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.coach === coachId);
+  });
+
+  // Close dropdown
+  document.getElementById('coachDropdown').classList.remove('open');
+
+  // Show/hide coach panels
+  document.getElementById('healthPanel').classList.toggle('active', coachId === 'health');
+  document.querySelector('.chat-app').classList.toggle('with-coach', coachId !== 'lifeos');
+
+  // Update message styling
+  const messages = document.getElementById('messages');
+  messages.classList.toggle('coach-mode', coachId !== 'lifeos');
+
+  // Update avatar class
+  document.querySelectorAll('.message-avatar.assistant').forEach(avatar => {
+    avatar.className = 'message-avatar ' + coach.avatarClass;
+  });
+
+  Notify.info('Switched to ' + coach.name);
+}
+
+function sendCoachMessage(text) {
+  const input = document.getElementById('chatInput');
+  input.value = text;
+  sendMessage();
+}
+
+function quickLogWorkout() {
+  sendCoachMessage('Quick log: ');
+  document.getElementById('chatInput').focus();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.coach-selector')) {
+    document.getElementById('coachDropdown').classList.remove('open');
+  }
+});
+
+// === UI FUNCTIONS ===
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function toggleKB() {
+  kbEnabled = !kbEnabled;
+  document.getElementById('kbToggle').classList.toggle('active', kbEnabled);
+  Notify.info(kbEnabled ? 'Knowledge Base: ON' : 'Knowledge Base: OFF');
+}
+
+function toggleThinking() {
+  thinkingEnabled = !thinkingEnabled;
+  document.getElementById('thinkingToggle').classList.toggle('active', thinkingEnabled);
+  Notify.info(thinkingEnabled ? 'Thinking mode: ON' : 'Thinking mode: OFF');
+}
+
+function toggleArtifacts() {
+  artifactsOpen = !artifactsOpen;
+  document.getElementById('artifactsPanel').classList.toggle('open', artifactsOpen);
+  document.getElementById('artifactsToggle').classList.toggle('active', artifactsOpen);
+}
+
+function setModel(model) {
+  currentModel = model;
+  const select = document.getElementById('modelSelect');
+  if (select) {
+    select.value = model;
+  }
+  // Show visual feedback
+  const btn = document.querySelector('.toolbar-select');
+  if (btn) {
+    btn.style.borderColor = 'var(--accent)';
+    setTimeout(() => { btn.style.borderColor = ''; }, 500);
+  }
+  Notify.info('Model: ' + model.split('/').pop());
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+// === MESSAGING ===
+function addMessage(role, text) {
+  const container = document.getElementById('messages');
+  const isUser = role === 'user';
+  const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  const row = document.createElement('div');
+  row.className = 'message-row ' + role;
+
+  if (isUser) {
+    row.innerHTML = `
+      <div class="message-content">
+        <div class="message-body">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
+      </div>`;
+  } else {
+    const coach = COACHES[currentCoach];
+    row.innerHTML = `
+      <div class="message-avatar ${coach.avatarClass}">${coach.emoji}</div>
+      <div class="message-content">
+        <div class="message-header">
+          <span class="message-name">${coach.name}</span>
+          <span class="message-time">${time}</span>
+        </div>
+        <div class="message-body">${renderMarkdown(text)}</div>
+      </div>`;
+  }
+
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+
+  // Highlight code blocks
+  if (!isUser && typeof hljs !== 'undefined') {
+    row.querySelectorAll('pre code').forEach(block => {
+      hljs.highlightElement(block);
+      addCopyButton(block);
+    });
+  }
+
+  // Detect artifacts in assistant responses
+  if (!isUser) {
+    detectArtifacts(text);
+  }
+}
+
+function addTyping() {
+  const container = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'message-row assistant';
+  row.id = 'typingIndicator';
+  row.innerHTML = `
+    <div class="message-avatar assistant">🦉</div>
+    <div class="message-content">
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div>`;
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  addMessage('user', text);
+  addTyping();
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+
+  try {
+    const coach = COACHES[currentCoach];
+    const messages = [];
+    
+    // Add system prompt for current coach
+    if (currentCoach !== 'lifeos') {
+      messages.push({ role: 'system', content: coach.systemPrompt });
+    }
+    messages.push({ role: 'user', content: text });
+
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: currentModel,
+        messages: messages,
+        stream: false,
+        use_kb: kbEnabled,
+        thinking: thinkingEnabled
+      })
+    });
+
+    removeTyping();
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    const data = await resp.json();
+    const reply = data.choices?.[0]?.message?.content || data.response || 'No response';
+    addMessage('assistant', reply);
+
+    // Update token count
+    if (data.usage) {
+      const total = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
+      document.getElementById('tokenStatus').textContent = total.toLocaleString() + ' tokens';
+    }
+  } catch(err) {
+    removeTyping();
+    addMessage('assistant', '⚠️ Could not reach Hermes. Make sure the Hermes gateway is running (port 8642).');
+    console.error(err);
+  }
+
+  btn.disabled = false;
+}
+
+// === ARTIFACT DETECTION ===
+function detectArtifacts(text) {
+  // Auto-detect code blocks that look like files
+  const codeBlockRegex = /```(\w+)?\s*\n([\s\S]*?)```/g;
+  let match;
+  const list = document.getElementById('artifactsList');
+  list.innerHTML = ''; // Clear demo items
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const lang = match[1] || 'code';
+    const code = match[2];
+    const ext = lang === 'javascript' ? 'js' : lang === 'html' ? 'html' : lang === 'python' ? 'py' : 'txt';
+    const name = `artifact-${Date.now()}.${ext}`;
+
+    const item = document.createElement('div');
+    item.className = 'artifact-item';
+    item.innerHTML = `
+      <div class="artifact-icon">${getArtifactIcon(lang)}</div>
+      <div class="artifact-name">${name}</div>
+      <div class="artifact-meta">${lang} · ${code.length} chars</div>`;
+    item.onclick = () => previewArtifact(name, code, lang);
+    list.appendChild(item);
+  }
+}
+
+function getArtifactIcon(lang) {
+  const icons = { html: '🌐', javascript: '⚡', python: '🐍', css: '🎨', json: '📋', markdown: '📄', bash: '💻' };
+  return icons[lang] || '📄';
+}
+
+function previewArtifact(name, code, lang) {
+  const list = document.getElementById('artifactsList');
+  const preview = document.createElement('div');
+  preview.className = 'artifact-preview active';
+  preview.innerHTML = `<pre><code>${escapeHtml(code)}</code></pre>`;
+  list.appendChild(preview);
+}
+
+// === COPY BUTTON ===
+function addCopyButton(codeBlock) {
+  const pre = codeBlock.parentElement;
+  if (pre.querySelector('.copy-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  pre.style.position = 'relative';
+  pre.appendChild(btn);
+  btn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(codeBlock.textContent);
+      btn.textContent = '✓';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    } catch(e) {
+      btn.textContent = '✗';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    }
+  };
+}
+
+// === UTILITY ===
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+function renderMarkdown(text) {
+  if (typeof marked === 'undefined') return escapeHtml(text);
+  marked.setOptions({
+    breaks: true,
+    gfm: true,
+    highlight: function(code, lang) {
+      if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
+      }
+      return escapeHtml(code);
+    }
+  });
+  return marked.parse(text);
+}
+
+function startNewChat() {
+  document.getElementById('messages').innerHTML = '';
+  document.getElementById('artifactsList').innerHTML = '';
+  Notify.info('New chat started');
+}
+
+// === INIT ===
+document.addEventListener('DOMContentLoaded', () => {
+  loadChatModels();
+  if (typeof mermaid !== 'undefined') {
+    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+  }
+});
+
+const MODEL_NAMES = {
+  'owl-alpha': '🦉 OWL-Alpha',
+  'claude-sonnet': '🧠 Claude Sonnet',
+  'gpt-4o': '⚡ GPT-4o',
+  'deepseek': '🐋 DeepSeek'
+};
+
+async function loadChatModels() {
+  try {
+    const resp = await fetch('/api/models');
+    if (!resp.ok) throw new Error('API unavailable');
+    const data = await resp.json();
+    const models = data.data || [];
+    const select = document.getElementById('modelSelect');
+
+    // Group by category
+    const cats = {};
+    models.forEach(m => {
+      const cat = m.category || 'general';
+      if (!cats[cat]) cats[cat] = [];
+      cats[cat].push(m);
+    });
+
+    const catLabels = { free: '🏆 Free Champions', reasoning: '🧠 Reasoning', coding: '💻 Coding', chat: '💬 Chat', vision: '👁️ Vision', budget: '💰 Budget' };
+
+    select.innerHTML = '';
+    Object.keys(cats).forEach(cat => {
+      const group = document.createElement('optgroup');
+      group.label = catLabels[cat] || `🔧 ${cat}`;
+      // Take top 5 by rank
+      cats[cat].sort((a, b) => (a.rank || 99) - (b.rank || 99)).slice(0, 5).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        const price = ((m.pricing?.prompt || 0) + (m.pricing?.completion || 0)) / 2;
+        const priceStr = price === 0 ? 'FREE' : '$' + (price * 1000000).toFixed(2) + '/1M';
+        opt.textContent = `${m.icon || '🔧'} ${m.name} — ${priceStr}`;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    });
+
+    // Set default
+    if (cats.chat && cats.chat[0]) currentModel = cats.chat[0].id;
+    else if (models[0]) currentModel = models[0].id;
+    select.value = currentModel;
+  } catch(e) {
+    console.log('Chat models fallback:', e);
+    const select = document.getElementById('modelSelect');
+    select.innerHTML = '<option value="owl-alpha">🦉 OWL-Alpha</option><option value="claude-sonnet">🧠 Claude Sonnet</option>';
+  }
+}
+</script>
+
+<!-- CDN Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</body>
+</html>

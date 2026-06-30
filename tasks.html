@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-4); padding: var(--space-4); }
+.board-col { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: var(--space-3); border: 1px solid var(--border-primary); }
+.board-col-title { font-size: var(--font-size-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: var(--space-3); }
+.task-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.task-card:hover { border-color: var(--accent); }
+.task-card.done { opacity: 0.5; text-decoration: line-through; }
+.task-title { font-size: var(--font-size-sm); margin-bottom: var(--space-2); }
+.task-meta { display: flex; gap: var(--space-2); font-size: 11px; color: var(--text-muted); }
+.task-priority { padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.task-priority.high { background: rgba(248,81,73,0.15); color: var(--red); }
+.task-priority.medium { background: rgba(212,153,34,0.15); color: #d29922; }
+.task-source { color: var(--text-muted); }
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+/* Print-friendly styles */
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .header, .header-actions, .fab-capture, .sidebar, .mobile-nav { display: none !important; }
+  .board { display: block; padding: 0; }
+  .board-col { background: #fff; border: 1px solid #ddd; border-radius: 0; padding: 12px; margin-bottom: 16px; page-break-inside: avoid; }
+  .board-col-title { color: #000; font-size: 14px; margin-bottom: 8px; }
+  .task-card { background: #fff; border: 1px solid #eee; border-radius: 0; padding: 8px; margin-bottom: 6px; }
+  .task-title { color: #000; font-size: 13px; }
+  .task-meta { color: #555; font-size: 10px; }
+  .task-priority { padding: 1px 4px; font-size: 10px; }
+  .task-priority.high { background: #fee; color: #c00; }
+  .task-priority.medium { background: #fef3cd; color: #856404; }
+  .container { max-width: 100%; padding: 0; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+<div class="header-title">✅ Task Board</div>
+<div class="header-actions">
+<button class="btn btn-sm" onclick="window.print()">🖨️ Print</button>
+<button class="btn btn-sm" onclick="refreshTasks()">↻ Refresh</button>
+</div>
+</div>
+<div id="board" class="board">
+<div class="loading">Loading tasks from vault...</div>
+</div>
+</div>
+
+<script>
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+async function loadTasks() {
+  const board = document.getElementById('board');
+  board.innerHTML = '<div class="loading">Loading tasks from vault...</div>';
+  try {
+    const resp = await fetch('/api/tasks');
+    if (!resp.ok) throw new Error('Failed to fetch');
+    const result = await resp.json();
+    renderBoard(result.data || []);
+  } catch(e) {
+    board.innerHTML = `<div class="loading" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function renderBoard(tasks) {
+  const board = document.getElementById('board');
+  
+  // Separate into columns
+  const todo = tasks.filter(t => !t.completed);
+  const done = tasks.filter(t => t.completed);
+  
+  // Sort by inferred priority
+  todo.sort((a, b) => (PRIORITY_ORDER[a.priority] || 1) - (PRIORITY_ORDER[b.priority] || 1));
+  
+  board.innerHTML = `
+    <div class="board-col">
+      <div class="board-col-title">📋 To Do (${todo.length})</div>
+      ${todo.map(t => taskCard(t)).join('')}
+    </div>
+    <div class="board-col">
+      <div class="board-col-title">✅ Done (${done.length})</div>
+      ${done.slice(-10).map(t => taskCard(t)).join('')}
+    </div>
+  `;
+}
+
+function inferPriority(text) {
+  const lower = (text || '').toLowerCase();
+  if (lower.includes('urgent') || lower.includes('critical') || lower.includes('asap')) return 'high';
+  if (lower.includes('low') || lower.includes('later') || lower.includes('nice to')) return 'low';
+  return 'medium';
+}
+
+function taskTitle(text) {
+  return (text || '').replace(/^\s*-\s*\[[ xX]\]\s*/, '').trim();
+}
+
+function taskCard(t) {
+  const sourceLabel = (t.file || t.source || '').split('/').pop();
+  const priority = inferPriority(t.text);
+  return `
+    <div class="task-card ${t.completed ? 'done' : ''}">
+      <div class="task-title">${escapeHtml(taskTitle(t.text))}</div>
+      <div class="task-meta">
+        <span class="task-priority ${priority}">${priority}</span>
+        <span class="task-source">${escapeHtml(sourceLabel)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function refreshTasks() { loadTasks(); }
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+document.addEventListener('DOMContentLoaded', loadTasks);
+</script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fadi Life OS v2.0</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Page-specific: Dashboard modules */
+.welcome-banner {
+  background: linear-gradient(135deg, rgba(88,166,255,0.1), rgba(188,140,255,0.1));
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.welcome-banner h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  margin-bottom: var(--space-2);
+}
+
+.welcome-banner p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.quick-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.activity-feed {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.activity-item:last-child { border-bottom: none; }
+
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.activity-content { flex: 1; min-width: 0; }
+.activity-title { font-size: var(--font-size-sm); font-weight: 600; }
+.activity-meta { font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: 2px; }
+
+/* KPI cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+.kpi-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: var(--space-1);
+}
+
+.kpi-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.kpi-delta {
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-1);
+  font-weight: 600;
+}
+
+/* Sidebar toggle for mobile */
+.sidebar-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .sidebar-toggle { display: flex; }
+}
+
+/* Module content area */
+#module-content {
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav" role="navigation" aria-label="Mobile navigation">
+  <button class="mobile-nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+    <span class="mobile-nav-icon">⚡</span><span class="mobile-nav-label" data-i18n="home">Home</span>
+  </button>
+  <button class="mobile-nav-item" data-page="tasks" onclick="navigateTo('tasks')">
+    <span class="mobile-nav-icon">📋</span><span class="mobile-nav-label" data-i18n="tasks">Tasks</span>
+  </button>
+  <button class="mobile-nav-item" data-page="sessions" onclick="navigateTo('sessions')">
+    <span class="mobile-nav-icon">💬</span><span class="mobile-nav-label" data-i18n="chat">Chat</span>
+  </button>
+  <button class="mobile-nav-item" data-page="files" onclick="navigateTo('files')">
+    <span class="mobile-nav-icon">📁</span><span class="mobile-nav-label" data-i18n="files">Files</span>
+  </button>
+  <button class="mobile-nav-item" data-page="models" onclick="navigateTo('models')">
+    <span class="mobile-nav-icon">🤖</span><span class="mobile-nav-label" data-i18n="models">Models</span>
+  </button>
+  <button class="mobile-nav-item" data-page="kanban" onclick="window.location.href='kanban.html'">
+    <span class="mobile-nav-icon">📝</span><span class="mobile-nav-label" data-i18n="kanban">Kanban</span>
+  </button>
+  <button class="mobile-nav-item" data-page="construction" onclick="window.location.href='hermes-map.html'">
+    <span class="mobile-nav-icon">🗺️</span><span class="mobile-nav-label" data-i18n="construction">Map</span>
+  </button>
+  <button class="mobile-nav-item" data-page="meetings" onclick="window.location.href='meetings.html'">
+    <span class="mobile-nav-icon">🎙️</span><span class="mobile-nav-label" data-i18n="meetings">Meetings</span>
+  </button>
+</nav>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🦉 Life OS</span>
+    <button class="btn btn-ghost btn-icon sidebar-close-mobile" onclick="toggleSidebar()" style="display:none;">✕</button>
+  </div>
+  
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Main</div>
+      <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+        <span class="nav-icon">⚡</span><span data-i18n="dashboard">Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="models" onclick="navigateTo('models')">
+        <span class="nav-icon">🤖</span><span data-i18n="models">Models & Tokens</span>
+      </button>
+      <button class="nav-item" data-page="mcp" onclick="navigateTo('mcp')">
+        <span class="nav-icon">🔌</span><span data-i18n="mcp">MCP Servers</span>
+      </button>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Tools</div>
+      <button class="nav-item" data-page="keys" onclick="navigateTo('keys')">
+        <span class="nav-icon">🔑</span><span data-i18n="keys">API Keys</span>
+      </button>
+      <button class="nav-item" data-page="artifacts" onclick="navigateTo('artifacts')">
+        <span class="nav-icon">🎨</span><span data-i18n="artifacts">Live Artifacts</span>
+      </button>
+      <button class="nav-item" data-page="imagegen" onclick="window.location.href='imagegen.html'">
+        <span class="nav-icon">🖼️</span><span data-i18n="imagegen">Image Generation</span>
+      </button>
+      <button class="nav-item" data-page="browser" onclick="window.location.href='browser.html'">
+        <span class="nav-icon">🤖</span><span data-i18n="browser">Browser Automation</span>
+      </button>
+      <button class="nav-item" data-page="cron-jobs" onclick="window.location.href='cron-jobs.html'">
+        <span class="nav-icon">⏰</span><span data-i18n="cron">Cron Jobs</span>
+      </button>
+      <button class="nav-item" data-page="files" onclick="navigateTo('files')">
+        <span class="nav-icon">📁</span><span data-i18n="files">File Browser</span>
+      </button>
+      <button class="nav-item" data-page="live" onclick="navigateTo('live')">
+        <span class="nav-icon">⚡</span><span data-i18n="live">Use Cases & Prompts</span>
+      </button>
+      <button class="nav-item" data-page="clip" onclick="window.location.href='clip.html'">
+        <span class="nav-icon">📋</span><span data-i18n="clip">Web Clipper</span>
+      </button>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Visualize</div>
+      <button class="nav-item" data-page="tasks" onclick="navigateTo('tasks')">
+        <span class="nav-icon">📋</span><span data-i18n="tasks">Task Board</span>
+      </button>
+      <button class="nav-item" data-page="brain" onclick="navigateTo('brain')">
+        <span class="nav-icon">🧠</span><span data-i18n="brain">3D Brain</span>
+      </button>
+      <button class="nav-item" data-page="kanban" onclick="window.location.href='kanban.html'">
+        <span class="nav-icon">📝</span><span data-i18n="kanban">Kanban Board</span>
+      </button>
+      <button class="nav-item" data-page="construction" onclick="window.location.href='hermes-map.html'">
+        <span class="nav-icon">🗺️</span><span data-i18n="construction">Hermes Map</span>
+      </button>
+      <button class="nav-item" data-page="tokens" onclick="navigateTo('tokens')">
+        <span class="nav-icon">📊</span><span data-i18n="tokens">Token Analysis</span>
+      </button>
+      <button class="nav-item" data-page="skills" onclick="navigateTo('skills')">
+        <span class="nav-icon">🧩</span><span data-i18n="skills">Skills Library</span>
+      </button>
+      <button class="nav-item" data-page="meetings" onclick="window.location.href='meetings.html'">
+        <span class="nav-icon">🎙️</span><span data-i18n="meetings">Meetings</span>
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Data</div>
+      <button class="nav-item" onclick="DataManager.backup()">
+        <span class="nav-icon">💾</span> Backup Data
+      </button>
+      <button class="nav-item" onclick="DataManager.restore()">
+        <span class="nav-icon">📥</span> Restore Data
+      </button>
+    </div>
+  </nav>
+  
+  <div class="sidebar-footer">
+    <button class="nav-item" style="flex:1;" data-page="sessions" onclick="navigateTo('sessions')">
+      <span class="nav-icon">💬</span> Chat
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="main-content">
+  <!-- TOP BAR -->
+  <header class="topbar" role="banner">
+    <span class="topbar-title" id="page-title">Dashboard</span>
+    <div class="topbar-actions">
+      <div class="ctx-switcher" id="ctxSwitcher">
+        <button class="ctx-switcher-btn" onclick="ContextSwitcher.toggle()">
+          <span id="ctxCurrentIcon">🏗️</span>
+          <span id="ctxCurrentLabel">All Projects</span>
+          <span class="ctx-arrow">▾</span>
+        </button>
+        <div class="ctx-switcher-dropdown" id="ctxDropdown">
+          <div class="ctx-option active" data-ctx="all" onclick="ContextSwitcher.set('all')">
+            <span class="ctx-emoji">🏗️</span><span data-i18n="allProjects">All Projects</span>
+          </div>
+          <div class="ctx-option" data-ctx="jackman" onclick="ContextSwitcher.set('jackman')">
+            <span class="ctx-emoji">🏢</span><span data-i18n="jackman">Jackman Construction</span>
+          </div>
+          <div class="ctx-option" data-ctx="fieldbridge" onclick="ContextSwitcher.set('fieldbridge')">
+            <span class="ctx-emoji">🌉</span><span data-i18n="fieldbridge">FieldBridge HQ</span>
+          </div>
+          <div class="ctx-option" data-ctx="personal" onclick="ContextSwitcher.set('personal')">
+            <span class="ctx-emoji">🏠</span><span data-i18n="personal">Personal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+      <button class="i18n-btn" id="i18nToggle" onclick="I18n.toggle()" aria-label="تبديل اللغة / Toggle Language">
+        <span id="i18nLabel">عربي</span>
+      </button>
+      <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="Theme.toggle()" aria-label="Toggle theme">🌙</button>
+      <button class="btn btn-ghost btn-icon" onclick="CommandBar.toggle()" aria-label="Command bar (Ctrl+K)">⌘K</button>
+      <button class="btn btn-ghost btn-icon" onclick="location.reload()" aria-label="Refresh">↻</button>
+  </header>
+  
+  <!-- CONTENT AREA -->
+  <main class="content" id="module-content">
+    <!-- Dashboard loads by default -->
+  </main>
+</div>
+
+<script src="shared.js"></script>
+<script>
+// Load dashboard on init
+document.addEventListener('DOMContentLoaded', () => {
+  navigateTo('dashboard');
+  Theme.updateToggle();
+});
+</script>
+</body>
+</html>

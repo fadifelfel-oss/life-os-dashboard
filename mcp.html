@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Servers — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.mcp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
+.mcp-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-xl); padding: var(--space-4); }
+.mcp-card h3 { margin: 0 0 var(--space-2); font-size: var(--font-size-md); }
+.mcp-card p { color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0; }
+.mcp-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+.mcp-status.online { color: var(--green); }
+.mcp-status.offline { color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1>� MCP Servers</h1>
+</div>
+<div class="container">
+  <div class="mcp-grid">
+    <div class="mcp-card">
+      <h3>File System</h3>
+      <p>Read, write, and search vault files</p>
+      <div class="mcp-status online">● Connected</div>
+    </div>
+    <div class="mcp-card">
+      <h3>Browser</h3>
+      <p>Navigate the web for research</p>
+      <div class="mcp-status online">● Connected</div>
+    </div>
+    <div class="mcp-card">
+      <h3>Terminal</h3>
+      <p>Execute shell commands on VPS</p>
+      <div class="mcp-status online">● Connected</div>
+    </div>
+    <div class="mcp-card">
+      <h3>Obsidian Vault</h3>
+      <p>Direct access to /root/knowledge</p>
+      <div class="mcp-status online">● Connected</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

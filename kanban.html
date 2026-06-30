@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban Board — Life OS</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-elevated: #0f3460;
+  --accent: #6c63ff;
+  --accent-light: #8b83ff;
+  --text: #e8e8f0;
+  --text-muted: #8888a8;
+  --border: #2a2a4a;
+  --green: #00d4aa;
+  --amber: #f4a261;
+  --red: #e76f51;
+  --blue: #4cc9f0;
+  --pink: #f72585;
+  --purple: #7209b7;
+  --col-backlog: #1e3a5f;
+  --col-progress: #3a1f5e;
+  --col-review: #1f4e3a;
+  --col-done: #2a2a2a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn:hover { background: var(--accent); border-color: var(--accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+.board-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.stat-badge {
+  background: var(--bg-card);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.stat-badge .count { color: var(--accent-light); font-weight: 700; }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  min-height: calc(100vh - 140px);
+}
+
+.column {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.column-header {
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.column-header .count {
+  background: rgba(255,255,255,0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+.column-backlog .column-header { background: var(--col-backlog); }
+.column-progress .column-header { background: var(--col-progress); }
+.column-review .column-header { background: var(--col-review); }
+.column-done .column-header { background: var(--col-done); }
+
+.column-body {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+}
+.column-body::-webkit-scrollbar { width: 4px; }
+.column-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.card {
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(108,99,255,0.15);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+}
+.card.priority-high::before { background: var(--red); }
+.card.priority-medium::before { background: var(--amber); }
+.card.priority-low::before { background: var(--green); }
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  line-height: 1.3;
+  padding-left: 6px;
+}
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 6px;
+}
+.card-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.tag-project { background: rgba(108,99,255,0.2); color: var(--accent-light); }
+.tag-fieldbridge { background: rgba(0,212,170,0.2); color: var(--green); }
+.tag-career { background: rgba(244,162,97,0.2); color: var(--amber); }
+.tag-trading { background: rgba(247,37,133,0.2); color: var(--pink); }
+.tag-personal { background: rgba(76,201,240,0.2); color: var(--blue); }
+.tag-urgent { background: rgba(231,111,81,0.2); color: var(--red); }
+
+.card-source {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding-left: 6px;
+  opacity: 0.7;
+}
+
+.card-assignee {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-left: 6px;
+}
+
+.card-date {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+  opacity: 0.5;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal h2 { font-size: 18px; margin-bottom: 12px; }
+.modal p { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
+.modal .card-tags { margin-bottom: 12px; }
+.modal-close {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Add task form */
+.add-task-form {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: none;
+}
+.add-task-form.active { display: block; }
+.add-task-form input,
+.add-task-form textarea,
+.add-task-form select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13px;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+.add-task-form textarea { min-height: 60px; resize: vertical; }
+.add-task-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.add-task-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 1000px) {
+  .board { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .board { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 Kanban Board</h1>
+  <div class="header-actions">
+    <a href="index.html" class="btn btn-sm" style="text-decoration:none;">← Life OS</a>
+    <button class="btn btn-sm" onclick="toggleAddForm()">+ Add Task</button>
+    <button class="btn btn-sm" onclick="refreshBoard()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="board-stats">
+  <span class="stat-badge">Total: <span class="count" id="stat-total">0</span></span>
+  <span class="stat-badge">Backlog: <span class="count" id="stat-backlog">0</span></span>
+  <span class="stat-badge">In Progress: <span class="count" id="stat-progress">0</span></span>
+  <span class="stat-badge">Review: <span class="count" id="stat-review">0</span></span>
+  <span class="stat-badge">Done: <span class="count" id="stat-done">0</span></span>
+</div>
+
+<div class="add-task-form" id="addForm">
+  <input type="text" id="taskTitle" placeholder="Task title...">
+  <textarea id="taskDesc" placeholder="Description (optional)..."></textarea>
+  <div class="form-row">
+    <select id="taskPriority">
+      <option value="medium">⚡ Medium</option>
+      <option value="high">🔴 High</option>
+      <option value="low">🟢 Low</option>
+    </select>
+    <select id="taskTag">
+      <option value="project">📁 Project</option>
+      <option value="fieldbridge">🌉 FieldBridge</option>
+      <option value="career">💼 Career</option>
+      <option value="trading">📈 Trading</option>
+      <option value="personal">🏠 Personal</option>
+      <option value="urgent">🚨 Urgent</option>
+    </select>
+    <select id="taskColumn">
+      <option value="backlog">📋 Backlog</option>
+      <option value="progress">⚡ In Progress</option>
+      <option value="review">👀 Review</option>
+      <option value="done">✅ Done</option>
+    </select>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-sm" onclick="toggleAddForm()">Cancel</button>
+    <button class="btn btn-sm btn-primary" onclick="addTask()">Add Task</button>
+  </div>
+</div>
+
+<div class="board" id="board">
+  <div class="column column-backlog">
+    <div class="column-header">
+      <span>📋 Backlog</span>
+      <span class="count" id="count-backlog">0</span>
+    </div>
+    <div class="column-body" id="col-backlog"></div>
+  </div>
+  <div class="column column-progress">
+    <div class="column-header">
+      <span>⚡ In Progress</span>
+      <span class="count" id="count-progress">0</span>
+    </div>
+    <div class="column-body" id="col-progress"></div>
+  </div>
+  <div class="column column-review">
+    <div class="column-header">
+      <span>👀 Review</span>
+      <span class="count" id="count-review">0</span>
+    </div>
+    <div class="column-body" id="col-review"></div>
+  </div>
+  <div class="column column-done">
+    <div class="column-header">
+      <span>✅ Done</span>
+      <span class="count" id="count-done">0</span>
+    </div>
+    <div class="column-body" id="col-done"></div>
+  </div>
+</div>
+
+<!-- Card detail modal -->
+<div class="modal-overlay" id="cardModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2 id="modalTitle"></h2>
+    <div class="card-tags" id="modalTags"></div>
+    <p id="modalSource"></p>
+    <p id="modalDescription"></p>
+    <div class="form-row" style="margin-top:12px;">
+      <select id="modalColumn">
+        <option value="backlog">📋 Backlog</option>
+        <option value="progress">⚡ In Progress</option>
+        <option value="review">👀 Review</option>
+        <option value="done">✅ Done</option>
+      </select>
+      <button class="btn btn-sm btn-primary" onclick="moveCard()">Move</button>
+      <button class="btn btn-sm" onclick="deleteCard()">🗑 Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let tasks = [];
+let currentCardId = null;
+
+async function loadTasks() {
+  try {
+    const res = await fetch('/api/tasks');
+    const data = await res.json();
+    tasks = data.tasks || data.data || [];
+    // Ensure all tasks have required fields
+    tasks = tasks.map(t => ({
+      id: t.id || 'task_' + Math.random().toString(36).substr(2, 9),
+      title: t.title || t.text || 'Untitled',
+      description: t.description || '',
+      priority: t.priority || 'medium',
+      tag: t.tag || 'project',
+      column: t.column || 'backlog',
+      source: t.source || t.file || 'Kanban',
+      completed: t.completed || false
+    }));
+    renderBoard();
+  } catch(e) {
+    console.error('Failed to load tasks:', e);
+  }
+}
+
+function renderBoard() {
+  const cols = { backlog: [], progress: [], review: [], done: [] };
+  
+  tasks.forEach(t => {
+    const col = t.column || 'backlog';
+    if (cols[col]) cols[col].push(t);
+  });
+
+  Object.keys(cols).forEach(col => {
+    const body = document.getElementById('col-' + col);
+    const count = document.getElementById('count-' + col);
+    body.innerHTML = '';
+    count.textContent = cols[col].length;
+
+    if (cols[col].length === 0) {
+      body.innerHTML = '<div class="empty-state">No tasks</div>';
+      return;
+    }
+
+    cols[col].forEach(t => {
+      const card = createCard(t);
+      body.appendChild(card);
+    });
+  });
+
+  // Update stats
+  document.getElementById('stat-total').textContent = tasks.length;
+  document.getElementById('stat-backlog').textContent = cols.backlog.length;
+  document.getElementById('stat-progress').textContent = cols.progress.length;
+  document.getElementById('stat-review').textContent = cols.review.length;
+  document.getElementById('stat-done').textContent = cols.done.length;
+}
+
+function createCard(task) {
+  const div = document.createElement('div');
+  div.className = `card priority-${task.priority || 'medium'}`;
+  div.onclick = () => openModal(task);
+  
+  const tagClass = task.tag || 'project';
+  const tagLabel = task.tag || 'Project';
+  
+  div.innerHTML = `
+    <div class="card-title">${escapeHtml(task.title)}</div>
+    <div class="card-meta">
+      <span class="card-tag tag-${tagClass}">${tagLabel}</span>
+      ${task.source ? `<span class="card-source">📄 ${escapeHtml(task.source)}</span>` : ''}
+    </div>
+  `;
+  return div;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function openModal(task) {
+  currentCardId = task.id;
+  document.getElementById('modalTitle').textContent = task.title;
+  document.getElementById('modalTags').innerHTML = `<span class="card-tag tag-${task.tag || 'project'}">${task.tag || 'Project'}</span>`;
+  document.getElementById('modalSource').textContent = task.source ? `Source: ${task.source}` : '';
+  document.getElementById('modalDescription').textContent = task.description || '';
+  document.getElementById('modalColumn').value = task.column || 'backlog';
+  document.getElementById('cardModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('cardModal').classList.remove('active');
+  currentCardId = null;
+}
+
+async function moveCard() {
+  if (!currentCardId) return;
+  const newCol = document.getElementById('modalColumn').value;
+  const task = tasks.find(t => t.id === currentCardId);
+  if (task) {
+    task.column = newCol;
+    await saveTask(task);
+    closeModal();
+    renderBoard();
+  }
+}
+
+async function deleteCard() {
+  if (!currentCardId) return;
+  tasks = tasks.filter(t => t.id !== currentCardId);
+  await saveTask({ id: currentCardId, _delete: true });
+  closeModal();
+  renderBoard();
+}
+
+async function saveTask(task) {
+  try {
+    await fetch('/api/task', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(task)
+    });
+  } catch(e) {
+    console.error('Save failed:', e);
+  }
+}
+
+function toggleAddForm() {
+  const form = document.getElementById('addForm');
+  form.classList.toggle('active');
+}
+
+async function addTask() {
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) return;
+  
+  const task = {
+    id: 'task_' + Date.now(),
+    title: title,
+    description: document.getElementById('taskDescription').value.trim(),
+    priority: document.getElementById('taskPriority').value,
+    tag: document.getElementById('taskTag').value,
+    column: document.getElementById('taskColumn').value,
+    source: 'Manual',
+    created: new Date().toISOString()
+  };
+  
+  tasks.push(task);
+  await saveTask(task);
+  toggleAddForm();
+  
+  // Clear form
+  document.getElementById('taskTitle').value = '';
+  document.getElementById('taskDescription').value = '';
+  document.getElementById('taskPriority').value = 'medium';
+  document.getElementById('taskTag').value = 'project';
+  document.getElementById('taskColumn').value = 'backlog';
+  
+  renderBoard();
+}
+
+function refreshBoard() {
+  loadTasks();
+}
+
+// Close modal on overlay click
+document.getElementById('cardModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Load on startup
+loadTasks();
+</script>
+</body>
+</html>

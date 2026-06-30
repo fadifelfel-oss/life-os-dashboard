@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meeting Assistant — Life OS</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-elevated: #0f3460;
+  --accent: #6c63ff;
+  --accent-light: #8b83ff;
+  --text: #e8e8f0;
+  --text-muted: #8888a8;
+  --border: #2a2a4a;
+  --green: #00d4aa;
+  --amber: #f4a261;
+  --red: #e76f51;
+  --blue: #4cc9f0;
+  --pink: #f72585;
+  --purple: #7209b7;
+  --col-backlog: #1e3a5f;
+  --col-progress: #3a1f5e;
+  --col-review: #1f4e3a;
+  --col-done: #2a2a2a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn:hover { background: var(--accent); border-color: var(--accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-light); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-danger { border-color: var(--red); color: var(--red); }
+.btn-danger:hover { background: var(--red); color: white; }
+.btn-success { border-color: var(--green); color: var(--green); }
+.btn-success:hover { background: var(--green); color: white; }
+
+/* Status bar */
+.status-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.status-dot.idle { background: var(--text-muted); }
+.status-dot.recording { background: var(--red); animation: pulse 1.5s infinite; }
+.status-dot.processing { background: var(--amber); animation: pulse 1s infinite; }
+.status-dot.ready { background: var(--green); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Meeting layout */
+.meeting-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .meeting-layout { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title .icon { font-size: 16px; }
+
+/* Agenda items */
+.agenda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.agenda-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.agenda-item:hover { border-color: var(--accent); }
+.agenda-item.covered { border-left: 3px solid var(--green); }
+.agenda-item.partial { border-left: 3px solid var(--amber); }
+.agenda-item.missed { border-left: 3px solid var(--red); }
+
+.agenda-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 1px;
+}
+.agenda-checkbox.checked { background: var(--green); border-color: var(--green); }
+.agenda-checkbox.checked::after { content: '✓'; color: white; font-size: 12px; font-weight: 700; }
+.agenda-checkbox.partial { background: var(--amber); border-color: var(--amber); }
+.agenda-checkbox.partial::after { content: '!'; color: white; font-size: 12px; font-weight: 700; }
+.agenda-checkbox.missed { background: var(--red); border-color: var(--red); }
+.agenda-checkbox.missed::after { content: '×'; color: white; font-size: 12px; font-weight: 700; }
+
+.agenda-content { flex: 1; }
+.agenda-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.agenda-item-question {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.agenda-item-source {
+  font-size: 11px;
+  color: var(--accent-light);
+  margin-top: 4px;
+}
+
+/* Coverage stats */
+.coverage-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.coverage-stat {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.coverage-stat-number {
+  font-size: 28px;
+  font-weight: 800;
+}
+.coverage-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.coverage-stat.covered .coverage-stat-number { color: var(--green); }
+.coverage-stat.partial .coverage-stat-number { color: var(--amber); }
+.coverage-stat.missed .coverage-stat-number { color: var(--red); }
+
+/* Progress bar */
+.progress-bar {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--accent));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Transcript */
+.transcript-container {
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.transcript-segment {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.transcript-segment:hover { background: var(--bg-elevated); }
+.transcript-time {
+  font-size: 11px;
+  color: var(--accent-light);
+  font-weight: 600;
+}
+.transcript-speaker {
+  font-size: 11px;
+  color: var(--amber);
+  font-weight: 600;
+  margin-right: 6px;
+}
+.transcript-text { color: var(--text); }
+.transcript-text.arabic { direction: rtl; display: inline-block; }
+
+/* Summary */
+.summary-section {
+  margin-bottom: 12px;
+}
+.summary-section h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.summary-section p, .summary-section li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.summary-section ul {
+  padding-left: 16px;
+}
+
+/* Action items table */
+.action-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.action-table th {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.action-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.action-table tr:last-child td { border-bottom: none; }
+.action-table tr:hover td { background: var(--bg-elevated); }
+
+/* Upload area */
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  transition: all 0.2s;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.05);
+}
+.upload-icon { font-size: 32px; margin-bottom: 8px; }
+.upload-text { font-size: 13px; color: var(--text-muted); }
+.upload-text strong { color: var(--text); }
+.upload-formats { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Meeting brief */
+.brief-container {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+.brief-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.brief-title { font-size: 16px; font-weight: 700; }
+.brief-meta { font-size: 12px; color: var(--text-muted); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+}
+.empty-state-icon { font-size: 40px; margin-bottom: 8px; }
+.empty-state-text { font-size: 13px; }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.modal-title { font-size: 18px; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+.modal-close:hover { color: var(--text); }
+
+/* Recording indicator */
+.recording-indicator {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(231, 111, 81, 0.1);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.recording-indicator.active { display: flex; }
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: pulse 1.5s infinite;
+}
+.recording-text { font-size: 13px; font-weight: 600; color: var(--red); }
+.recording-time { font-size: 13px; color: var(--text-muted); margin-left: auto; }
+
+/* Back button */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.back-btn:hover { color: var(--accent-light); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a class="back-btn" onclick="window.history.back()">← Life OS</a>
+    <h1>🎙️ Meeting Assistant</h1>
+  </div>
+  <div class="header-actions">
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="showUploadModal()">📄 Upload Agenda</button>
+      <button class="btn" onclick="showProcessModal()">🎙️ Process Audio</button>
+      <button class="btn btn-success" onclick="toggleRecording()" id="recordBtn">⏺ Record</button>
+    </div>
+  </div>
+</div>
+
+<div class="recording-indicator" id="recordingIndicator">
+  <div class="recording-dot"></div>
+  <span class="recording-text">Recording in progress</span>
+  <span class="recording-time" id="recordingTime">00:00:00</span>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <div class="status-pill">
+    <div class="status-dot idle" id="statusDot"></div>
+    <span id="statusText">Ready</span>
+  </div>
+  <div class="status-pill" id="meetingInfoPill" style="display:none;">
+    <span>📅</span>
+    <span id="meetingDate"></span>
+  </div>
+  <div class="status-pill" id="attendeesPill" style="display:none;">
+    <span>👥</span>
+    <span id="attendeesCount"></span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="brief" onclick="switchTab('brief')">📋 Brief</div>
+  <div class="tab" data-tab="coverage" onclick="switchTab('coverage')">📊 Coverage</div>
+  <div class="tab" data-tab="transcript" onclick="switchTab('transcript')">📝 Transcript</div>
+  <div class="tab" data-tab="summary" onclick="switchTab('summary')">📄 Summary</div>
+  <div class="tab" data-tab="actions" onclick="switchTab('actions')">✅ Actions</div>
+</div>
+
+<div class="meeting-layout">
+  <!-- Left: Main content area -->
+  <div class="panel" id="mainPanel">
+    <div id="emptyState" class="empty-state">
+      <div class="empty-state-icon">🎙️</div>
+      <div class="empty-state-text">
+        <strong>No meeting loaded</strong><br>
+        Upload a PDF, Google Doc, or voice memo to get started
+      </div>
+    </div>
+
+    <!-- Brief tab -->
+    <div id="tab-brief" class="tab-content" style="display:none;">
+      <div class="panel-title"><span class="icon">📋</span> Meeting Brief</div>
+      <div class="brief-container" id="briefContainer" style="display:none;">
+        <div class="brief-header">
+          <div class="brief-title" id="briefTitle"></div>
+          <div class="header-actions">
+            <button class="btn btn-sm btn-primary" onclick="confirmBrief()">✓ Confirm & Start</button>
+            <button class="btn btn-sm" onclick="regenerateBrief()">🔄 Regenerate</button>
+          </div>
+        </div>
+        <div class="brief-meta" id="briefMeta"></div>
+        <div id="briefAgenda"></div>
+        <div id="briefQuestions"></div>
+      </div>
+      <div id="briefEmpty" class="empty-state">
+        <div class="empty-state-icon">📄</div>
+        <div class="empty-state-text">Upload a document to generate a meeting brief</div>
+      </div>
+    </div>
+
+    <!-- Coverage tab -->
+    <div id="tab-coverage" class="tab-content" style="display:none;">
+      <div class="panel-title"><span class="icon">📊</span> Coverage Tracker</div>
+      <div id="coverageContent" style="display:none;">
+        <div class="coverage-stats">
+          <div class="coverage-stat covered">
+            <div class="coverage-stat-number" id="coveredCount">0</div>
+            <div class="coverage-stat-label">Covered</div>
+          </div>
+          <div class="coverage-stat partial">
+            <div class="coverage-stat-number" id="partialCount">0</div>
+            <div class="coverage-stat-label">Partial</div>
+          </div>
+          <div class="coverage-stat missed">
+            <div class="coverage-stat-number" id="missedCount">0</div>
+            <div class="coverage-stat-label">Missed</div>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="coverageProgress" style="width: 0%"></div>
+        </div>
+        <div class="agenda-list" id="coverageList"></div>
+      </div>
+      <div id="coverageEmpty" class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-text">Start recording to track coverage</div>
+      </div>
+    </div>
+
+    <!-- Transcript tab -->
+    <div id="tab-transcript" class="tab-content" style="display:none;">
+      <div class="panel-title"><span class="icon">📝</span> Legal Transcript</div>
+      <div class="transcript-container" id="transcriptContainer"></div>
+    </div>
+
+    <!-- Summary tab -->
+    <div id="tab-summary" class="tab-content" style="display:none;">
+      <div class="panel-title"><span class="icon">📄</span> Summary & Conclusion</div>
+      <div id="summaryContent"></div>
+    </div>
+
+    <!-- Actions tab -->
+    <div id="tab-actions" class="tab-content" style="display:none;">
+      <div class="panel-title"><span class="icon">✅</span> Action Items</div>
+      <div id="actionsContent"></div>
+    </div>
+  </div>
+
+  <!-- Right: Live coverage sidebar -->
+  <div class="panel" id="livePanel">
+    <div class="panel-title"><span class="icon">🎯</span> Live Agenda Check</div>
+    <div id="liveAgenda" class="agenda-list">
+      <div class="empty-state">
+        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-text">Agenda items will appear here during the meeting</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Process Audio Modal -->
+<div class="modal-overlay" id="processModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🎙️ Process Meeting Audio</div>
+      <button class="modal-close" onclick="hideProcessModal()">×</button>
+    </div>
+    <div class="upload-area" id="processArea" onclick="document.getElementById('audioInput').click()">
+      <div class="upload-icon">🎵</div>
+      <div class="upload-text"><strong>Click to upload audio</strong> or drag & drop</div>
+      <div class="upload-formats">WAV, MP3, M4A — recorded from your meeting</div>
+    </div>
+    <input type="file" id="audioInput" accept=".wav,.mp3,.m4a,.ogg,.flac" style="display:none" onchange="handleAudioSelect(event)">
+    <div id="processStatus" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal-overlay" id="uploadModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📄 Upload Meeting Document</div>
+      <button class="modal-close" onclick="hideUploadModal()">×</button>
+    </div>
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📁</div>
+      <div class="upload-text"><strong>Click to upload</strong> or drag & drop</div>
+      <div class="upload-formats">PDF, Google Doc link, or voice memo</div>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.mp3,.m4a,.wav" style="display:none" onchange="handleFileSelect(event)">
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;color:var(--text-muted);">Or paste a Google Doc link:</label>
+      <input type="text" id="docLink" placeholder="https://docs.google.com/document/d/..." style="width:100%;margin-top:4px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+      <button class="btn btn-sm btn-primary" style="margin-top:8px;" onclick="handleDocLink()">Process Link</button>
+    </div>
+    <div style="margin-top:16px;">
+      <label style="font-size:12px;color:var(--text-muted);">Or describe the meeting (voice memo style):</label>
+      <textarea id="meetingDescription" rows="3" placeholder="e.g. KOC follow-up meeting — need to discuss payment terms, timeline extension, and variation pricing..." style="width:100%;margin-top:4px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical;"></textarea>
+      <button class="btn btn-sm btn-primary" style="margin-top:8px;" onclick="handleDescription()">Generate Brief</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let state = {
+  phase: 'idle', // idle, uploaded, confirmed, recording, transcribing, complete
+  meeting: null,
+  agenda: [],
+  transcript: null,
+  summary: null,
+  actionItems: [],
+  coverage: [],
+  recordingStartTime: null,
+  recordingInterval: null
+};
+
+// Tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+}
+
+// Modal
+function showUploadModal() {
+  document.getElementById('uploadModal').classList.add('active');
+}
+function hideUploadModal() {
+  document.getElementById('uploadModal').classList.remove('active');
+}
+
+// File upload
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  uploadFile(file);
+}
+
+function uploadFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('action', 'upload');
+  
+  setStatus('processing', 'Processing document...');
+  hideUploadModal();
+  
+  fetch('/api/meetings', {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      state.meeting = data.meeting;
+      state.agenda = data.agenda;
+      state.phase = 'uploaded';
+      renderBrief(data);
+      setStatus('ready', 'Brief ready — confirm to start');
+      switchTab('brief');
+    } else {
+      setStatus('idle', 'Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    setStatus('idle', 'Error processing file: ' + err.message);
+  });
+}
+
+function handleDocLink() {
+  const link = document.getElementById('docLink').value.trim();
+  if (!link) return;
+  
+  setStatus('processing', 'Fetching document...');
+  hideUploadModal();
+  
+  fetch('/api/meetings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({doc_link: link, action: 'upload'})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      state.meeting = data.meeting;
+      state.agenda = data.agenda;
+      state.phase = 'uploaded';
+      renderBrief(data);
+      setStatus('ready', 'Brief ready — confirm to start');
+      switchTab('brief');
+    } else {
+      setStatus('idle', 'Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    setStatus('idle', 'Error: ' + err.message);
+  });
+}
+
+function handleDescription() {
+  const desc = document.getElementById('meetingDescription').value.trim();
+  if (!desc) return;
+  
+  setStatus('processing', 'Generating brief...');
+  hideUploadModal();
+  
+  fetch('/api/meetings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({description: desc, action: 'upload'})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      state.meeting = data.meeting;
+      state.agenda = data.agenda;
+      state.phase = 'uploaded';
+      renderBrief(data);
+      setStatus('ready', 'Brief ready — confirm to start');
+      switchTab('brief');
+    } else {
+      setStatus('idle', 'Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    setStatus('idle', 'Error: ' + err.message);
+  });
+}
+
+// Brief rendering
+function renderBrief(data) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('briefContainer').style.display = 'block';
+  document.getElementById('briefEmpty').style.display = 'none';
+  
+  document.getElementById('briefTitle').textContent = data.meeting?.title || 'Meeting';
+  document.getElementById('briefMeta').innerHTML = `
+    📅 ${data.meeting?.date || new Date().toLocaleDateString()} &nbsp;|&nbsp; 
+    👥 ${data.meeting?.attendees?.length || 'No attendees'} &nbsp;|&nbsp;
+    📋 ${data.agenda.length} items
+  `;
+  
+  let agendaHTML = '<div style="margin-top:12px;"><strong style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Agenda:</strong></div><ol style="padding-left:20px;margin-top:6px;">';
+  data.agenda.forEach((item, i) => {
+    agendaHTML += `<li style="margin-bottom:6px;font-size:13px;"><strong>${item.title}</strong>`;
+    if (item.question) agendaHTML += `<br><span style="font-size:12px;color:var(--text-muted);">→ ${item.question}</span>`;
+    agendaHTML += '</li>';
+  });
+  agendaHTML += '</ol>';
+  document.getElementById('briefAgenda').innerHTML = agendaHTML;
+  
+  if (data.questions && data.questions.length > 0) {
+    let qHTML = '<div style="margin-top:12px;"><strong style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Questions to Answer:</strong></div><ul style="padding-left:20px;margin-top:6px;">';
+    data.questions.forEach(q => {
+      qHTML += `<li style="margin-bottom:4px;font-size:13px;">${q}</li>`;
+    });
+    qHTML += '</ul>';
+    document.getElementById('briefQuestions').innerHTML = qHTML;
+  }
+}
+
+function confirmBrief() {
+  state.phase = 'confirmed';
+  setStatus('ready', '✓ Agenda confirmed — ready to record');
+  
+  // Save confirmed agenda to server
+  fetch('/api/meetings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'confirm', agenda: state.agenda, meeting: state.meeting})
+  });
+}
+
+function regenerateBrief() {
+  if (!state.meeting) return;
+  setStatus('processing', 'Regenerating brief...');
+  
+  fetch('/api/meetings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'regenerate', meeting: state.meeting})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      state.agenda = data.agenda;
+      renderBrief(data);
+      setStatus('ready', 'Brief regenerated');
+    }
+  });
+}
+
+// Recording
+function toggleRecording() {
+  if (state.phase === 'recording') {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+function startRecording() {
+  state.phase = 'recording';
+  state.recordingStartTime = Date.now();
+  document.getElementById('recordingIndicator').classList.add('active');
+  document.getElementById('recordBtn').textContent = '⏹ Stop';
+  document.getElementById('recordBtn').classList.remove('btn-success');
+  document.getElementById('recordBtn').classList.add('btn-danger');
+  setStatus('recording', 'Recording in progress...');
+  
+  state.recordingInterval = setInterval(updateRecordingTime, 1000);
+  
+  // Notify server
+  fetch('/api/meetings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'start_recording', meeting: state.meeting})
+  });
+}
+
+function stopRecording() {
+  state.phase = 'transcribing';
+  clearInterval(state.recordingInterval);
+  document.getElementById('recordingIndicator').classList.remove('active');
+  document.getElementById('recordBtn').textContent = '⏺ Record';
+  document.getElementById('recordBtn').classList.add('btn-success');
+  document.getElementById('recordBtn').classList.remove('btn-danger');
+  setStatus('processing', 'Transcribing audio...');
+  
+  // Simulate transcription (in production, this sends audio to Whisper API)
+  fetch('/api/meetings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'stop_recording', meeting: state.meeting})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      loadMeetingData();
+    }
+  });
+}
+
+function updateRecordingTime() {
+  const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('recordingTime').textContent = `${h}:${m}:${s}`;
+}
+
+// Load meeting data
+function loadMeetingData() {
+  fetch('/api/meetings')
+  .then(r => r.json())
+  .then(data => {
+    if (data.meeting) {
+      state.meeting = data.meeting;
+      state.agenda = data.agenda || [];
+      state.transcript = data.transcript;
+      state.summary = data.summary;
+      state.actionItems = data.actionItems || [];
+      state.coverage = data.coverage || [];
+      state.phase = 'complete';
+      setStatus('ready', 'Meeting complete');
+      
+      renderAll();
+    }
+  });
+}
+
+// Render all sections
+function renderAll() {
+  renderCoverage();
+  renderTranscript();
+  renderSummary();
+  renderActionItems();
+  renderLiveAgenda();
+}
+
+function renderCoverage() {
+  if (!state.coverage || state.coverage.length === 0) return;
+  
+  const covered = state.coverage.filter(c => c.status === 'covered').length;
+  const partial = state.coverage.filter(c => c.status === 'partial').length;
+  const missed = state.coverage.filter(c => c.status === 'missed').length;
+  const total = state.coverage.length;
+  const pct = Math.round((covered / total) * 100);
+  
+  document.getElementById('coveredCount').textContent = covered;
+  document.getElementById('partialCount').textContent = partial;
+  document.getElementById('missedCount').textContent = missed;
+  document.getElementById('coverageProgress').style.width = pct + '%';
+  
+  let html = '';
+  state.coverage.forEach(item => {
+    html += `
+      <div class="agenda-item ${item.status}">
+        <div class="agenda-checkbox ${item.status}"></div>
+        <div class="agenda-content">
+          <div class="agenda-item-title">${item.title}</div>
+          ${item.question ? `<div class="agenda-item-question">${item.question}</div>` : ''}
+          ${item.snippet ? `<div class="agenda-item-source">"${item.snippet}"</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  document.getElementById('coverageList').innerHTML = html;
+  document.getElementById('coverageContent').style.display = 'block';
+  document.getElementById('coverageEmpty').style.display = 'none';
+}
+
+function renderTranscript() {
+  if (!state.transcript) return;
+  
+  let html = '';
+  state.transcript.forEach(seg => {
+    const isArabic = /[\u0600-\u06FF]/.test(seg.text);
+    html += `
+      <div class="transcript-segment">
+        <span class="transcript-time">${seg.time || ''}</span>
+        ${seg.speaker ? `<span class="transcript-speaker">${seg.speaker}:</span>` : ''}
+        <span class="transcript-text ${isArabic ? 'arabic' : ''}">${seg.text}</span>
+      </div>
+    `;
+  });
+  document.getElementById('transcriptContainer').innerHTML = html;
+}
+
+function renderSummary() {
+  if (!state.summary) return;
+  
+  let html = '';
+  if (state.summary.decisions) {
+    html += '<div class="summary-section"><h4>Key Decisions</h4><ul>';
+    state.summary.decisions.forEach(d => { html += `<li>${d}</li>`; });
+    html += '</ul></div>';
+  }
+  if (state.summary.discussion) {
+    html += '<div class="summary-section"><h4>Discussion Points</h4><ul>';
+    state.summary.discussion.forEach(d => { html += `<li>${d}</li>`; });
+    html += '</ul></div>';
+  }
+  if (state.summary.conclusion) {
+    html += '<div class="summary-section"><h4>Conclusion</h4><p>';
+    html += state.summary.conclusion;
+    html += '</p></div>';
+  }
+  if (state.summary.nextSteps) {
+    html += '<div class="summary-section"><h4>Next Steps</h4><ul>';
+    state.summary.nextSteps.forEach(s => { html += `<li>${s}</li>`; });
+    html += '</ul></div>';
+  }
+  document.getElementById('summaryContent').innerHTML = html;
+}
+
+function renderActionItems() {
+  if (!state.actionItems || state.actionItems.length === 0) return;
+  
+  let html = '<table class="action-table"><thead><tr><th>Task</th><th>Assignee</th><th>Due</th><th>Source</th></tr></thead><tbody>';
+  state.actionItems.forEach(item => {
+    html += `<tr>
+      <td>${item.task}</td>
+      <td>${item.assignee || '—'}</td>
+      <td>${item.due || '—'}</td>
+      <td>${item.source || '—'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('actionsContent').innerHTML = html;
+}
+
+function renderLiveAgenda() {
+  if (!state.agenda || state.agenda.length === 0) return;
+  
+  let html = '';
+  state.agenda.forEach((item, i) => {
+    const cov = state.coverage.find(c => c.index === i);
+    const status = cov ? cov.status : '';
+    html += `
+      <div class="agenda-item ${status}">
+        <div class="agenda-checkbox ${status}"></div>
+        <div class="agenda-content">
+          <div class="agenda-item-title">${item.title}</div>
+          ${item.question ? `<div class="agenda-item-question">${item.question}</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  document.getElementById('liveAgenda').innerHTML = html;
+}
+
+// Status management
+function setStatus(phase, text) {
+  state.phase = phase;
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusText');
+  
+  dot.className = 'status-dot ' + phase;
+  label.textContent = text;
+}
+
+// Process Audio Modal
+function showProcessModal() {
+  document.getElementById('processModal').classList.add('active');
+}
+function hideProcessModal() {
+  document.getElementById('processModal').classList.remove('active');
+}
+
+function handleAudioSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append('audio', file);
+  
+  document.getElementById('processStatus').innerHTML = '⏳ Transcribing and processing... This may take a few minutes.';
+  
+  fetch('/api/meetings/process', {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById('processStatus').innerHTML = `
+        ✅ <strong>Complete!</strong><br>
+        📝 ${data.transcript_segments} transcript segments<br>
+        📋 ${data.action_items_count} action items extracted<br>
+        📊 ${data.coverage_covered}/${data.coverage_total} agenda items covered<br>
+        <br>Results loaded in all tabs below.
+      `;
+      loadMeetingData();
+      setTimeout(hideProcessModal, 3000);
+    } else {
+      document.getElementById('processStatus').innerHTML = '❌ Error: ' + (data.error || 'Processing failed');
+    }
+  })
+  .catch(err => {
+    document.getElementById('processStatus').innerHTML = '❌ Error: ' + err.message;
+  });
+}
+
+// Drag & drop
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+
+const processArea = document.getElementById('processArea');
+processArea.addEventListener('dragover', e => { e.preventDefault(); processArea.classList.add('dragover'); });
+processArea.addEventListener('dragleave', () => processArea.classList.remove('dragover'));
+processArea.addEventListener('drop', e => {
+  e.preventDefault();
+  processArea.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const formData = new FormData();
+    formData.append('audio', file);
+    document.getElementById('processStatus').innerHTML = '⏳ Processing...';
+    fetch('/api/meetings/process', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('processStatus').innerHTML = '✅ Complete! Loading results...';
+          loadMeetingData();
+          setTimeout(hideProcessModal, 3000);
+        } else {
+          document.getElementById('processStatus').innerHTML = '❌ ' + (data.error || 'Failed');
+        }
+      });
+  }
+});
+
+// Load on page load
+loadMeetingData();
+</script>
+</body>
+</html>

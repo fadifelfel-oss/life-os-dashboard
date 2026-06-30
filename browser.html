@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Automation — Life OS</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* Browser Automation page specific */
+    .browser-layout { display: grid; grid-template-columns: 1fr 320px; gap: var(--space-5); }
+    @media (max-width: 900px) { .browser-layout { grid-template-columns: 1fr; } }
+    
+    .browser-controls {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-xl);
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+    .control-group {
+      margin-bottom: var(--space-4);
+    }
+    .control-group label {
+      display: block;
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .control-group input,
+    .control-group select,
+    .control-group textarea {
+      width: 100%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: var(--font-size-base);
+      font-family: var(--font-sans);
+      padding: var(--space-2) var(--space-3);
+      transition: border-color var(--transition-fast);
+    }
+    .control-group input:focus,
+    .control-group select:focus,
+    .control-group textarea:focus {
+      outline: none;
+      border-color: var(--border-focus);
+    }
+    .control-group textarea {
+      min-height: 100px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    .btn-group {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+    .btn-group .btn {
+      flex: 1;
+    }
+    .browser-preview {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-xl);
+      padding: var(--space-4);
+      height: calc(100vh - var(--header-height) - var(--space-4));
+      overflow-y: auto;
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-primary);
+    }
+    .preview-header h2 {
+      font-size: var(--font-size-md);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .preview-actions {
+      display: flex;
+      gap: var(--space-2);
+    }
+    .preview-content {
+      flex: 1;
+      min-height: 200px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-secondary);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-2) var(--space-3);
+      background: var(--bg-tertiary);
+      border-top: 1px solid var(--border-secondary);
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .status-dot.ready { background: var(--green); }
+    .status-dot.running { background: var(--accent); animation: pulse 1.5s infinite; }
+    .status-dot.error { background: var(--red); }
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+    .logs {
+      margin-top: var(--space-3);
+      max-height: 150px;
+      overflow-y: auto;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-secondary);
+      border-radius: var(--radius-md);
+      padding: var(--space-2);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+    }
+    .log-entry {
+      margin-bottom: var(--space-1);
+      padding: var(--space-1) var(--space-2);
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-sm);
+    }
+    .log-timestamp { color: var(--text-tertiary); font-size: var(--font-size-xs); }
+    .log-message { color: var(--text-primary); margin-left: var(--space-1); }
+    .log-success { color: var(--green); }
+    .log-error { color: var(--red); }
+    .log-info { color: var(--cyan); }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .browser-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="index.html" class="header-back">← Life OS</a>
+    <h1>🤖 Browser Automation</h1>
+    <span style="font-size:11px;color:var(--text-muted);">Automate web tasks • Extract data • Test applications</span>
+  </div>
+
+  <div class="container">
+    <!-- Controls Panel -->
+    <div class="browser-controls">
+      <div class="control-group">
+        <label for="target-url">Target URL</label>
+        <input type="url" id="target-url" placeholder="https://example.com" required>
+      </div>
+      <div class="control-group">
+        <label for="action-type">Action Type</label>
+        <select id="action-type">
+          <option value="navigate">Navigate to URL</option>
+          <option value="screenshot">Take Screenshot</option>
+          <option value="extract">Extract Data</option>
+          <option value="form-fill">Fill Form</option>
+          <option value="click">Click Element</option>
+          <option value="scroll">Scroll Page</option>
+        </select>
+      </>
+      <div class="control-group" id="action-specific-controls">
+        <!-- Dynamically populated based on action type -->
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="run-btn">Run Automation</button>
+        <button class="btn" id="stop-btn">Stop</button>
+      </div>
+    </div>
+
+    <!-- Preview Panel -->
+    <div class="browser-preview">
+      <div class="preview-header">
+        <h2>Preview & Logs</h2>
+        <div class="preview-actions">
+          <button class="btn" id="clear-preview">Clear</button>
+          <button class="btn" id="download-log">Download Log</button>
+        </div>
+      </div>
+      <div class="preview-content" id="preview-content">
+        <div class="placeholder">Ready to run browser automation tasks</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-indicator">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-text">Ready</span>
+        </div>
+        <span id="task-info">No active task</span>
+      </div>
+      <div class="logs" id="logs-container"></div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    // State
+    let isRunning = false;
+    let currentTask = null;
+    let logEntries = [];
+
+    // DOM Elements
+    const targetUrlInput = document.getElementById('target-url');
+    const actionTypeSelect = document.getElementById('action-type');
+    const actionSpecificControls = document.getElementById('action-specific-controls');
+    const runBtn = document.getElementById('run-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const previewContent = document.getElementById('preview-content');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const taskInfo = document.getElementById('task-info');
+    const logsContainer = document.getElementById('logs-container');
+    const clearPreviewBtn = document.getElementById('clear-preview');
+    const downloadLogBtn = document.getElementById('download-log');
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadActionSpecificControls('navigate'); // Default action
+      updateStatus('ready', 'Ready');
+    });
+
+    // Event Listeners
+    actionTypeSelect.addEventListener('change', (e) => {
+      loadActionSpecificControls(e.target.value);
+    });
+
+    runBtn.addEventListener('click', () => {
+      if (isRunning) return;
+      runAutomation();
+    });
+
+    stopBtn.addEventListener('click', () => {
+      stopAutomation();
+    });
+
+    clearPreviewBtn.addEventListener('click', () => {
+      previewContent.innerHTML = '<div class="placeholder">Ready to run browser automation tasks</div>';
+      logsContainer.innerHTML = '';
+    });
+
+    downloadLogBtn.addEventListener('click', () => {
+      if (logEntries.length === 0) {
+        showNotification('No logs to download', 'warn');
+        return;
+      }
+      const logText = logEntries.map(entry => 
+        `[${entry.timestamp}] ${entry.level.toUpperCase()}: ${entry.message}`
+      ).join('\n');
+      const blob = new Blob([logText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `browser-automation-log-${new Date().toISOString().slice(0,19)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Load action-specific controls
+    function loadActionSpecificControls(actionType) {
+      // Clear existing controls
+      actionSpecificControls.innerHTML = '';
+
+      switch (actionType) {
+        case 'navigate':
+          actionSpecificControls.innerHTML = `
+            <div class="control-group">
+              <label for="nav-url">URL (if different from above)</label>
+              <input type="url" id="nav-url" placeholder="Leave blank to use Target URL">
+            </div>
+          `;
+          break;
+        case 'screenshot':
+          actionSpecificControls.innerHTML = `
+            <div class="control-group">
+              <label for="selector">CSS Selector (optional)</label>
+              <input type="text" id="selector" placeholder="e.g., .header, #main-content">
+            </div>
+            <div class="control-group">
+              <label for="format">Format</label>
+              <select id="format">
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+              </select>
+            </div>
+          `;
+          break;
+        case 'extract':
+          actionSpecificControls.innerHTML = `
+            <div class="control-group">
+              <label for="extract-type">Extract Type</label>
+              <select id="extract-type">
+                <option value="text">Text Content</option>
+                <option value="html">HTML Content</option>
+                <option value="attributes">Element Attributes</option>
+                <option value="links">All Links</option>
+                <option value="images">All Images</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="extract-selector">CSS Selector</label>
+              <input type="text" id="extract-selector" placeholder="e.g., .article, .product-list">
+            </div>
+          `;
+          break;
+        case 'form-fill':
+          actionSpecificControls.innerHTML = `
+            <div class="control-group">
+              <label for="form-selector">Form Selector</label>
+              <input type="text" id="form-selector" placeholder="e.g., #contact-form">
+            </div>
+            <div class="control-group">
+              <label for="form-data">Form Data (JSON)</label>
+              <textarea id="form-data" placeholder='{"name": "John", "email": "john@example.com"}'>
+</textarea>
+            </div>
+          `;
+          break;
+        case 'click':
+          actionSpecificControls.innerHTML = `
+            <div class="control-group">
+              <label for="click-selector">CSS Selector</label>
+              <input type="text" id="click-selector" placeholder="e.g., .submit-btn, [data-action='save']">
+            </div>
+            <div class="control-group">
+              <label for="click-count">Click Count</label>
+              <input type="number" id="click-count" value="1" min="1">
+            </div>
+          `;
+          break;
+        case 'scroll':
+          actionSpecificControls.innerHTML = `
+            <div class="control-group">
+              <label for="scroll-direction">Direction</label>
+              <select id="scroll-direction">
+                <option value="top">To Top</option>
+                <option value="bottom">To Bottom</option>
+                <option value="pixels">By Pixels</option>
+                <option value="element">To Element</option>
+              </select>
+            </div>
+            <div class="control-group" id="scroll-specific">
+              <!-- Dynamically populated -->
+            </div>
+          `;
+          // Add specific controls for scroll direction
+          const scrollDirectionSelect = document.createElement('select');
+          scrollDirectionSelect.id = 'scroll-direction';
+          scrollDirectionSelect.innerHTML = `
+            <option value="top">To Top</option>
+            <option value="bottom">To Bottom</option>
+            <option value="pixels">By Pixels</option>
+            <option value="element">To Element</option>
+          `;
+          actionSpecificControls.insertBefore(scrollDirectionSelect, actionSpecificControls.firstChild);
+          const scrollSpecificDiv = document.createElement('div');
+          scrollSpecificDiv.id = 'scroll-specific';
+          actionSpecificControls.appendChild(scrollSpecificDiv);
+          scrollDirectionSelect.addEventListener('change', updateScrollSpecificControls);
+          // Initialize with first option
+          updateScrollSpecificControls({ target: { value: 'top' } });
+          break;
+      }
+    }
+
+    function updateScrollSpecificControls(e) {
+      const scrollSpecific = document.getElementById('scroll-specific');
+      scrollSpecific.innerHTML = '';
+      switch (e.target.value) {
+        case 'pixels':
+          scrollSpecific.innerHTML = `
+            <div class="control-group">
+              <label for="scroll-pixels">Pixels (positive = down, negative = up)</label>
+              <input type="number" id="scroll-pixels" value="0">
+            </div>
+          `;
+          break;
+        case 'element':
+          scrollSpecific.innerHTML = `
+            <div class="control-group">
+              <label for="scroll-element">Element Selector</label>
+              <input type="text" id="scroll-element" placeholder="e.g., #footer, .sidebar">
+            </div>
+          `;
+          break;
+      }
+    }
+
+    // Run automation
+    function runAutomation() {
+        const targetUrl = targetUrlInput.value.trim();
+        if (!targetUrl) {
+            showNotification('Please enter a target URL', 'error');
+            return;
+        }
+
+        isRunning = true;
+        updateStatus('running', 'Running');
+        taskInfo.textContent = `Task: ${actionTypeSelect.value} on ${targetUrl}`;
+        logEntries = [];
+        logsContainer.innerHTML = '';
+        previewContent.innerHTML = '<div class="placeholder">Running automation...</div>';
+
+        // Disable controls during execution
+        runBtn.disabled = true;
+        stopBtn.disabled = false;
+        targetUrlInput.disabled = true;
+        actionTypeSelect.disabled = true;
+        // Disable action-specific inputs (we'll leave them enabled for now as they're read-only during execution)
+
+        // Build the action specification
+        const actionSpec = {
+            action: actionTypeSelect.value,
+            url: targetUrl
+        };
+
+        // Add action-specific parameters
+        switch (actionTypeSelect.value) {
+            case 'navigate':
+                const navUrl = document.getElementById('nav-url')?.value.trim();
+                if (navUrl) {
+                    actionSpec.url = navUrl;
+                }
+                break;
+            case 'screenshot':
+                const selector = document.getElementById('selector')?.value.trim();
+                if (selector) {
+                    actionSpec.selector = selector;
+                }
+                const format = document.getElementById('format')?.value;
+                if (format) {
+                    if (!actionSpec.options) actionSpec.options = {};
+                    actionSpec.options.format = format;
+                }
+                break;
+            case 'extract':
+                const extractType = document.getElementById('extract-type')?.value;
+                const extractSelector = document.getElementById('extract-selector')?.value.trim();
+                if (extractSelector) {
+                    actionSpec.selector = extractSelector;
+                }
+                if (extractType) {
+                    if (!actionSpec.options) actionSpec.options = {};
+                    actionSpec.options.extractType = extractType;
+                }
+                break;
+            case 'form-fill':
+                const formSelector = document.getElementById('form-selector')?.value.trim();
+                if (formSelector) {
+                    actionSpec.selector = formSelector;
+                }
+                const formDataText = document.getElementById('form-data')?.value.trim();
+                if (formDataText) {
+                    try {
+                        const formData = JSON.parse(formDataText);
+                        if (!actionSpec.options) actionSpec.options = {};
+                        actionSpec.options.data = formData;
+                    } catch (e) {
+                        showNotification('Invalid JSON in form data', 'error');
+                        // Re-enable controls and exit
+                        isRunning = false;
+                        updateStatus('ready', 'Ready');
+                        runBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        targetUrlInput.disabled = false;
+                        actionTypeSelect.disabled = false;
+                        return;
+                    }
+                }
+                break;
+            case 'click':
+                const clickSelector = document.getElementById('click-selector')?.value.trim();
+                if (clickSelector) {
+                    actionSpec.selector = clickSelector;
+                }
+                const clickCount = parseInt(document.getElementById('click-count')?.value) || 1;
+                if (!actionSpec.options) actionSpec.options = {};
+                actionSpec.options.clickCount = Math.max(1, clickCount);
+                break;
+            case 'scroll':
+                const scrollDirection = document.getElementById('scroll-direction')?.value;
+                if (!actionSpec.options) actionSpec.options = {};
+                actionSpec.options.direction = scrollDirection;
+                
+                if (scrollDirection === 'pixels') {
+                    const pixels = parseInt(document.getElementById('scroll-pixels')?.value) || 0;
+                    actionSpec.options.pixels = pixels;
+                } else if (scrollDirection === 'element') {
+                    const elementSelector = document.getElementById('scroll-element')?.value.trim();
+                    if (elementSelector) {
+                        actionSpec.selector = elementSelector;
+                    }
+                }
+                break;
+        }
+
+        // Make the API call
+        fetch('/api/browser/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(actionSpec)
+        })
+        .then(response => response.json())
+        .then(result => {
+            // Handle the result
+            if (result.success) {
+                addLogEntry('info', `Action completed successfully`);
+                if (result.screenshot) {
+                    // Display screenshot
+                    previewContent.innerHTML = `<img src="data:image/png;base64,${result.screenshot}" style="max-width:100%; max-height:80vh; border-radius: var(--radius-md);" alt="Screenshot">`;
+                } else if (result.data !== undefined && result.data !== null) {
+                    // Display data
+                    if (typeof result.data === 'object') {
+                        previewContent.innerHTML = `<pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+                    } else {
+                        previewContent.textContent = result.data;
+                    }
+                } else {
+                    previewContent.innerHTML = '<div class="success-message">Action completed successfully</div>';
+                }
+                
+                if (result.duration_ms !== undefined) {
+                    addLogEntry('info', `Completed in ${result.duration_ms}ms`);
+                }
+            } else {
+                addLogEntry('error', result.error || 'Unknown error');
+                previewContent.innerHTML = `<div class="error-message">Error: ${result.error || 'Unknown error'}</div>`;
+            }
+            
+            updateStatus('ready', 'Ready');
+        })
+        .catch(error => {
+            addLogEntry('error', `Network error: ${error.message}`);
+            previewContent.innerHTML = `<div class="error-message">Network error: ${error.message}</div>`;
+            updateStatus('ready', 'Error');
+        })
+        .finally(() => {
+            // Always re-enable controls
+            isRunning = false;
+            runBtn.disabled = false;
+            stopBtn.disabled = true;
+            targetUrlInput.disabled = false;
+            actionTypeSelect.disabled = false;
+            taskInfo.textContent = 'No active task';
+        });
+    }
+
+    function stopAutomation() {
+        // For now, we just reset the UI since we can't easily cancel a fetch request
+        // In a more sophisticated implementation, we might have a cancel endpoint
+        isRunning = false;
+        updateStatus('ready', 'Stopped');
+        taskInfo.textContent = 'Task stopped by user';
+        addLogEntry('info', 'Automation stopped by user');
+        renderLogs();
+
+        // Re-enable controls
+        runBtn.disabled = false;
+        stopBtn.disabled = true;
+        targetUrlInput.disabled = false;
+        actionTypeSelect.disabled = false;
+    }
+
+    function updateStatus(state, text) {
+      statusDot.className = 'status-dot';
+      if (state === 'running') statusDot.classList.add('running');
+      else if (state === 'ready') statusDot.classList.add('ready');
+      else if (state === 'error') statusDot.classList.add('error');
+      statusText.textContent = text;
+    }
+
+    function updatePreview(message, isSuccess = false) {
+      if (isSuccess) {
+        previewContent.innerHTML = `<div class="success-message">${message}</div>`;
+      } else if (message.includes('error') || message.includes('failed')) {
+        previewContent.innerHTML = `<div class="error-message">${message}</div>`;
+      } else {
+        previewContent.innerHTML = `<div class="info-message">${message}</div>`;
+      }
+      previewContent.scrollTop = previewContent.scrollHeight;
+    }
+
+    function renderLogs() {
+      logsContainer.innerHTML = logEntries.map(entry => `
+        <div class="log-entry log-${entry.level}">
+          <div class="log-timestamp">[${entry.timestamp}]</div>
+          <div class="log-message ${entry.level}">${entry.message}</div>
+        </div>
+      ).join('');
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    function showNotification(message, type = 'info') {
+      // Simple notification implementation
+      alert(`${type.toUpperCase()}: ${message}`);
+    }
+  </script>
+</body>
+</html>
