@@ -1694,50 +1694,71 @@ const MODEL_NAMES = {
 };
 
 async function loadChatModels() {
+  const select = document.getElementById('modelSelect');
   try {
     const resp = await fetch('/api/models');
     if (!resp.ok) throw new Error('API unavailable');
     const data = await resp.json();
     const models = data.data || [];
-    const select = document.getElementById('modelSelect');
-
-    // Group by category
-    const cats = {};
-    models.forEach(m => {
-      const cat = m.category || 'general';
-      if (!cats[cat]) cats[cat] = [];
-      cats[cat].push(m);
-    });
-
-    const catLabels = { free: '🏆 Free Champions', reasoning: '🧠 Reasoning', coding: '💻 Coding', chat: '💬 Chat', vision: '👁️ Vision', budget: '💰 Budget' };
-
+    const jobs = window.LIFEOS_JOBS || [];
+    const roleLabel = { rec: 'Best', budget: 'Cheap', premium: 'Premium' };
+    const used = new Set();
     select.innerHTML = '';
-    Object.keys(cats).forEach(cat => {
+
+    const fmtPrice = (m) => {
+      const price = ((m.pricing?.prompt || 0) + (m.pricing?.completion || 0)) / 2;
+      return price === 0 ? 'FREE' : '$' + (price * 1000000).toFixed(2) + '/1M';
+    };
+
+    // One optgroup per JOB — SAME categories/picks as the models page (By Job view).
+    // Both pages read window.LIFEOS_JOBS from model-catalog.js, so they can't drift.
+    jobs.forEach(job => {
       const group = document.createElement('optgroup');
-      group.label = catLabels[cat] || `🔧 ${cat}`;
-      // Take top 5 by rank
-      cats[cat].sort((a, b) => (a.rank || 99) - (b.rank || 99)).slice(0, 5).forEach(m => {
+      group.label = `${job.emoji} ${job.title}`;
+      job.picks.forEach(pick => {
+        const m = window.lifeosResolvePick(models, pick.match);
+        if (!m || used.has(m.id)) return;
+        used.add(m.id);
         const opt = document.createElement('option');
         opt.value = m.id;
-        const price = ((m.pricing?.prompt || 0) + (m.pricing?.completion || 0)) / 2;
-        const priceStr = price === 0 ? 'FREE' : '$' + (price * 1000000).toFixed(2) + '/1M';
-        opt.textContent = `${m.icon || '🔧'} ${m.name} — ${priceStr}`;
+        opt.textContent = `${roleLabel[pick.role] || ''} · ${m.icon || '🔧'} ${m.name} — ${fmtPrice(m)}`;
         group.appendChild(opt);
       });
-      select.appendChild(group);
+      if (group.children.length) select.appendChild(group);
     });
 
-    // Set default
-    if (cats.chat && cats.chat[0]) currentModel = cats.chat[0].id;
-    else if (models[0]) currentModel = models[0].id;
+    // Any live models not surfaced above go under "Other models" so nothing is lost.
+    const others = models.filter(m => !used.has(m.id));
+    if (others.length) {
+      const og = document.createElement('optgroup');
+      og.label = '🔧 Other models';
+      others.sort((a, b) => (a.rank || 99) - (b.rank || 99)).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.icon || '🔧'} ${m.name} — ${fmtPrice(m)}`;
+        og.appendChild(opt);
+      });
+      select.appendChild(og);
+    }
+
+    // Default = the Everyday "best" pick, matching the models page's everyday recommendation.
+    const everyday = jobs.find(j => j.key === 'everyday');
+    let def = null;
+    if (everyday) {
+      const p = everyday.picks.find(x => x.role === 'rec');
+      const m = p ? window.lifeosResolvePick(models, p.match) : null;
+      if (m) def = m.id;
+    }
+    currentModel = def || (models[0] && models[0].id) || 'owl-alpha';
     select.value = currentModel;
   } catch(e) {
     console.log('Chat models fallback:', e);
-    const select = document.getElementById('modelSelect');
     select.innerHTML = '<option value="owl-alpha">🦉 OWL-Alpha</option><option value="claude-sonnet">🧠 Claude Sonnet</option>';
   }
 }
 </script>
+
+<script src="model-catalog.js"></script>
 
 <!-- CDN Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/marked@12/lib/marked.umd.min.js"></script>

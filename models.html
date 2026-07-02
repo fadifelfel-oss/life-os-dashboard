@@ -503,6 +503,7 @@
 </div>
 
 <script src="shared.js"></script>
+<script src="model-catalog.js"></script>
 <script>
 // === MODELS DATA — loaded from Hermes/OpenRouter proxy or fallback ===
 let MODELS = [];
@@ -628,7 +629,7 @@ const FALLBACK_MODELS = [
 // plus a fallback used when nothing matches, and a plain-English reason.
 // Prices below are per-TOKEN (USD). Sourced from the live OpenRouter catalog on 2026-07-02.
 // fb prices shown as $/1M in comments for readability.
-const JOBS = [
+const JOBS = window.LIFEOS_JOBS || [
   {
     key:'ingest', emoji:'📥', title:'Ingest & Summarize',
     sub:'Web clippings, PDFs, transcripts — high volume, needs cheap + fast + big context.',
