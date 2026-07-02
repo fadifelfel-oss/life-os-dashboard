@@ -116,6 +116,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_wiki_migrate()
         elif path == "/api/wiki/lint/analyze":
             self._handle_wiki_lint_analyze()
+        elif path == "/api/wiki/ingest-fireflies":
+            self._handle_fireflies_ingest()
         else:
             self._json_error(404, "Endpoint not found")
             return
@@ -1018,7 +1020,190 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             }})
         except Exception as e:
             self._json_error(500, f"OKF migration failed: {str(e)}")
-    
+
+    # ═══════════════════════════════════════════════════════════
+    # FIREFLIES INGESTION — first of the queued source integrations
+    # (see life-os-ui-backlog memory). Pulls recent meeting
+    # transcripts into the wiki as OKF-conformant pages.
+    # ═══════════════════════════════════════════════════════════
+
+    # HARD EXCLUSION — never ingest anything referencing Jackman/KOC,
+    # regardless of context. Standing rule, not a one-time filter.
+    # See life-os-ui-backlog memory entry "Jackman/KOC exclusion note".
+    _JACKMAN_EXCLUDE_TERMS = ("jackman", "koc")
+
+    def _get_fireflies_key(self):
+        """Read FIREFLIES_API_KEY from ~/.hermes/.env — same file/format as
+        _get_openrouter_key(). Set via Settings > API Keys > Fireflies.ai."""
+        env_path = Path.home() / ".hermes" / ".env"
+        if not env_path.exists():
+            return ""
+        for line in env_path.read_text(encoding='utf-8').splitlines():
+            if line.strip().startswith("FIREFLIES_API_KEY="):
+                return line.split('=', 1)[1].strip().strip('\'"')
+        return ""
+
+    def _fetch_fireflies_transcripts(self, limit=25):
+        """Fetch recent meeting transcripts via the Fireflies GraphQL API."""
+        import urllib.request
+        key = self._get_fireflies_key()
+        if not key:
+            raise RuntimeError("No Fireflies API key configured — add one in Settings > API Keys")
+        query = """
+        query Transcripts($limit: Int) {
+          transcripts(limit: $limit) {
+            id
+            title
+            dateString
+            duration
+            summary {
+              short_summary
+              overview
+              keywords
+              action_items
+            }
+          }
+        }
+        """
+        payload = json.dumps({"query": query, "variables": {"limit": limit}}).encode('utf-8')
+        req = urllib.request.Request(
+            'https://api.fireflies.ai/graphql',
+            data=payload,
+            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            resp = json.loads(r.read())
+        if resp.get('errors'):
+            raise RuntimeError(resp['errors'][0].get('message', 'Fireflies GraphQL error'))
+        return (resp.get('data') or {}).get('transcripts') or []
+
+    def _fireflies_contains_excluded_terms(self, transcript):
+        """True if title/summary/keywords/action_items mention Jackman/KOC
+        in any form — checked as substrings, deliberately broad/paranoid."""
+        summary = transcript.get('summary') or {}
+        haystack_parts = [
+            transcript.get('title') or '',
+            summary.get('short_summary') or '',
+            summary.get('overview') or '',
+            summary.get('action_items') or '',
+            ' '.join(summary.get('keywords') or []),
+        ]
+        haystack = ' '.join(haystack_parts).lower()
+        return any(term in haystack for term in self._JACKMAN_EXCLUDE_TERMS)
+
+    def _infer_meeting_domain(self, transcript):
+        """Lightweight content-based domain guess for a meeting — meetings
+        don't live in a domain-specific folder the way wiki pages do, so we
+        can't use _infer_domain()'s folder heuristic here."""
+        summary = transcript.get('summary') or {}
+        text = ' '.join([
+            transcript.get('title') or '',
+            summary.get('short_summary') or '',
+            summary.get('overview') or '',
+            ' '.join(summary.get('keywords') or []),
+        ]).lower()
+        if any(w in text for w in ('fieldbridge', 'contractor', 'claim', 'prospect', 'estimating', 'proposal')):
+            return 'fieldbridgehq'
+        if any(w in text for w in ('recruiter', 'interview', 'job offer', 'resume', 'cv ', 'hiring')):
+            return 'career'
+        if any(w in text for w in ('trading', 'crypto', 'stock', 'position size', 'tp/sl')):
+            return 'trading'
+        return 'general'
+
+    def _handle_fireflies_ingest(self):
+        """POST /api/wiki/ingest-fireflies — pull recent Fireflies meetings
+        into the wiki as OKF-conformant pages under 10_Sources/Fireflies/.
+        Idempotent (tracks ingested IDs in .fireflies_ingested.json) and
+        hard-excludes anything matching _JACKMAN_EXCLUDE_TERMS."""
+        try:
+            state_path = VAULT_DIR / ".fireflies_ingested.json"
+            ingested_ids = set()
+            if state_path.exists():
+                try:
+                    ingested_ids = set(json.loads(state_path.read_text(encoding='utf-8')))
+                except Exception:
+                    ingested_ids = set()
+
+            transcripts = self._fetch_fireflies_transcripts(limit=25)
+
+            out_dir = VAULT_DIR / "10_Sources" / "Fireflies"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            created = 0
+            skipped_duplicate = 0
+            skipped_excluded = 0
+            excluded_titles = []
+
+            for t in transcripts:
+                tid = t.get('id')
+                if not tid or tid in ingested_ids:
+                    skipped_duplicate += 1
+                    continue
+                if self._fireflies_contains_excluded_terms(t):
+                    skipped_excluded += 1
+                    excluded_titles.append(t.get('title', 'Untitled'))
+                    ingested_ids.add(tid)  # never re-check this one again
+                    continue
+
+                title = t.get('title') or 'Untitled Meeting'
+                date_str = (t.get('dateString') or '')[:10] or datetime.datetime.now().strftime('%Y-%m-%d')
+                summary = t.get('summary') or {}
+                domain = self._infer_meeting_domain(t)
+                keywords = summary.get('keywords') or []
+                action_items = (summary.get('action_items') or '').strip()
+                overview = (summary.get('short_summary') or summary.get('overview') or '').strip()
+
+                safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '-')[:60] or 'meeting'
+                filename = f"{date_str}-{safe_title}-{tid[:8]}.md"
+                filepath = out_dir / filename
+
+                frontmatter_lines = [
+                    "---",
+                    "type: Meeting",
+                    f'title: "{title.replace(chr(34), chr(39))}"',
+                    f"domain: {domain}",
+                    f'timestamp: "{date_str}"',
+                    f'resource: "https://app.fireflies.ai/view/{tid}"',
+                    f"tags: [type/meeting, area/{domain}, source/fireflies]",
+                    "---",
+                    "",
+                    f"# {title}",
+                    "",
+                    "## Summary",
+                    overview or "_No summary available._",
+                    "",
+                    "## Keywords",
+                    ', '.join(keywords) if keywords else "_None extracted._",
+                    "",
+                    "## Action Items",
+                    action_items if action_items else "_None extracted._",
+                    "",
+                    "## Opportunity Signal",
+                    "_Not yet analyzed — run Wiki Health → 🔮 Ask Hermes to Analyze for cross-vault opportunity signals._",
+                    "",
+                    f"*Source: Fireflies transcript {tid} | Ingested: {datetime.datetime.now().strftime('%Y-%m-%d')}*",
+                ]
+
+                try:
+                    filepath.write_text('\n'.join(frontmatter_lines), encoding='utf-8')
+                    created += 1
+                    ingested_ids.add(tid)
+                except Exception as e:
+                    print(f"[fireflies-ingest] Failed to write {filename}: {e}")
+
+            state_path.write_text(json.dumps(sorted(ingested_ids)), encoding='utf-8')
+
+            self._json_response({"data": {
+                "fetched": len(transcripts),
+                "created": created,
+                "skipped_duplicate": skipped_duplicate,
+                "skipped_excluded": skipped_excluded,
+                "excluded_titles": excluded_titles,
+            }})
+        except Exception as e:
+            self._json_error(500, f"Fireflies ingestion failed: {str(e)}")
+
     def _serve_vault_tree(self, query=None):
         """Serve vault directory structure"""
         try:
@@ -1663,6 +1848,7 @@ tags: {data.get('tags', [])}
                 {"id": "mistral", "name": "Mistral", "envVar": "MISTRAL_API_KEY", "url": "https://console.mistral.ai", "icon": "🌬️"},
                 {"id": "perplexity", "name": "Perplexity", "envVar": "PERPLEXITY_API_KEY", "url": "https://perplexity.ai", "icon": "❓"},
                 {"id": "cohere", "name": "Cohere", "envVar": "COHERE_API_KEY", "url": "https://cohere.com", "icon": "🔗"},
+                {"id": "fireflies", "name": "Fireflies.ai", "envVar": "FIREFLIES_API_KEY", "url": "https://app.fireflies.ai/settings", "icon": "🎙️"},
             ]
 
             providers = []
@@ -1784,6 +1970,21 @@ tags: {data.get('tags', [])}
                         )
                         with urllib.request.urlopen(req, timeout=10) as r:
                             self._json_response({"ok": True, "message": "Connected"})
+                    elif provider == 'fireflies':
+                        gql = json.dumps({"query": "query { user { name } }"}).encode('utf-8')
+                        req = urllib.request.Request(
+                            'https://api.fireflies.ai/graphql',
+                            data=gql,
+                            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+                            method='POST'
+                        )
+                        with urllib.request.urlopen(req, timeout=10) as r:
+                            resp = json.loads(r.read())
+                            if resp.get('errors'):
+                                self._json_response({"ok": False, "message": resp['errors'][0].get('message', 'GraphQL error')})
+                            else:
+                                name = (resp.get('data') or {}).get('user', {}).get('name', 'account')
+                                self._json_response({"ok": True, "message": f"Connected ({name})"})
                     else:
                         self._json_response({"ok": True, "message": "Key present (test not implemented for this provider)"})
                 except Exception as e:

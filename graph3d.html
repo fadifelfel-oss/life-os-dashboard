@@ -203,6 +203,7 @@ body { margin: 0; overflow: hidden; background: #0d1117; font-family: var(--font
     <div class="health-actions">
       <button class="toggle-btn" onclick="runLint()">Run Lint</button>
       <button class="toggle-btn" onclick="normalizeOKF()">🧬 Normalize to OKF</button>
+      <button class="toggle-btn" onclick="syncFireflies()">🎙️ Sync Fireflies</button>
     </div>
     <div id="lintStatus"></div>
     <div class="lint-summary" id="lintSummary"></div>
@@ -891,6 +892,28 @@ async function normalizeOKF() {
     setTimeout(() => location.reload(), 1500);
   } catch (e) {
     document.getElementById('lintStatus').innerHTML = '⚠️ Migration failed: ' + e.message;
+  }
+}
+
+async function syncFireflies() {
+  document.getElementById('lintStatus').innerHTML = '<div class="query-loading">Pulling recent Fireflies meetings…</div>';
+  try {
+    const res = await fetch('/api/wiki/ingest-fireflies', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const json = await res.json();
+    if (json.error) {
+      document.getElementById('lintStatus').innerHTML = '⚠️ ' + json.error +
+        (json.error.includes('API key') ? ' — add one in Settings → API Keys → Fireflies.ai' : '');
+      return;
+    }
+    const d = json.data;
+    let msg = `✅ Fetched ${d.fetched}, created ${d.created}, skipped ${d.skipped_duplicate} already-seen`;
+    if (d.skipped_excluded > 0) {
+      msg += `, excluded ${d.skipped_excluded} (Jackman/KOC filter — never ingested)`;
+    }
+    document.getElementById('lintStatus').innerHTML = `<div class="query-loading">${msg}. Reloading graph…</div>`;
+    if (d.created > 0) setTimeout(() => location.reload(), 1500);
+  } catch (e) {
+    document.getElementById('lintStatus').innerHTML = '⚠️ Fireflies sync failed: ' + e.message;
   }
 }
 
