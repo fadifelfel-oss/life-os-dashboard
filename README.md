@@ -1,3 +1,10 @@
+---
+type: Note
+title: "Life OS Dashboard"
+domain: general
+timestamp: "2026-06-30T20:34:51"
+---
+
 # Life OS Dashboard
 
 Personal automation dashboard. Self-hosted, single-file Python server with 20+ modular HTML/JS frontends. Runs on a Vultr VPS, proxies to Hermes Agent.
