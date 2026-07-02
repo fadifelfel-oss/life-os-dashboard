@@ -468,16 +468,26 @@ function renderBoard() {
   document.getElementById('stat-done').textContent = cols.done.length;
 }
 
+function cleanTitle(title) {
+  if (!title) return 'Untitled';
+  let t = String(title).replace(/\.md$/i, '');
+  // Raw filename-looking titles (kebab-case / snake_case / SCREAMING-KEBAB) → Title Case
+  if (/^[A-Za-z0-9]+([-_][A-Za-z0-9]+)+$/.test(t)) {
+    t = t.replace(/[-_]/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+  return t;
+}
+
 function createCard(task) {
   const div = document.createElement('div');
   div.className = `card priority-${task.priority || 'medium'}`;
   div.onclick = () => openModal(task);
-  
+
   const tagClass = task.tag || 'project';
   const tagLabel = task.tag || 'Project';
-  
+
   div.innerHTML = `
-    <div class="card-title">${escapeHtml(task.title)}</div>
+    <div class="card-title">${escapeHtml(cleanTitle(task.title))}</div>
     <div class="card-meta">
       <span class="card-tag tag-${tagClass}">${tagLabel}</span>
       ${task.source ? `<span class="card-source">📄 ${escapeHtml(task.source)}</span>` : ''}
@@ -495,7 +505,7 @@ function escapeHtml(s) {
 
 function openModal(task) {
   currentCardId = task.id;
-  document.getElementById('modalTitle').textContent = task.title;
+  document.getElementById('modalTitle').textContent = cleanTitle(task.title);
   document.getElementById('modalTags').innerHTML = `<span class="card-tag tag-${task.tag || 'project'}">${task.tag || 'Project'}</span>`;
   document.getElementById('modalSource').textContent = task.source ? `Source: ${task.source}` : '';
   document.getElementById('modalDescription').textContent = task.description || '';
