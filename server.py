@@ -9,6 +9,7 @@ import json
 import os
 import re
 import datetime
+import time
 import mimetypes
 import asyncio
 import urllib.parse
@@ -20,6 +21,12 @@ STATIC_DIR = Path(__file__).parent
 VAULT_DIR = Path("/root/knowledge")
 PORT = 8090
 HERMES_CHAT_PROXY_URL = "http://127.0.0.1:8642"  # Hermes API Server
+
+# Live OpenRouter model catalog cache — avoids hitting OpenRouter on every
+# page load. 6h TTL; falls back to the small curated list below on any
+# fetch failure (no key, network, rate limit, etc.) so the page never breaks.
+_MODELS_CACHE = {"data": None, "ts": 0}
+_MODELS_CACHE_TTL = 6 * 3600
 
 # OKF wiki schema — ships alongside server.py in the repo, deployed into the
 # vault itself (00_Kernel/OKF-WIKI-SCHEMA.md) on first /api/wiki/migrate run.
@@ -201,9 +208,78 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         else:
             self._json_error(404, "API endpoint not found")
     
+    def _get_openrouter_key(self):
+        """Read OPENROUTER_API_KEY from ~/.hermes/.env — same file/format the
+        Settings > API Keys page writes to (see the 'test' action above)."""
+        env_path = Path.home() / ".hermes" / ".env"
+        if not env_path.exists():
+            return ""
+        for line in env_path.read_text(encoding='utf-8').splitlines():
+            if line.strip().startswith("OPENROUTER_API_KEY="):
+                return line.split('=', 1)[1].strip().strip('\'"')
+        return ""
+
+    def _fetch_live_openrouter_models(self):
+        """Fetch the full live OpenRouter catalog (hundreds of models) and
+        normalize to the shape models.html / model-catalog.js expect.
+        Category/score/speed/rank are intentionally omitted — models.html
+        already derives all of those client-side (generateTags/detectProvider/
+        scoreOf) when a model doesn't carry them, so we don't need to
+        hand-curate every entry just to keep the catalog live and complete."""
+        import urllib.request
+        key = self._get_openrouter_key()
+        if not key:
+            raise RuntimeError("No OpenRouter API key configured")
+        req = urllib.request.Request(
+            'https://openrouter.ai/api/v1/models',
+            headers={'Authorization': f'Bearer {key}'}
+        )
+        with urllib.request.urlopen(req, timeout=15) as r:
+            raw = json.loads(r.read()).get('data', [])
+
+        out = []
+        for m in raw:
+            pricing = m.get('pricing') or {}
+            try:
+                prompt_price = float(pricing.get('prompt', 0) or 0)
+            except (TypeError, ValueError):
+                prompt_price = 0.0
+            try:
+                completion_price = float(pricing.get('completion', 0) or 0)
+            except (TypeError, ValueError):
+                completion_price = 0.0
+            top_provider = m.get('top_provider') or {}
+            out.append({
+                "id": m.get('id', ''),
+                "name": m.get('name') or m.get('id', ''),
+                "provider": (m.get('id', '') or '').split('/')[0] if '/' in (m.get('id') or '') else '',
+                "context_length": m.get('context_length', 0) or 0,
+                "max_tokens": top_provider.get('max_completion_tokens') or m.get('context_length', 0) or 0,
+                "pricing": {"prompt": prompt_price, "completion": completion_price},
+            })
+        return out
+
     def _serve_models(self):
-        """Serve model catalog — pricing from OpenRouter API (openrouter.ai/api/v1/models)"""
-        models = [
+        """Serve model catalog. Tries the live OpenRouter API first (cached
+        6h); falls back to a small curated list if no key is configured or
+        the fetch fails, so the page always renders something."""
+        now = time.time()
+        if _MODELS_CACHE["data"] and (now - _MODELS_CACHE["ts"]) < _MODELS_CACHE_TTL:
+            self._json_response({"data": _MODELS_CACHE["data"], "source": "openrouter_live", "cached": True})
+            return
+        try:
+            live = self._fetch_live_openrouter_models()
+            if live:
+                _MODELS_CACHE["data"] = live
+                _MODELS_CACHE["ts"] = now
+                self._json_response({"data": live, "source": "openrouter_live", "cached": False})
+                return
+        except Exception as e:
+            print(f"[models] Live OpenRouter fetch failed, using fallback: {e}")
+
+        self._json_response({"data": self._FALLBACK_MODELS, "source": "fallback_curated"})
+
+    _FALLBACK_MODELS = [
             # ═══════════════════════════════════════════════════════════
             # 🏆 FREE CHAMPIONS — Best free models (no cost)
             # ═══════════════════════════════════════════════════════════
@@ -364,8 +440,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
              "category": "budget", "best_for": "Best overall value",
              "score": 76, "speed": "fastest", "rank": 5},
         ]
-        self._json_response({"data": models})
-    
+
     def _serve_tasks(self):
         """Serve tasks: combine vault markdown checkboxes + kanban store"""
         tasks = []
