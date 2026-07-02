@@ -363,6 +363,14 @@ function buildGraphData(pages) {
     }
   });
 
+  // Mark every node that sits on a cross-domain link — these are the opportunity bridges
+  links.forEach(l => {
+    if (l.crossDomain) {
+      if (nodeMap[l.source]) nodeMap[l.source].isCrossEndpoint = true;
+      if (nodeMap[l.target]) nodeMap[l.target].isCrossEndpoint = true;
+    }
+  });
+
   return { nodes, links, domains: [...domains] };
 }
 
@@ -515,9 +523,9 @@ function buildGraph(nodes, links) {
     const points = [new THREE.Vector3(source.x, source.y, source.z), new THREE.Vector3(target.x, target.y, target.z)];
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const material = new THREE.LineBasicMaterial({
-      color: link.crossDomain ? 0x3fb950 : 0x555555,
+      color: link.crossDomain ? 0xffb020 : 0x6f8db0,
       transparent: true,
-      opacity: link.crossDomain ? 0.6 : 0.3,
+      opacity: link.crossDomain ? 0.75 : 0.42,
     });
     const line = new THREE.Line(geometry, material);
     line.userData = { source, target, crossDomain: link.crossDomain };
@@ -596,22 +604,33 @@ function toggleParticles() {
 function toggleOpportunities() {
   showOpportunities = !showOpportunities;
   document.getElementById('btn-opps').classList.toggle('active', showOpportunities);
+
+  // Links: cross-domain bridges glow bright gold; everything else nearly vanishes.
   linkLines.forEach(l => {
     if (l.userData.crossDomain) {
-      l.material.opacity = showOpportunities ? 0.8 : 0.3;
-      l.material.color.setHex(showOpportunities ? 0x3fb950 : 0x555555);
+      l.material.color.setHex(showOpportunities ? 0xffd23f : 0xffb020);
+      l.material.opacity = showOpportunities ? 1.0 : 0.75;
+    } else {
+      l.material.color.setHex(0x6f8db0);
+      l.material.opacity = showOpportunities ? 0.02 : 0.42;
     }
   });
-  if (showOpportunities) {
-    // Dim non-cross-domain links to highlight opportunities
-    linkLines.forEach(l => {
-      if (!l.userData.crossDomain) l.material.opacity = 0.05;
-    });
-  } else {
-    linkLines.forEach(l => {
-      l.material.opacity = l.userData.crossDomain ? 0.6 : 0.3;
-    });
-  }
+
+  // Nodes: dim the whole graph except the bridge endpoints, which light up gold.
+  nodeMeshes.forEach(mesh => {
+    const isBridge = mesh.userData.isCrossEndpoint;
+    mesh.material.transparent = true;
+    if (showOpportunities) {
+      mesh.material.opacity = isBridge ? 1.0 : 0.1;
+      mesh.material.emissive.setHex(isBridge ? 0xffaa00 : 0x000000);
+      mesh.material.emissiveIntensity = isBridge ? 0.7 : 0;
+    } else {
+      mesh.material.opacity = mesh.userData.isOpportunity ? 0.6 : 1.0;
+      mesh.material.transparent = !!mesh.userData.isOpportunity;
+      mesh.material.emissive.setHex(0x000000);
+      mesh.material.emissiveIntensity = 0;
+    }
+  });
 }
 
 function toggleHubs() {
