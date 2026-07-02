@@ -52,7 +52,7 @@ window.LIFEOS_JOBS = [
     tip:'Your bread-and-butter. Claude Haiku covers 90% of drafting cleanly and cheaply; only reach for premium on client-facing writing.',
     picks:[
       { role:'rec', match:['claude-haiku-latest','claude-haiku'], fb:{name:'Claude Haiku (latest)',provider:'Anthropic',pp:0.000001,pc:0.000005,ctx:200000}, why:'~$1/$5 per 1M — clean tone for emails, notes, and docs at a low price. Ideal everyday default.' },
-      { role:'budget', match:['gemini-3.1-flash-lite','deepseek-v4-flash','owl-alpha'], fb:{name:'Gemini 3.1 Flash Lite',provider:'Google',pp:0.00000025,pc:0.0000015,ctx:1048576}, why:'~$0.25/$1.5 per 1M — near-free for quick admin questions and short drafts.' },
+      { role:'budget', match:['gemini-3.1-flash-lite','deepseek-v4-flash','owl-alpha'], fb:{name:'Gemini 3.1 Flash Lite',provider:'Google',pp:0.00000025,pc:0.0000015,ctx:1048576}, why:'Near-free for quick admin questions and short drafts.' },
       { role:'premium', match:['claude-sonnet-latest','claude-sonnet'], fb:{name:'Claude Sonnet (latest)',provider:'Anthropic',pp:0.000003,pc:0.000015,ctx:1000000}, why:'~$3/$15 per 1M — best tone and polish for client-facing emails and important documents.' },
     ],
   },
@@ -67,3 +67,7 @@ window.lifeosResolvePick = function(models, matchArr){
   }
   return null;
 };
+
+// Default chat model — set from the models page, honored by the chat page.
+window.lifeosGetDefaultModel = function(){ try { return localStorage.getItem('lifeos-default-model') || ''; } catch(e){ return ''; } };
+window.lifeosSetDefaultModel = function(id){ try { localStorage.setItem('lifeos-default-model', id); } catch(e){} };

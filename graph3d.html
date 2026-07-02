@@ -47,13 +47,17 @@ body { margin: 0; overflow: hidden; background: #0d1117; font-family: var(--font
 .slider-row label { font-size: 10px; color: var(--text-tertiary); display: flex; justify-content: space-between; margin-bottom: 2px; }
 .slider-row input[type=range] { width: 100%; accent-color: var(--accent); }
 
-.domain-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.domain-filters { display: flex; flex-direction: column; gap: 7px; }
+.domain-group-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #8a8f98; margin: 3px 0 1px; }
+.domain-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .domain-tag {
-  font-size: 10px; padding: 3px 8px; border-radius: 12px; cursor: pointer;
-  border: 1px solid transparent; font-weight: 500; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer;
+  border: 1px solid transparent; font-weight: 600; transition: all 0.15s;
 }
+.domain-tag:hover { transform: translateY(-1px); }
 .domain-tag.active { border-color: currentColor; }
-.domain-tag.inactive { opacity: 0.3; }
+.domain-tag.inactive { opacity: 0.3; box-shadow: none !important; }
 
 /* Stats bar */
 .graph-stats {
@@ -257,14 +261,29 @@ let targetTheta = 0, targetPhi = Math.PI / 4, targetRadius = 600;
 
 // Domain colors — maximum contrast, easily distinguishable
 const DOMAIN_COLORS = {
-  'ai-tools': '#00e5ff',    // electric cyan
-  'career': '#ff3333',      // vivid red
-  'construction': '#ffb800', // golden amber
-  'fieldbridgehq': '#d500f9', // neon purple
-  'general': '#c0c0c0',     // silver
-  'health': '#00e676',      // material green
-  'trading': '#ff4081',     // pink accent
-  'default': '#00e5ff'
+  'career': '#3b9dff',        // blue
+  'fieldbridgehq': '#b56bff', // purple
+  'construction': '#ffb020',  // amber
+  'trading': '#4ecb5c',       // green
+  'health': '#2fd6a8',        // teal
+  'family': '#ff5fa2',        // pink
+  'ai-tools': '#ff7a45',      // coral
+  'inbox': '#9aa3ad',         // gray
+  'general': '#9aa3ad',       // legacy — shown as inbox
+  'default': '#7fd1ff'
+};
+
+// Domain grouping + icons for the filter chips (income engines vs life)
+const DOMAIN_META = {
+  career:        { group:'income', label:'Career',       icon:'💼' },
+  fieldbridgehq: { group:'income', label:'FieldBridge',  icon:'🌉' },
+  construction:  { group:'income', label:'Construction', icon:'🏗️' },
+  trading:       { group:'income', label:'Trading',      icon:'📈' },
+  health:        { group:'life',   label:'Health',       icon:'❤️' },
+  family:        { group:'life',   label:'Family',        icon:'👪' },
+  'ai-tools':    { group:'life',   label:'AI tools',      icon:'🤖' },
+  inbox:         { group:'life',   label:'Inbox',         icon:'📥' },
+  general:       { group:'life',   label:'Inbox',         icon:'📥' },
 };
 
 async function init() {
@@ -647,41 +666,56 @@ function toggleHubs() {
   });
 }
 
+function applyDomainVisibility() {
+  nodeMeshes.forEach(mesh => { mesh.visible = activeDomains.has(mesh.userData.domain); });
+  linkLines.forEach(l => {
+    const s = l.userData.source.domain, t = l.userData.target.domain;
+    l.visible = activeDomains.has(s) && activeDomains.has(t) && showLinks;
+  });
+}
+
 function buildDomainFilters() {
   const container = document.getElementById('domainFilters');
-  const domainSet = new Set();
-  nodes.forEach(n => domainSet.add(n.domain));
-  
-  domainSet.forEach(domain => {
-    activeDomains.add(domain);
-    const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS.default;
-    const tag = document.createElement('span');
-    tag.className = 'domain-tag active';
-    tag.style.background = color + '20';
-    tag.style.color = color;
-    tag.textContent = domain;
-    tag.onclick = () => {
-      if (activeDomains.has(domain)) {
-        activeDomains.delete(domain);
-        tag.classList.remove('active');
-        tag.classList.add('inactive');
-      } else {
-        activeDomains.add(domain);
-        tag.classList.add('active');
-        tag.classList.remove('inactive');
-      }
-      // Filter visibility
-      nodeMeshes.forEach(mesh => {
-        const visible = activeDomains.has(mesh.userData.domain);
-        mesh.visible = visible;
-      });
-      linkLines.forEach(l => {
-        const sDomain = l.userData.source.domain;
-        const tDomain = l.userData.target.domain;
-        l.visible = activeDomains.has(sDomain) && activeDomains.has(tDomain) && showLinks;
-      });
-    };
-    container.appendChild(tag);
+  container.innerHTML = '';
+  const present = new Set();
+  nodes.forEach(n => { activeDomains.add(n.domain); present.add(n.domain); });
+
+  // Ordered list: known domains first (in META order), then any unexpected ones
+  const order = Object.keys(DOMAIN_META).filter(d => present.has(d));
+  present.forEach(d => { if (!DOMAIN_META[d]) order.push(d); });
+
+  const groups = { income: 'Income engines', life: 'Life and system' };
+  Object.keys(groups).forEach(groupKey => {
+    const inGroup = order.filter(d => (DOMAIN_META[d] ? DOMAIN_META[d].group : 'life') === groupKey);
+    if (!inGroup.length) return;
+    const label = document.createElement('div');
+    label.className = 'domain-group-label';
+    label.textContent = groups[groupKey];
+    container.appendChild(label);
+    const row = document.createElement('div');
+    row.className = 'domain-row';
+    inGroup.forEach(domain => {
+      const meta = DOMAIN_META[domain] || { label: domain, icon: '📄' };
+      const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS.default;
+      const tag = document.createElement('span');
+      tag.className = 'domain-tag active';
+      tag.style.background = color + '22';
+      tag.style.color = color;
+      tag.style.boxShadow = `0 0 8px ${color}55`;
+      tag.innerHTML = `<span>${meta.icon}</span>${meta.label}`;
+      tag.onclick = () => {
+        if (activeDomains.has(domain)) {
+          activeDomains.delete(domain);
+          tag.classList.remove('active'); tag.classList.add('inactive');
+        } else {
+          activeDomains.add(domain);
+          tag.classList.add('active'); tag.classList.remove('inactive');
+        }
+        applyDomainVisibility();
+      };
+      row.appendChild(tag);
+    });
+    container.appendChild(row);
   });
 }
 

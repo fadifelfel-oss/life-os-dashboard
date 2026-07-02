@@ -1749,7 +1749,10 @@ async function loadChatModels() {
       const m = p ? window.lifeosResolvePick(models, p.match) : null;
       if (m) def = m.id;
     }
-    currentModel = def || (models[0] && models[0].id) || 'owl-alpha';
+    // Honor a default model chosen on the models page, if it's available live.
+    const saved = window.lifeosGetDefaultModel ? window.lifeosGetDefaultModel() : '';
+    currentModel = (saved && models.some(m => m.id === saved)) ? saved
+                 : (def || (models[0] && models[0].id) || 'owl-alpha');
     select.value = currentModel;
   } catch(e) {
     console.log('Chat models fallback:', e);

@@ -710,6 +710,13 @@ function findLiveModel(matchArr) {
 
 function fmtP(v) { return v === 0 ? '<span class="free">FREE</span>' : '$' + (v * 1000000).toFixed(2); }
 
+function setDefaultModel(id) {
+  if (window.lifeosSetDefaultModel) window.lifeosSetDefaultModel(id);
+  if (window.Notify) Notify.success('Chat default set: ' + id);
+  else alert('Chat default set: ' + id);
+  renderJobs();
+}
+
 function renderJobs() {
   const wrap = document.getElementById('jobs-list');
   wrap.innerHTML = '';
@@ -729,6 +736,7 @@ function renderJobs() {
           <div class="pick-provider">${provider}${ctx?` • ${ctx} ctx`:''}${live?'':' • <span class="pick-missing">est. price</span>'}</div>
           <div class="pick-price">in ${fmtP(m.pp||0)} / out ${fmtP(m.pc||0)} <span style="color:var(--text-muted);">per 1M</span></div>
           <div class="pick-why">${pick.why}</div>
+          ${live ? `<button onclick="setDefaultModel('${live.id}')" style="align-self:flex-start;margin-top:6px;font-size:11px;font-weight:700;background:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'var(--accent)':'var(--bg-primary)'};color:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'#fff':'var(--accent)'};border:1px solid var(--accent-border);padding:4px 10px;border-radius:var(--radius-full);cursor:pointer;">${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'★ Chat default':'☆ Set as chat default'}</button>` : ''}
         </div>`;
     });
     wrap.innerHTML += `
