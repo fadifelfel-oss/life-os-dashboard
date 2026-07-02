@@ -29,6 +29,32 @@
   padding: var(--space-2);
   margin-bottom: var(--space-2);
 }
+.file-search {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.file-search:focus { outline: none; border-color: var(--accent); }
+.search-result {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+.search-result:hover { background: var(--bg-tertiary); }
+.search-result-path { color: var(--text-muted); font-size: var(--font-size-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: var(--font-size-sm); }
+.breadcrumb-seg { cursor: pointer; color: var(--text-secondary); }
+.breadcrumb-seg:hover { color: var(--accent); text-decoration: underline; }
+.breadcrumb-sep { color: var(--text-muted); }
 .folder-group { margin-bottom: var(--space-2); }
 .folder-header {
   display: flex;
@@ -115,13 +141,14 @@
 </div>
 <div class="files-layout">
 <div class="file-sidebar" id="file-sidebar">
-<div class="file-sidebar-title">Vault Structure</div>
+<input type="text" class="file-search" id="file-search" placeholder="🔍 Search files by name..." oninput="handleSearch(this.value)">
+<div class="file-sidebar-title" id="sidebar-title">Vault Structure</div>
 <div id="tree-container"><div style="padding:16px;color:var(--text-muted)">Loading...</div>
 </div>
 </div>
 <div class="file-reader" id="file-reader">
 <div class="file-reader-header">
-  <span class="file-reader-title" id="reader-title" onclick="navigateUp()" style="cursor:pointer" title="Click to go up">Select a file</span>
+  <span class="breadcrumb" id="reader-title"><span class="file-reader-title">Select a file</span></span>
   <button class="btn btn-sm" onclick="closeReader()">✕ Close</button>
 </div>
 <div class="file-reader-content" id="reader-content">
@@ -138,15 +165,57 @@
 
 <script>
 const VAULT_EXCLUDE = ['life-os', '.git', 'node_modules', '__pycache__', '.obsidian'];
+const IMAGE_EXT = ['png','jpg','jpeg','gif','webp','svg'];
+let TREE_CACHE = null;      // full tree, fetched once and reused by openFolder()
+let FLAT_FILES = [];        // flattened {name, path} list, built once, used by search
 
 async function loadTree() {
   try {
     const resp = await fetch('/api/tree');
     const result = await resp.json();
-    renderTree(result.data || []);
+    TREE_CACHE = result.data || [];
+    FLAT_FILES = [];
+    flattenTree(TREE_CACHE);
+    renderTree(TREE_CACHE);
   } catch(e) {
     document.getElementById('tree-container').innerHTML = `<div style="padding:16px;color:var(--red)">Error loading tree: ${e.message}</div>`;
   }
+}
+
+function flattenTree(items) {
+  items.forEach(item => {
+    if (VAULT_EXCLUDE.includes(item.name)) return;
+    if (item.type === 'dir' || item.type === 'directory') {
+      if (item.children) flattenTree(item.children);
+    } else {
+      FLAT_FILES.push({ name: item.name, path: item.path });
+    }
+  });
+}
+
+function handleSearch(query) {
+  const q = query.trim().toLowerCase();
+  const container = document.getElementById('tree-container');
+  const title = document.getElementById('sidebar-title');
+  if (!q) {
+    title.textContent = 'Vault Structure';
+    renderTree(TREE_CACHE || []);
+    return;
+  }
+  const hits = FLAT_FILES.filter(f => f.name.toLowerCase().includes(q)).slice(0, 100);
+  title.textContent = `${hits.length} match${hits.length === 1 ? '' : 'es'}`;
+  container.innerHTML = '';
+  if (hits.length === 0) {
+    container.innerHTML = '<div style="padding:16px;color:var(--text-muted)">No files match.</div>';
+    return;
+  }
+  hits.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'search-result';
+    div.innerHTML = `<span>${getFileIcon(f.name)}</span><span style="flex:1;min-width:0"><div class="file-name">${f.name}</div><div class="search-result-path">${f.path}</div></span>`;
+    div.onclick = () => openFile(f.path, null);
+    container.appendChild(div);
+  });
 }
 
 function renderTree(items, container) {
@@ -195,16 +264,44 @@ function toggleFolder(el) {
   }
 }
 
+function renderBreadcrumb(path) {
+  const el = document.getElementById('reader-title');
+  el.innerHTML = '';
+  const parts = (path || '').split('/').filter(Boolean);
+  let acc = '';
+  parts.forEach((seg, i) => {
+    acc = acc ? `${acc}/${seg}` : seg;
+    const isLast = i === parts.length - 1;
+    const span = document.createElement('span');
+    span.className = 'breadcrumb-seg';
+    span.textContent = seg;
+    const target = acc;
+    span.onclick = () => openFolder(null, target);
+    el.appendChild(span);
+    if (!isLast) {
+      const sep = document.createElement('span');
+      sep.className = 'breadcrumb-sep';
+      sep.textContent = '/';
+      el.appendChild(sep);
+    }
+  });
+  if (parts.length === 0) el.innerHTML = '<span class="file-reader-title">Select a file</span>';
+}
+
+// Uses the tree fetched once in loadTree() — avoids re-downloading + re-parsing
+// the whole vault tree on every folder click. Only refreshTree() re-fetches.
 async function openFolder(el, path) {
   currentReaderPath = path;
-  document.getElementById('reader-title').textContent = path;
+  renderBreadcrumb(path);
   const content = document.getElementById('reader-content');
   content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">Loading folder contents...</div>';
   try {
-    // Get the full tree and find the folder's children
-    const resp = await fetch('/api/tree');
-    const result = await resp.json();
-    const allItems = result.data || [];
+    if (!TREE_CACHE) {
+      const resp = await fetch('/api/tree');
+      const result = await resp.json();
+      TREE_CACHE = result.data || [];
+    }
+    const allItems = TREE_CACHE;
     // Find the matching folder in root items or search recursively
     const findFolder = (nodes, targetPath) => {
       for (const node of nodes) {
@@ -267,8 +364,22 @@ async function openFile(path, el) {
   currentReaderPath = path;
   document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
   if (el) el.classList.add('active');
-  document.getElementById('reader-title').textContent = path;
+  renderBreadcrumb(path);
   const content = document.getElementById('reader-content');
+  const ext = (path.split('.').pop() || '').toLowerCase();
+
+  // Images and PDFs: /api/file tries to read the file as UTF-8 text, which
+  // fails on binary content. Route these straight to the static /knowledge/
+  // path instead (served raw with the correct mime type by _serve_file).
+  if (IMAGE_EXT.includes(ext)) {
+    content.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%"><img src="/knowledge/${encodeURI(path)}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px"></div>`;
+    return;
+  }
+  if (ext === 'pdf') {
+    content.innerHTML = `<iframe src="/knowledge/${encodeURI(path)}"></iframe>`;
+    return;
+  }
+
   content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">Loading...</div>';
   try {
     const resp = await fetch('/api/file?path=' + encodeURIComponent(path));
@@ -292,7 +403,8 @@ function escapeHtml(text) {
 }
 
 function closeReader() {
-  document.getElementById('reader-title').textContent = 'Select a file';
+  currentReaderPath = '';
+  document.getElementById('reader-title').innerHTML = '<span class="file-reader-title">Select a file</span>';
   document.getElementById('reader-content').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
       <div style="text-align:center;">
