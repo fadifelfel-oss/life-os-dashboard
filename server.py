@@ -21,6 +21,13 @@ VAULT_DIR = Path("/root/knowledge")
 PORT = 8090
 HERMES_CHAT_PROXY_URL = "http://127.0.0.1:8642"  # Hermes API Server
 
+# OKF wiki schema — ships alongside server.py in the repo, deployed into the
+# vault itself (00_Kernel/OKF-WIKI-SCHEMA.md) on first /api/wiki/migrate run.
+try:
+    _OKF_SCHEMA_CONTENT = (STATIC_DIR / "OKF-WIKI-SCHEMA.md").read_text(encoding='utf-8')
+except Exception:
+    _OKF_SCHEMA_CONTENT = None
+
 # Load whisper model at server startup (avoids blocking first request)
 print("Loading Whisper model (base)...")
 _whisper_model = None
@@ -92,6 +99,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_meeting_process()
         elif path == "/api/transcribe":
             self._handle_transcribe()
+        elif path == "/api/chat/session":
+            self._handle_chat_session_save()
+        elif path == "/api/chat/session/delete":
+            self._handle_chat_session_delete()
+        elif path == "/api/wiki/query":
+            self._handle_wiki_query()
+        elif path == "/api/wiki/migrate":
+            self._handle_wiki_migrate()
+        elif path == "/api/wiki/lint/analyze":
+            self._handle_wiki_lint_analyze()
         else:
             self._json_error(404, "Endpoint not found")
             return
@@ -151,6 +168,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_state()
         elif path == "/api/skills":
             self._serve_skills()
+        elif path == "/api/skills/stats":
+            self._serve_skill_stats()
         elif path == "/api/providers":
             self._serve_providers()
         elif path == "/api/auth":
@@ -161,6 +180,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_cron(query)
         elif path == "/api/meetings":
             self._serve_meetings_get(query)
+        elif path == "/api/chat/sessions":
+            self._serve_chat_sessions()
+        elif path == "/api/chat/session":
+            self._serve_chat_session(query)
+        elif path == "/api/kb/search":
+            self._serve_kb_search(query)
+        elif path == "/api/wiki/page":
+            self._serve_wiki_page(query)
+        elif path == "/api/wiki/lint":
+            self._serve_wiki_lint()
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -438,42 +467,482 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         
         self._json_response({"tasks": tasks, "data": tasks})
     
-    def _serve_wiki_index(self):
-        """Serve wiki page index"""
+    # ═══════════════════════════════════════════════════════════
+    # OKF / LLM-WIKI HELPERS
+    # ═══════════════════════════════════════════════════════════
+
+    # Top-level vault folders considered part of the "wiki" surface for the
+    # 3D Brain graph. Excludes system/dotfiles and raw, unprocessed sources.
+    _WIKI_DOMAIN_FOLDERS = {
+        "20_Wiki": "ai-tools",       # overridden per-subfolder below when possible
+        "50_FieldBridge": "fieldbridgehq",
+        "60_Career": "career",
+        "70_Trading": "trading",
+        "90_Skills": "general",
+        "95_Outputs": "general",
+        "40_Tasks": "general",
+        "00_Kernel": "general",
+    }
+    _KNOWN_DOMAINS = {"career", "fieldbridgehq", "trading", "construction", "ai-tools", "health", "general"}
+
+    @staticmethod
+    def _parse_frontmatter(content):
+        """Minimal YAML-frontmatter parser (no external deps). Handles
+        key: value, key: "quoted", and key: [a, b, c] list syntax — the
+        subset actually used across this vault. Returns (meta_dict, body_str)."""
+        meta = {}
+        body = content
+        if content.startswith('---'):
+            end = content.find('\n---', 3)
+            if end != -1:
+                fm_block = content[3:end].strip('\n')
+                body = content[end + 4:].lstrip('\n')
+                for line in fm_block.splitlines():
+                    if ':' not in line:
+                        continue
+                    key, _, val = line.partition(':')
+                    key = key.strip()
+                    val = val.strip()
+                    if not key:
+                        continue
+                    if val.startswith('[') and val.endswith(']'):
+                        items = [v.strip().strip('"\'') for v in val[1:-1].split(',') if v.strip()]
+                        meta[key] = items
+                    else:
+                        meta[key] = val.strip('"\'')
+        return meta, body
+
+    def _call_hermes(self, messages, model='owl-alpha', max_tokens=1200, temperature=0.4):
+        """Internal helper — call the Hermes chat completion endpoint directly
+        (server-side, not proxied through a browser request) and return the
+        assistant's text, or None on failure."""
         try:
-            wiki_dir = VAULT_DIR / "20_Wiki"
-            pages = []
-            if wiki_dir.exists():
-                for md_file in wiki_dir.rglob("*.md"):
-                    if md_file.is_file():
-                        # Extract title from first line or filename
-                        title = md_file.stem.replace('-', ' ').title()
-                        raw_content = ""
-                        try:
-                            with open(md_file, 'r', encoding='utf-8') as f:
-                                first_line = f.readline().strip()
-                                if first_line.startswith('#'):
-                                    title = first_line.lstrip('#').strip()
-                                raw_content = f.read(50000)
-                        except Exception:
-                            pass
-                        rel_path = str(md_file.relative_to(VAULT_DIR))
-                        folder = str(md_file.relative_to(wiki_dir)).split('/')[0] if '/' in str(md_file.relative_to(wiki_dir)) else 'general'
-                        pages.append({
-                            "title": title,
-                            "name": md_file.name,
-                            "file": rel_path,
-                            "path": rel_path,
-                            "id": md_file.stem,
-                            "folder": folder,
-                            "domain": folder,
-                            "words": len(raw_content.split()),
-                            "links": len(re.findall(r'\[\[([^\]]+)\]\]', raw_content)),
-                            "rawContent": raw_content
-                        })
+            import urllib.request
+            openai_request = {
+                'model': model,
+                'messages': messages,
+                'stream': False,
+                'temperature': temperature,
+                'max_tokens': max_tokens,
+            }
+            req = urllib.request.Request(
+                f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions",
+                data=json.dumps(openai_request).encode('utf-8'),
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer life-os-dashboard-2026',
+                },
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=90) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                return data['choices'][0]['message']['content']
+        except Exception as e:
+            print(f"⚠ _call_hermes failed: {e}")
+            return None
+
+    def _infer_domain(self, rel_path, meta):
+        """Resolve a page's domain — explicit frontmatter wins, else inferred
+        from vault folder, else 'general'."""
+        if meta.get('domain') in self._KNOWN_DOMAINS:
+            return meta['domain']
+        parts = rel_path.split('/')
+        top = parts[0] if parts else ''
+        if top == "20_Wiki" and len(parts) > 1:
+            sub = parts[1].lower()
+            if 'career' in sub:
+                return 'career'
+            if 'trading' in sub or 'crypto' in sub:
+                return 'trading'
+            if 'construction' in sub:
+                return 'construction'
+            if 'health' in sub:
+                return 'health'
+            if 'ai' in sub:
+                return 'ai-tools'
+            return 'general'
+        return self._WIKI_DOMAIN_FOLDERS.get(top, 'general')
+
+    def _iter_wiki_files(self):
+        """Yield every markdown file considered part of the wiki surface —
+        the whole vault minus dotfiles, raw Clippings, and processed-source
+        archives (those are 'raw sources', not wiki pages, per the schema)."""
+        exclude_top = {"Clippings", "10_Sources", ".chat_sessions"}
+        for md_file in VAULT_DIR.rglob("*.md"):
+            if not md_file.is_file():
+                continue
+            try:
+                rel = md_file.relative_to(VAULT_DIR)
+            except ValueError:
+                continue
+            parts = rel.parts
+            if any(p.startswith('.') for p in parts):
+                continue
+            if parts and parts[0] in exclude_top:
+                continue
+            yield md_file, str(rel).replace('\\', '/')
+
+    def _load_wiki_pages(self):
+        """Scan the whole wiki surface, parse OKF frontmatter, and return a
+        list of page dicts. Shared by the graph, page-detail, query, and lint
+        endpoints so they all see the same view of the vault."""
+        pages = []
+        for md_file, rel_path in self._iter_wiki_files():
+            try:
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    raw_content = f.read(80000)
+            except Exception:
+                continue
+            meta, body = self._parse_frontmatter(raw_content)
+            title = meta.get('title', '')
+            if not title:
+                for line in body.splitlines()[:5]:
+                    if line.strip().startswith('#'):
+                        title = line.lstrip('#').strip()
+                        break
+            if not title:
+                title = md_file.stem.replace('-', ' ').replace('_', ' ').title()
+            domain = self._infer_domain(rel_path, meta)
+            wikilinks = [m.strip() for m in re.findall(r'\[\[([^\]|#]+)', raw_content)]
+            pages.append({
+                "title": title,
+                "name": md_file.name,
+                "file": rel_path,
+                "path": rel_path,
+                "id": md_file.stem,
+                "folder": rel_path.split('/')[0] if '/' in rel_path else 'root',
+                "domain": domain,
+                "type": meta.get('type', ''),
+                "description": meta.get('description', ''),
+                "tags": meta.get('tags', []),
+                "timestamp": meta.get('timestamp') or meta.get('last_reviewed') or '',
+                "resource": meta.get('resource') or meta.get('source_url') or '',
+                "okf_conformant": bool(meta.get('type')),
+                "words": len(body.split()),
+                "links": len(wikilinks),
+                "wikilinks": wikilinks,
+                "rawContent": raw_content,
+            })
+        return pages
+
+    def _serve_wiki_index(self):
+        """GET /api/wiki — full-vault OKF-aware page index for the 3D Brain graph.
+        Scans every wiki-surface markdown file (not just 20_Wiki/), so
+        FieldBridge/Career/Trading content — the domains most likely to hold
+        cross-domain monetization links — actually show up in the graph."""
+        try:
+            pages = self._load_wiki_pages()
+            # Inbound link counts, used by the graph + lint for orphan detection
+            title_index = {}
+            for p in pages:
+                title_index.setdefault(p['title'], []).append(p['id'])
+                title_index.setdefault(p['id'], []).append(p['id'])
+            inbound = {p['id']: 0 for p in pages}
+            for p in pages:
+                for wl in p['wikilinks']:
+                    target_name = wl.split('/')[-1]
+                    for target_id in title_index.get(wl, []) or title_index.get(target_name, []):
+                        if target_id != p['id']:
+                            inbound[target_id] = inbound.get(target_id, 0) + 1
+            for p in pages:
+                p['inbound_links'] = inbound.get(p['id'], 0)
             self._json_response({"data": pages})
         except Exception as e:
             self._json_error(500, f"Failed to serve wiki index: {str(e)}")
+
+    def _serve_wiki_page(self, query):
+        """GET /api/wiki/page?path=... — full content of one wiki page, for
+        the 3D Brain's node-detail panel."""
+        try:
+            path_str = (query.get('path') or [''])[0].lstrip('/')
+            if not path_str:
+                self._json_error(400, "Missing 'path' parameter")
+                return
+            file_path = VAULT_DIR / path_str
+            try:
+                file_path.resolve().relative_to(VAULT_DIR.resolve())
+            except ValueError:
+                self._json_error(403, "Path outside vault")
+                return
+            if not file_path.exists():
+                self._json_error(404, "Page not found")
+                return
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            meta, body = self._parse_frontmatter(content)
+            self._json_response({"data": {
+                "path": path_str,
+                "meta": meta,
+                "body": body,
+            }})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve wiki page: {str(e)}")
+
+    def _serve_wiki_lint(self):
+        """GET /api/wiki/lint — health-check pass over the wiki (Karpathy's
+        'Lint' operation): orphan pages, dangling links, stale pages, and
+        pages missing the OKF-required 'type' field. Read-only; the narrative
+        opportunity/gap analysis on top of this is /api/wiki/lint/analyze."""
+        try:
+            pages = self._load_wiki_pages()
+            title_index = {}
+            for p in pages:
+                title_index.setdefault(p['title'], []).append(p['id'])
+                title_index.setdefault(p['id'], []).append(p['id'])
+            inbound = {p['id']: 0 for p in pages}
+            dangling = []
+            for p in pages:
+                for wl in p['wikilinks']:
+                    target_name = wl.split('/')[-1]
+                    hits = title_index.get(wl) or title_index.get(target_name)
+                    if not hits:
+                        dangling.append({"from": p['title'], "from_path": p['path'], "target": wl})
+                        continue
+                    for target_id in hits:
+                        if target_id != p['id']:
+                            inbound[target_id] = inbound.get(target_id, 0) + 1
+
+            now = datetime.datetime.now()
+            stale = []
+            missing_type = []
+            orphans = []
+            for p in pages:
+                if not p['okf_conformant']:
+                    missing_type.append({"title": p['title'], "path": p['path']})
+                if inbound.get(p['id'], 0) == 0 and p['folder'] not in ('00_Kernel',):
+                    orphans.append({"title": p['title'], "path": p['path'], "domain": p['domain']})
+                ts = p.get('timestamp')
+                if ts:
+                    try:
+                        ts_clean = ts.replace('Z', '').split('T')[0]
+                        ts_date = datetime.datetime.strptime(ts_clean, '%Y-%m-%d')
+                        age_days = (now - ts_date).days
+                        if age_days > 60 and p['domain'] in ('career', 'fieldbridgehq', 'trading'):
+                            stale.append({"title": p['title'], "path": p['path'], "domain": p['domain'], "age_days": age_days})
+                    except Exception:
+                        pass
+
+            # Cross-domain opportunity heuristic — same signal the 3D Brain
+            # graph already glows for, surfaced here as a structured list.
+            cross_domain_pairs = []
+            id_to_page = {p['id']: p for p in pages}
+            for p in pages:
+                for wl in p['wikilinks']:
+                    target_name = wl.split('/')[-1]
+                    hits = title_index.get(wl) or title_index.get(target_name)
+                    if not hits:
+                        continue
+                    for target_id in hits:
+                        target = id_to_page.get(target_id)
+                        if target and target['domain'] != p['domain']:
+                            cross_domain_pairs.append({
+                                "from": p['title'], "from_domain": p['domain'],
+                                "to": target['title'], "to_domain": target['domain'],
+                            })
+
+            self._json_response({"data": {
+                "total_pages": len(pages),
+                "orphans": orphans[:30],
+                "orphan_count": len(orphans),
+                "dangling_links": dangling[:30],
+                "dangling_count": len(dangling),
+                "stale_pages": stale[:30],
+                "stale_count": len(stale),
+                "missing_type": missing_type[:30],
+                "missing_type_count": len(missing_type),
+                "cross_domain_links": cross_domain_pairs[:30],
+                "cross_domain_count": len(cross_domain_pairs),
+                "generated_at": now.isoformat(),
+            }})
+        except Exception as e:
+            self._json_error(500, f"Failed to lint wiki: {str(e)}")
+
+    def _handle_wiki_lint_analyze(self):
+        """POST /api/wiki/lint/analyze — takes a lint report (or regenerates
+        one) and asks Hermes for the narrative: best next use case, best
+        monetization angle, single highest-value gap to fill. Per the schema,
+        this should give ONE best answer per category, not an exhaustive list."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length) if content_length else b'{}'
+            data = json.loads(body.decode('utf-8')) if body else {}
+        except Exception:
+            data = {}
+
+        try:
+            pages = self._load_wiki_pages()
+            domain_counts = {}
+            for p in pages:
+                domain_counts[p['domain']] = domain_counts.get(p['domain'], 0) + 1
+
+            # Caller (the 3D Brain page) normally passes the lint report it
+            # already fetched; if absent, fall back to domain counts only.
+            lint_summary = data.get('lint')
+
+            prompt = (
+                "You are analyzing Fadi's personal knowledge vault (LLM wiki) as the periodic "
+                "'Lint' pass. Context: Fadi is a Senior Construction PM running three parallel "
+                "priorities through August 6 2026 — (1) job search: Senior PM/Executive roles in "
+                "Ontario, Egypt, UAE, Saudi, (2) FieldBridge HQ: an AI field-intelligence product "
+                "for specialty trade contractors, (3) steady side income / prop trading exploration. "
+                f"Vault contents by domain: {json.dumps(domain_counts)}. "
+                f"Lint findings: {json.dumps(lint_summary) if lint_summary else 'not provided — use domain counts only'}. "
+                "Give exactly three things, each 1-2 sentences, no filler: "
+                "1) NEW USE CASE — the single best new way Hermes could help Fadi based on what's "
+                "actually in the vault right now. "
+                "2) MONETIZATION ANGLE — the single best intersection between vault knowledge and "
+                "his FieldBridge/CRM pipeline that could turn into revenue. "
+                "3) BIGGEST GAP — the one most valuable missing piece of knowledge worth adding next. "
+                "Be specific and reference real vault content, not generic advice."
+            )
+            answer = self._call_hermes(
+                [{"role": "user", "content": prompt}],
+                max_tokens=700,
+            )
+            if answer is None:
+                self._json_error(502, "Hermes did not respond — check the Hermes gateway is running")
+                return
+            self._json_response({"data": {"analysis": answer, "generated_at": datetime.datetime.now().isoformat()}})
+        except Exception as e:
+            self._json_error(500, f"Lint analysis failed: {str(e)}")
+
+    def _handle_wiki_query(self):
+        """POST /api/wiki/query — Karpathy's 'Query' operation: search the
+        wiki, read full candidate pages (not just snippets), and answer with
+        citations back to the source pages."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self._json_error(400, "No data provided")
+                return
+            data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            question = (data.get('question') or '').strip()
+            if not question:
+                self._json_error(400, "Missing 'question'")
+                return
+
+            terms = [t.lower() for t in re.findall(r'\w+', question) if len(t) > 2]
+            pages = self._load_wiki_pages()
+            scored = []
+            for p in pages:
+                lower = p['rawContent'].lower()
+                score = sum(lower.count(t) for t in terms)
+                if score > 0:
+                    scored.append((score, p))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            top = [p for _, p in scored[:6]]
+
+            if not top:
+                self._json_response({"data": {
+                    "answer": "Nothing in the vault matches that yet — this might be a genuine knowledge gap worth filling.",
+                    "sources": [],
+                }})
+                return
+
+            context_blocks = []
+            for p in top:
+                context_blocks.append(f"### {p['title']} (path: {p['path']}, domain: {p['domain']})\n{p['rawContent'][:2000]}")
+            context = "\n\n".join(context_blocks)
+
+            prompt = (
+                f"Answer this question using ONLY the vault pages below. Cite the page title "
+                f"for every claim (e.g. 'per [Page Title]'). If the pages don't actually answer "
+                f"the question, say so plainly rather than guessing.\n\n"
+                f"QUESTION: {question}\n\nVAULT PAGES:\n{context}"
+            )
+            answer = self._call_hermes([{"role": "user", "content": prompt}], max_tokens=900)
+            if answer is None:
+                self._json_error(502, "Hermes did not respond — check the Hermes gateway is running")
+                return
+
+            self._json_response({"data": {
+                "answer": answer,
+                "sources": [{"title": p['title'], "path": p['path'], "domain": p['domain']} for p in top],
+            }})
+        except Exception as e:
+            self._json_error(500, f"Wiki query failed: {str(e)}")
+
+    def _handle_wiki_migrate(self):
+        """POST /api/wiki/migrate — one-time (repeatable, non-destructive)
+        pass that backfills missing OKF-required frontmatter on every wiki
+        page. Never overwrites an existing field, only adds what's missing.
+        Also writes OKF-WIKI-SCHEMA.md into 00_Kernel/ if not already present."""
+        try:
+            updated = 0
+            scanned = 0
+            skipped = 0
+            for md_file, rel_path in self._iter_wiki_files():
+                scanned += 1
+                try:
+                    content = md_file.read_text(encoding='utf-8', errors='ignore')
+                except Exception:
+                    skipped += 1
+                    continue
+                meta, body = self._parse_frontmatter(content)
+                if meta.get('type'):
+                    continue  # already OKF-conformant on the one required field
+
+                # Infer sensible defaults rather than requiring a human pass
+                title = meta.get('title', '')
+                if not title:
+                    for line in body.splitlines()[:5]:
+                        if line.strip().startswith('#'):
+                            title = line.lstrip('#').strip()
+                            break
+                if not title:
+                    title = md_file.stem.replace('-', ' ').replace('_', ' ').title()
+
+                folder = rel_path.split('/')[0] if '/' in rel_path else 'root'
+                inferred_type = {
+                    'Clippings': 'Clipping', '10_Sources': 'Source', '90_Skills': 'Skill',
+                    '40_Tasks': 'Task', '95_Outputs': 'Output', '00_Kernel': 'System',
+                }.get(folder, 'Note')
+                domain = self._infer_domain(rel_path, meta)
+
+                new_fields = []
+                if 'type' not in meta:
+                    new_fields.append(f'type: {inferred_type}')
+                if 'title' not in meta:
+                    new_fields.append(f'title: "{title}"')
+                if 'domain' not in meta:
+                    new_fields.append(f'domain: {domain}')
+                if 'timestamp' not in meta and 'last_reviewed' not in meta:
+                    mtime = datetime.datetime.fromtimestamp(md_file.stat().st_mtime).strftime('%Y-%m-%dT%H:%M:%S')
+                    new_fields.append(f'timestamp: "{mtime}"')
+
+                if content.startswith('---'):
+                    end = content.find('\n---', 3)
+                    if end != -1:
+                        insert_at = end
+                        new_content = content[:insert_at] + '\n' + '\n'.join(new_fields) + content[insert_at:]
+                    else:
+                        new_content = content
+                else:
+                    fm = '---\n' + '\n'.join(new_fields) + '\n---\n\n'
+                    new_content = fm + content
+
+                try:
+                    md_file.write_text(new_content, encoding='utf-8')
+                    updated += 1
+                except Exception:
+                    skipped += 1
+
+            # Deploy the schema file into the vault if it isn't there yet
+            schema_dst = VAULT_DIR / "00_Kernel" / "OKF-WIKI-SCHEMA.md"
+            schema_deployed = False
+            if not schema_dst.exists() and _OKF_SCHEMA_CONTENT:
+                try:
+                    schema_dst.parent.mkdir(parents=True, exist_ok=True)
+                    schema_dst.write_text(_OKF_SCHEMA_CONTENT, encoding='utf-8')
+                    schema_deployed = True
+                except Exception:
+                    pass
+
+            self._json_response({"data": {
+                "scanned": scanned, "updated": updated, "skipped": skipped,
+                "schema_deployed": schema_deployed,
+            }})
+        except Exception as e:
+            self._json_error(500, f"OKF migration failed: {str(e)}")
     
     def _serve_vault_tree(self, query=None):
         """Serve vault directory structure"""
@@ -644,8 +1113,17 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
     def _serve_skills(self):
         """Serve skills from vault and installed skills"""
         try:
+            skills = self._get_all_skills()
+            self._json_response({"data": skills})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve skills: {str(e)}")
+
+    def _get_all_skills(self):
+        """Shared helper: collect skill name/description list from vault + installed Hermes
+        skills. Used by both /api/skills and the usage-mention logger below."""
+        try:
             skills = []
-            
+
             # Scan vault for skills
             skills_dir = VAULT_DIR / "90_Skills"
             if skills_dir.exists():
@@ -720,11 +1198,79 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                         except Exception as e:
                             print(f"Error reading installed skill {skill_dir.name}: {e}")
                             continue
-            
-            self._json_response({"data": skills})
+
+            return skills
         except Exception as e:
-            self._json_error(500, f"Failed to serve skills: {str(e)}")
-    
+            print(f"Failed to collect skills: {e}")
+            return []
+
+    def _serve_skill_stats(self):
+        """GET /api/skills/stats — usage health-check: counts + most-used ranking.
+
+        IMPORTANT LIMITATION: Hermes executes skills internally and does not report which
+        skill it used back to this dashboard, so this cannot be a precise invocation counter.
+        Instead it counts how often each known skill NAME is mentioned in Hermes's chat
+        replies (logged in _log_skill_mentions, hooked into chat session saves). Real signal,
+        honestly labelled as "mentioned in chat" in the UI — not claimed as exact call counts.
+        """
+        log_path = VAULT_DIR / ".skill_usage.json"
+        log = []
+        if log_path.exists():
+            try:
+                with open(log_path, 'r', encoding='utf-8') as f:
+                    log = json.load(f)
+            except Exception:
+                log = []
+        counts = {}
+        last_used = {}
+        for entry in log:
+            name = entry.get('skill')
+            if not name:
+                continue
+            counts[name] = counts.get(name, 0) + 1
+            if name not in last_used or entry.get('time', '') > last_used[name]:
+                last_used[name] = entry.get('time')
+        ranking = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+        self._json_response({
+            "data": {
+                "counts": counts,
+                "ranking": [{"skill": k, "count": v, "last_used": last_used.get(k)} for k, v in ranking],
+                "total_events": len(log),
+                "tracking_started": log[0]['time'] if log else None
+            }
+        })
+
+    def _log_skill_mentions(self, new_messages):
+        """Scan newly-added assistant messages for mentions of known skill names and log them
+        to .skill_usage.json. See _serve_skill_stats docstring for the honesty caveat."""
+        try:
+            skill_names = [s['name'] for s in self._get_all_skills() if s.get('name')]
+            if not skill_names:
+                return
+            log_path = VAULT_DIR / ".skill_usage.json"
+            log = []
+            if log_path.exists():
+                try:
+                    with open(log_path, 'r', encoding='utf-8') as f:
+                        log = json.load(f)
+                except Exception:
+                    log = []
+            now = datetime.datetime.now().isoformat()
+            changed = False
+            for m in new_messages:
+                if m.get('role') != 'assistant':
+                    continue
+                content_lower = (m.get('content') or '').lower()
+                for name in skill_names:
+                    if name.lower() in content_lower:
+                        log.append({"skill": name, "time": now})
+                        changed = True
+            if changed:
+                with open(log_path, 'w', encoding='utf-8') as f:
+                    json.dump(log[-2000:], f, indent=2)
+        except Exception as e:
+            print(f"Skill usage logging failed: {e}")
+
     def _handle_chat_proxy(self):
         """Proxy chat requests to Hermes API Server (OpenAI-compatible)"""
         content_length = int(self.headers.get('Content-Length', 0))
@@ -942,10 +1488,17 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             filename = f"{timestamp}_{safe_title}.md"
             filepath = clips_dir / filename
             
-            # Create frontmatter
+            # Create frontmatter — OKF-conformant (type is the one required
+            # field) while keeping the existing source_url/clipped_at names
+            # so nothing that already reads clips breaks.
             frontmatter = f"""---
+type: Clipping
 title: "{data['title']}"
+description: "{data.get('description', '') or 'Web clip — not yet ingested into the wiki.'}"
+domain: general
+resource: "{data.get('source_url', '')}"
 source_url: "{data.get('source_url', '')}"
+timestamp: "{datetime.now().isoformat()}"
 clipped_at: "{datetime.now().isoformat()}"
 tags: {data.get('tags', [])}
 ---
@@ -1320,6 +1873,186 @@ tags: {data.get('tags', [])}
             self._json_response({"ok": True, "id": task_id})
         except Exception as e:
             self._json_error(500, f"Failed to save task: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # CHAT SESSION PERSISTENCE (added 2026-07-01 — real multi-session
+    # chat memory, replaces the hardcoded fake sidebar in chat.html)
+    # ═══════════════════════════════════════════════════════════
+
+    def _serve_chat_sessions(self):
+        """GET /api/chat/sessions — list all chat sessions (index only, no full message bodies)"""
+        index_path = VAULT_DIR / ".chat_sessions_index.json"
+        sessions = []
+        if index_path.exists():
+            try:
+                with open(index_path, 'r', encoding='utf-8') as f:
+                    sessions = json.load(f)
+            except Exception:
+                sessions = []
+        sessions.sort(key=lambda s: s.get('updated', ''), reverse=True)
+        self._json_response({"data": sessions})
+
+    def _serve_chat_session(self, query):
+        """GET /api/chat/session?id=X — full session including messages"""
+        session_id = (query.get('id') or [''])[0]
+        if not session_id:
+            self._json_error(400, "Session id required")
+            return
+        session_path = VAULT_DIR / ".chat_sessions" / f"{session_id}.json"
+        if not session_path.exists():
+            self._json_error(404, "Session not found")
+            return
+        try:
+            with open(session_path, 'r', encoding='utf-8') as f:
+                session = json.load(f)
+            self._json_response({"data": session})
+        except Exception as e:
+            self._json_error(500, f"Failed to load session: {str(e)}")
+
+    def _handle_chat_session_save(self):
+        """POST /api/chat/session — create or upsert a full session {id, title, coach, messages}"""
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length == 0:
+            self._json_error(400, "No data provided")
+            return
+        try:
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            session_id = data.get('id') or ('sess_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
+            data['id'] = session_id
+            data['updated'] = datetime.datetime.now().isoformat()
+            if 'created' not in data:
+                data['created'] = data['updated']
+
+            sessions_dir = VAULT_DIR / ".chat_sessions"
+            sessions_dir.mkdir(parents=True, exist_ok=True)
+            session_path = sessions_dir / f"{session_id}.json"
+
+            # Only scan messages added since the last save, so re-saving the same
+            # conversation repeatedly doesn't re-count old messages as new skill mentions.
+            previous_count = 0
+            if session_path.exists():
+                try:
+                    with open(session_path, 'r', encoding='utf-8') as f:
+                        previous_count = len(json.load(f).get('messages', []))
+                except Exception:
+                    previous_count = 0
+            new_messages = data.get('messages', [])[previous_count:]
+
+            with open(session_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+
+            if new_messages:
+                self._log_skill_mentions(new_messages)
+
+            # Update lightweight index used by the sidebar
+            index_path = VAULT_DIR / ".chat_sessions_index.json"
+            index = []
+            if index_path.exists():
+                try:
+                    with open(index_path, 'r', encoding='utf-8') as f:
+                        index = json.load(f)
+                except Exception:
+                    index = []
+            index = [s for s in index if s.get('id') != session_id]
+            messages = data.get('messages', [])
+            last_user_msg = next((m.get('content', '') for m in reversed(messages) if m.get('role') == 'user'), '')
+            preview = (last_user_msg or '')[:80]
+            title = data.get('title') or (messages[0].get('content', 'New Chat')[:40] if messages else 'New Chat')
+            index.append({
+                "id": session_id,
+                "title": title,
+                "coach": data.get('coach', 'lifeos'),
+                "updated": data['updated'],
+                "preview": preview,
+                "message_count": len(messages)
+            })
+            with open(index_path, 'w', encoding='utf-8') as f:
+                json.dump(index, f, indent=2)
+
+            self._json_response({"ok": True, "id": session_id, "title": title})
+        except Exception as e:
+            self._json_error(500, f"Failed to save session: {str(e)}")
+
+    def _handle_chat_session_delete(self):
+        """POST /api/chat/session/delete — delete a session by id"""
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length == 0:
+            self._json_error(400, "No data provided")
+            return
+        try:
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            session_id = data.get('id', '')
+            if not session_id:
+                self._json_error(400, "Session id required")
+                return
+
+            session_path = VAULT_DIR / ".chat_sessions" / f"{session_id}.json"
+            if session_path.exists():
+                session_path.unlink()
+
+            index_path = VAULT_DIR / ".chat_sessions_index.json"
+            if index_path.exists():
+                with open(index_path, 'r', encoding='utf-8') as f:
+                    index = json.load(f)
+                index = [s for s in index if s.get('id') != session_id]
+                with open(index_path, 'w', encoding='utf-8') as f:
+                    json.dump(index, f, indent=2)
+
+            self._json_response({"ok": True, "deleted": session_id})
+        except Exception as e:
+            self._json_error(500, f"Failed to delete session: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # KNOWLEDGE-BASE-AWARE CHAT (added 2026-07-01 — powers the
+    # previously-nonfunctional "KB" toggle in chat.html with a real
+    # keyword search across the vault)
+    # ═══════════════════════════════════════════════════════════
+
+    def _serve_kb_search(self, query):
+        """GET /api/kb/search?q=... — keyword search across vault markdown files, used to
+        inject real vault context into chat before Hermes answers."""
+        q = (query.get('q') or [''])[0].strip()
+        if not q:
+            self._json_response({"data": []})
+            return
+        terms = [t.lower() for t in re.findall(r'\w+', q) if len(t) > 2]
+        if not terms:
+            self._json_response({"data": []})
+            return
+
+        results = []
+        try:
+            for md_file in VAULT_DIR.rglob("*.md"):
+                if any(part.startswith('.') for part in md_file.parts):
+                    continue
+                try:
+                    with open(md_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except Exception:
+                    continue
+                lower = content.lower()
+                score = sum(lower.count(t) for t in terms)
+                if score == 0:
+                    continue
+                idx = -1
+                for t in terms:
+                    idx = lower.find(t)
+                    if idx != -1:
+                        break
+                start = max(0, idx - 150)
+                end = min(len(content), idx + 250)
+                snippet = content[start:end].strip()
+                results.append({
+                    "file": str(md_file.relative_to(VAULT_DIR)),
+                    "score": score,
+                    "snippet": snippet
+                })
+            results.sort(key=lambda r: r['score'], reverse=True)
+            self._json_response({"data": results[:5]})
+        except Exception as e:
+            self._json_error(500, f"KB search failed: {str(e)}")
 
     # ═══════════════════════════════════════════════════════════
     # MEETING ASSISTANT API

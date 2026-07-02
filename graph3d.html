@@ -85,6 +85,56 @@ body { margin: 0; overflow: hidden; background: #0d1117; font-family: var(--font
 }
 .loading-overlay.done { opacity: 0; pointer-events: none; }
 .loading-text { font-size: 14px; color: var(--text-secondary); }
+
+/* Right sidebar — Query + Wiki Health */
+.graph-sidebar-right {
+  position: fixed; top: 60px; right: 12px; z-index: 10; width: 280px;
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100vh - 140px); overflow-y: auto;
+}
+.query-input-row { display: flex; gap: 6px; }
+.query-input-row input {
+  flex: 1; background: var(--bg-primary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm); padding: 6px 8px; font-size: 12px; color: var(--text-primary);
+}
+.query-input-row button {
+  background: var(--accent-bg); border: 1px solid var(--accent); color: var(--accent);
+  border-radius: var(--radius-sm); padding: 6px 10px; font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.query-answer { margin-top: 8px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; }
+.query-sources { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.source-chip {
+  font-size: 10px; padding: 3px 8px; border-radius: 10px; cursor: pointer;
+  background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-primary);
+}
+.source-chip:hover { border-color: var(--accent); color: var(--accent); }
+.query-loading { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
+
+.health-actions { display: flex; flex-direction: column; gap: 6px; }
+.health-actions button { width: 100%; }
+.lint-summary { margin-top: 8px; font-size: 11px; color: var(--text-secondary); line-height: 1.8; }
+.lint-row { display: flex; justify-content: space-between; }
+.lint-row strong { color: var(--text-primary); }
+.lint-analysis { margin-top: 8px; font-size: 11px; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; border-top: 1px solid var(--border-primary); padding-top: 8px; }
+
+/* Node detail overlay (click, not hover) */
+.node-detail-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+.node-detail-overlay.open { display: flex; }
+.node-detail-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-5); max-width: 560px; width: 90%;
+  max-height: 80vh; overflow-y: auto;
+}
+.node-detail-panel h3 { font-size: var(--font-size-md); margin-bottom: 4px; }
+.node-detail-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 10px; color: var(--text-tertiary); margin-bottom: 10px; }
+.node-detail-body { font-size: 12px; color: var(--text-secondary); line-height: 1.7; white-space: pre-wrap; max-height: 300px; overflow-y: auto; border-top: 1px solid var(--border-primary); padding-top: 10px; }
+.node-detail-actions { display: flex; gap: 8px; margin-top: 14px; }
+.node-detail-actions button, .node-detail-actions a { flex: 1; text-align: center; text-decoration: none; }
+.close-btn-detail { float: right; background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+.not-okf-badge { color: var(--warning, #d29922); }
 </style>
 </head>
 <body>
@@ -129,6 +179,45 @@ body { margin: 0; overflow: hidden; background: #0d1117; font-family: var(--font
   <div class="sidebar-panel">
     <h3>📁 Domains</h3>
     <div class="domain-filters" id="domainFilters"></div>
+  </div>
+</div>
+
+<div class="graph-sidebar-right">
+  <div class="sidebar-panel">
+    <h3>🔎 Query the Wiki</h3>
+    <div class="query-input-row">
+      <input type="text" id="queryInput" placeholder="Ask a question…" onkeydown="if(event.key==='Enter') askWiki()">
+      <button class="toggle-btn" onclick="askWiki()">Ask</button>
+    </div>
+    <div id="queryStatus"></div>
+    <div class="query-answer" id="queryAnswer"></div>
+    <div class="query-sources" id="querySources"></div>
+  </div>
+
+  <div class="sidebar-panel">
+    <h3>🩺 Wiki Health</h3>
+    <div class="health-actions">
+      <button class="toggle-btn" onclick="runLint()">Run Lint</button>
+      <button class="toggle-btn" onclick="normalizeOKF()">🧬 Normalize to OKF</button>
+    </div>
+    <div id="lintStatus"></div>
+    <div class="lint-summary" id="lintSummary"></div>
+    <div id="lintAnalyzeWrap"></div>
+    <div class="lint-analysis" id="lintAnalysis"></div>
+  </div>
+</div>
+
+<!-- NODE DETAIL PANEL (click a node) -->
+<div class="node-detail-overlay" id="nodeDetailOverlay" onclick="if(event.target===this) closeNodeDetail()">
+  <div class="node-detail-panel">
+    <button class="close-btn-detail" onclick="closeNodeDetail()">✕</button>
+    <h3 id="ndTitle"></h3>
+    <div class="node-detail-meta" id="ndMeta"></div>
+    <div class="node-detail-body" id="ndBody">Loading…</div>
+    <div class="node-detail-actions">
+      <button class="toggle-btn" onclick="discussInChat()">💬 Discuss in Chat</button>
+      <a class="toggle-btn" id="ndFileLink" href="#" target="_blank">📁 Open in File Browser</a>
+    </div>
   </div>
 </div>
 
@@ -230,6 +319,8 @@ function buildGraphData(pages) {
       title: p.title || p.name,
       domain,
       color,
+      path: p.path || p.file || '',
+      okf_conformant: p.okf_conformant !== false,
       val: Math.max(2, Math.min(8, (p.links || 0) * 0.5 + (p.words || 0) * 0.001)),
       isOpportunity: false,
       connections: 0,
@@ -635,7 +726,157 @@ function onMouseUp(e) {
     targetTheta = Math.atan2(node.x, node.z);
     targetPhi = Math.acos(node.y / Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z));
     targetRadius = 200;
+    openNodeDetail(node);
   }
+}
+
+// ============================================================
+// QUERY THE WIKI — Karpathy "Query" operation
+// ============================================================
+
+async function askWiki() {
+  const input = document.getElementById('queryInput');
+  const question = input.value.trim();
+  if (!question) return;
+  document.getElementById('queryStatus').innerHTML = '<div class="query-loading">Reading the wiki…</div>';
+  document.getElementById('queryAnswer').textContent = '';
+  document.getElementById('querySources').innerHTML = '';
+  try {
+    const res = await fetch('/api/wiki/query', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ question })
+    });
+    const json = await res.json();
+    document.getElementById('queryStatus').innerHTML = '';
+    if (json.error) {
+      document.getElementById('queryAnswer').textContent = '⚠️ ' + json.error;
+      return;
+    }
+    const { answer, sources } = json.data;
+    document.getElementById('queryAnswer').textContent = answer;
+    document.getElementById('querySources').innerHTML = (sources || []).map(s =>
+      `<span class="source-chip" onclick='focusNodeByPath(${JSON.stringify(s.path)})'>${escapeG(s.title)}</span>`
+    ).join('');
+  } catch (e) {
+    document.getElementById('queryStatus').innerHTML = '';
+    document.getElementById('queryAnswer').textContent = '⚠️ Query failed: ' + e.message;
+  }
+}
+
+function focusNodeByPath(path) {
+  const node = nodes.find(n => n.path === path || n.id === path);
+  if (!node) return;
+  targetTheta = Math.atan2(node.x, node.z);
+  targetPhi = Math.acos(node.y / Math.sqrt(node.x*node.x + node.y*node.y + node.z*node.z));
+  targetRadius = 200;
+  openNodeDetail(node);
+}
+
+function escapeG(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// ============================================================
+// WIKI HEALTH — Karpathy "Lint" operation (on-demand for now)
+// ============================================================
+
+let lastLint = null;
+
+async function runLint() {
+  document.getElementById('lintStatus').innerHTML = '<div class="query-loading">Scanning vault…</div>';
+  document.getElementById('lintSummary').innerHTML = '';
+  document.getElementById('lintAnalyzeWrap').innerHTML = '';
+  document.getElementById('lintAnalysis').textContent = '';
+  try {
+    const res = await fetch('/api/wiki/lint');
+    const json = await res.json();
+    document.getElementById('lintStatus').innerHTML = '';
+    if (json.error) { document.getElementById('lintSummary').textContent = '⚠️ ' + json.error; return; }
+    lastLint = json.data;
+    const d = lastLint;
+    document.getElementById('lintSummary').innerHTML = `
+      <div class="lint-row"><span>Total pages</span><strong>${d.total_pages}</strong></div>
+      <div class="lint-row"><span>Orphan pages</span><strong>${d.orphan_count}</strong></div>
+      <div class="lint-row"><span>Dangling links</span><strong>${d.dangling_count}</strong></div>
+      <div class="lint-row"><span>Stale (60d+)</span><strong>${d.stale_count}</strong></div>
+      <div class="lint-row"><span>Missing OKF type</span><strong>${d.missing_type_count}</strong></div>
+      <div class="lint-row"><span>Cross-domain links</span><strong>${d.cross_domain_count}</strong></div>
+    `;
+    document.getElementById('lintAnalyzeWrap').innerHTML = `<button class="toggle-btn" style="width:100%;margin-top:8px;" onclick="analyzeLint()">🔮 Ask Hermes to Analyze</button>`;
+  } catch (e) {
+    document.getElementById('lintStatus').innerHTML = '';
+    document.getElementById('lintSummary').textContent = '⚠️ Lint failed: ' + e.message;
+  }
+}
+
+async function analyzeLint() {
+  document.getElementById('lintAnalysis').textContent = 'Thinking…';
+  try {
+    const res = await fetch('/api/wiki/lint/analyze', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ lint: lastLint })
+    });
+    const json = await res.json();
+    if (json.error) { document.getElementById('lintAnalysis').textContent = '⚠️ ' + json.error; return; }
+    document.getElementById('lintAnalysis').textContent = json.data.analysis;
+  } catch (e) {
+    document.getElementById('lintAnalysis').textContent = '⚠️ Analysis failed: ' + e.message;
+  }
+}
+
+async function normalizeOKF() {
+  document.getElementById('lintStatus').innerHTML = '<div class="query-loading">Normalizing frontmatter across the vault…</div>';
+  try {
+    const res = await fetch('/api/wiki/migrate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const json = await res.json();
+    if (json.error) { document.getElementById('lintStatus').innerHTML = '⚠️ ' + json.error; return; }
+    const d = json.data;
+    document.getElementById('lintStatus').innerHTML =
+      `<div class="query-loading">✅ Scanned ${d.scanned}, updated ${d.updated}, skipped ${d.skipped}${d.schema_deployed ? ' · schema deployed' : ''}. Reloading graph…</div>`;
+    setTimeout(() => location.reload(), 1500);
+  } catch (e) {
+    document.getElementById('lintStatus').innerHTML = '⚠️ Migration failed: ' + e.message;
+  }
+}
+
+// ============================================================
+// NODE DETAIL PANEL
+// ============================================================
+
+let currentDetailNode = null;
+
+async function openNodeDetail(node) {
+  currentDetailNode = node;
+  document.getElementById('nodeDetailOverlay').classList.add('open');
+  document.getElementById('ndTitle').textContent = (node.isOpportunity ? '💰 ' : '') + node.title;
+  document.getElementById('ndBody').textContent = 'Loading…';
+  const okfBadge = node.okf_conformant === false ? '<span class="not-okf-badge">⚠ not OKF-tagged yet</span>' : '';
+  document.getElementById('ndMeta').innerHTML = `<span>${node.domain}</span><span>${node.connections || 0} links</span>${okfBadge}`;
+  document.getElementById('ndFileLink').href = 'files.html?path=' + encodeURIComponent(node.path || '');
+  try {
+    const res = await fetch('/api/wiki/page?path=' + encodeURIComponent(node.path || ''));
+    const json = await res.json();
+    if (json.error) { document.getElementById('ndBody').textContent = '⚠️ ' + json.error; return; }
+    const { meta, body } = json.data;
+    if (meta.description) {
+      document.getElementById('ndMeta').innerHTML += `<span style="width:100%;color:var(--text-secondary);">${escapeG(meta.description)}</span>`;
+    }
+    document.getElementById('ndBody').textContent = body.slice(0, 3000) + (body.length > 3000 ? '…' : '');
+  } catch (e) {
+    document.getElementById('ndBody').textContent = '⚠️ Failed to load page: ' + e.message;
+  }
+}
+
+function closeNodeDetail() {
+  document.getElementById('nodeDetailOverlay').classList.remove('open');
+}
+
+function discussInChat() {
+  if (!currentDetailNode) return;
+  sessionStorage.setItem('hermes-prefill', `Tell me more about "${currentDetailNode.title}" from my vault (${currentDetailNode.path || currentDetailNode.id}) and how it connects to what I'm working on.`);
+  window.location.href = 'chat.html';
 }
 
 function onWheel(e) {
