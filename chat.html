@@ -141,6 +141,50 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   margin-top: 2px;
 }
 
+.sidebar-session {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sidebar-session-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-session-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-session-preview {
+  font-size: 11px;
+  color: var(--chat-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.sidebar-session-delete {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--chat-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.sidebar-session:hover .sidebar-session-delete { opacity: 1; }
+.sidebar-session-delete:hover { background: rgba(248,81,73,0.15); color: var(--red, #f85149); }
+
 .sidebar-footer {
   padding: 12px 16px;
   border-top: 1px solid var(--chat-border);
@@ -949,27 +993,9 @@ pre:hover .copy-btn {
     <button class="new-chat-btn" onclick="startNewChat()">
       <span>+</span> New Chat
     </button>
-    <div class="sidebar-section-label">Today</div>
+    <div class="sidebar-section-label">Conversations</div>
     <div class="sidebar-sessions" id="sessionList">
-      <div class="sidebar-session active">
-        <div>Getting started with Life OS</div>
-        <div class="session-time">2:34 PM</div>
-      </div>
-      <div class="sidebar-session">
-        <div>Review vault structure</div>
-        <div class="session-time">11:20 AM</div>
-      </div>
-    </div>
-    <div class="sidebar-section-label">Yesterday</div>
-    <div class="sidebar-sessions">
-      <div class="sidebar-session">
-        <div>FieldBridge website mockups</div>
-        <div class="session-time">Yesterday</div>
-      </div>
-      <div class="sidebar-session">
-        <div>API keys setup</div>
-        <div class="session-time">Yesterday</div>
-      </div>
+      <div class="sidebar-session-empty" style="padding:16px;font-size:12px;color:var(--chat-text-muted);">Loading…</div>
     </div>
     <div class="sidebar-footer">
       <a href="index.html">← Life OS</a>
@@ -1003,15 +1029,15 @@ pre:hover .copy-btn {
         <option value="">Loading models...</option>
       </select>
       <div class="toolbar-divider"></div>
-      <button class="toolbar-btn" id="kbToggle" onclick="toggleKB()" title="Toggle Knowledge Base">
+      <button class="toolbar-btn" id="kbToggle" onclick="toggleKB()" title="Search your vault for relevant notes before answering">
         🧠 <span style="font-size:11px;">KB</span>
       </button>
-      <button class="toolbar-btn" id="thinkingToggle" onclick="toggleThinking()" title="Toggle thinking mode">
+      <button class="toolbar-btn" id="thinkingToggle" onclick="toggleThinking()" title="Ask Hermes to reason step-by-step before answering">
         💭 <span style="font-size:11px;">Think</span>
       </button>
       <div class="toolbar-spacer"></div>
-      <button class="toolbar-btn" id="artifactsToggle" onclick="toggleArtifacts()" title="Toggle artifacts panel">
-        📎 <span style="font-size:11px;">Artifacts</span>
+      <button class="toolbar-btn" id="artifactsToggle" onclick="toggleArtifacts()" title="Code blocks detected in this conversation (separate from the Live Artifacts library)">
+        📎 <span style="font-size:11px;">Code Blocks</span>
       </button>
       <button class="toolbar-btn" title="Settings" onclick="Notify.info('Settings coming soon')">
         ⚙️
@@ -1051,68 +1077,17 @@ pre:hover .copy-btn {
         </div>
       </div>
       <div class="coach-panel-body">
-        <!-- Metrics -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-value">72<span style="font-size:14px;">kg</span></div>
-            <div class="metric-label">Weight</div>
-            <div class="metric-change down">▼ 0.3kg</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value">4</div>
-            <div class="metric-label">Workouts</div>
-            <div class="metric-change up">This week</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value">7.2<span style="font-size:14px;">h</span></div>
-            <div class="metric-label">Sleep</div>
-            <div class="metric-change up">+0.5h</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value">142<span style="font-size:10px;">/90</span></div>
-            <div class="metric-label">BP Today</div>
-            <div class="metric-change up">Normal</div>
-          </div>
+        <!-- Metrics: no real health data source connected yet — showing an honest
+             placeholder instead of the old hardcoded fake numbers. Ask Hermes to log
+             a workout below and it'll appear here once a data store exists. -->
+        <div style="padding:12px;border:1px dashed var(--chat-border);border-radius:10px;font-size:12px;color:var(--chat-text-muted);text-align:center;margin-bottom:12px;">
+          ⚠️ Not connected to a real health data source yet — metrics and workout log below are placeholders. Logging via chat works, but won't persist here until this is wired up.
         </div>
-
-        <!-- Recent Workouts -->
-        <div class="section-title">Recent Workouts</div>
-        <div class="workout-item">
-          <div class="workout-date">Today — Upper Body</div>
-          <div class="workout-name">Push Day</div>
-          <div class="workout-details">Bench Press, Overhead Press, Incline Dumbbell, Tricep Dips</div>
-          <div class="workout-stats">
-            <span>⏱️ 45 min</span>
-            <span>🔥 420 cal</span>
-            <span>💪 6 exercises</span>
-          </div>
-        </div>
-        <div class="workout-item">
-          <div class="workout-date">Yesterday — Lower Body</div>
-          <div class="workout-name">Leg Day</div>
-          <div class="workout-details">Squats, Romanian Deadlift, Leg Press, Calf Raises</div>
-          <div class="workout-stats">
-            <span>⏱️ 50 min</span>
-            <span>🔥 480 cal</span>
-            <span>💪 5 exercises</span>
-          </div>
-        </div>
-        <div class="workout-item">
-          <div class="workout-date">Jun 22 — Cardio</div>
-          <div class="workout-name">HIIT Run</div>
-          <div class="workout-details">5km warm-up, 8x400m intervals, 2km cool-down</div>
-          <div class="workout-stats">
-            <span>⏱️ 35 min</span>
-            <span>🔥 380 cal</span>
-            <span>❤️ 155 avg</span>
-          </div>
-        </div>
-
-        <button class="quick-log-btn" onclick="quickLogWorkout()">+ Quick Log Workout</button>
 
         <!-- Quick Actions -->
         <div class="section-title">Quick Actions</div>
-        <div class="workout-item" style="border-left:3px solid var(--health-blue);" onclick="sendCoachMessage('Log my weight for today')">
+        <button class="quick-log-btn" onclick="quickLogWorkout()">+ Quick Log Workout</button>
+        <div class="workout-item" style="border-left:3px solid var(--health-blue);margin-top:8px;" onclick="sendCoachMessage('Log my weight for today')">
           <div class="workout-name">⚖️ Log Weight</div>
           <div class="workout-details">Record today's weight measurement</div>
         </div>
@@ -1151,20 +1126,12 @@ pre:hover .copy-btn {
 <!-- ARTIFACTS PANEL -->
 <div class="artifacts-panel" id="artifactsPanel">
   <div class="artifacts-header">
-    <h2>📎 Artifacts</h2>
+    <h2>📎 Code Blocks</h2>
     <button class="artifacts-close" onclick="toggleArtifacts()">✕</button>
   </div>
+  <p style="padding:0 16px;margin:8px 0 0;font-size:11px;color:var(--chat-text-muted);">Code blocks Hermes writes in this conversation. For your saved artifact library, use Live Artifacts in the main menu.</p>
   <div class="artifacts-list" id="artifactsList">
-    <div class="artifact-item">
-      <div class="artifact-icon">📄</div>
-      <div class="artifact-name">welcome.md</div>
-      <div class="artifact-meta">Markdown · 2 min ago</div>
-    </div>
-    <div class="artifact-item">
-      <div class="artifact-icon">📊</div>
-      <div class="artifact-name">task-dashboard.html</div>
-      <div class="artifact-meta">HTML · 15 min ago</div>
-    </div>
+    <div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">No code blocks yet in this conversation.</div>
   </div>
 </div>
 
@@ -1176,6 +1143,8 @@ let kbEnabled = false;
 let thinkingEnabled = false;
 let artifactsOpen = false;
 let currentCoach = 'lifeos';
+let currentSessionId = null;
+let conversationHistory = []; // real multi-turn memory, persisted server-side after every turn
 
 // === COACH SYSTEM ===
 const COACHES = {
@@ -1370,6 +1339,8 @@ async function sendMessage() {
   input.value = '';
   input.style.height = 'auto';
 
+  const userMsg = { role: 'user', content: text, time: new Date().toISOString() };
+  conversationHistory.push(userMsg);
   addMessage('user', text);
   addTyping();
 
@@ -1378,13 +1349,32 @@ async function sendMessage() {
 
   try {
     const coach = COACHES[currentCoach];
-    const messages = [];
-    
-    // Add system prompt for current coach
-    if (currentCoach !== 'lifeos') {
-      messages.push({ role: 'system', content: coach.systemPrompt });
+    let systemPrompt = currentCoach !== 'lifeos' ? coach.systemPrompt : '';
+
+    if (thinkingEnabled) {
+      systemPrompt += (systemPrompt ? ' ' : '') + 'Think through this step by step before answering. Briefly show your reasoning, then give a clear final answer.';
     }
-    messages.push({ role: 'user', content: text });
+
+    // Real KB search — this is what the "KB" toggle now actually does
+    if (kbEnabled) {
+      try {
+        const kbResp = await fetch('/api/kb/search?q=' + encodeURIComponent(text));
+        const kbData = await kbResp.json();
+        const hits = kbData.data || [];
+        if (hits.length) {
+          const context = hits.map(h => `[${h.file}]\n${h.snippet}`).join('\n\n---\n\n');
+          systemPrompt += (systemPrompt ? '\n\n' : '') + "Relevant notes from Fadi's vault (use if helpful, ignore if not relevant to this question):\n\n" + context;
+        }
+      } catch (e) {
+        console.warn('KB search failed, continuing without vault context:', e);
+      }
+    }
+
+    // Send full conversation history (capped) so Hermes actually remembers the conversation —
+    // previously only the current message was ever sent.
+    const messages = [];
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+    conversationHistory.slice(-20).forEach(m => messages.push({ role: m.role, content: m.content }));
 
     const resp = await fetch('/api/chat', {
       method: 'POST',
@@ -1392,9 +1382,7 @@ async function sendMessage() {
       body: JSON.stringify({
         model: currentModel,
         messages: messages,
-        stream: false,
-        use_kb: kbEnabled,
-        thinking: thinkingEnabled
+        stream: false
       })
     });
 
@@ -1404,13 +1392,15 @@ async function sendMessage() {
 
     const data = await resp.json();
     const reply = data.choices?.[0]?.message?.content || data.response || 'No response';
+    conversationHistory.push({ role: 'assistant', content: reply, time: new Date().toISOString() });
     addMessage('assistant', reply);
 
-    // Update token count
     if (data.usage) {
       const total = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
       document.getElementById('tokenStatus').textContent = total.toLocaleString() + ' tokens';
     }
+
+    persistSession();
   } catch(err) {
     removeTyping();
     addMessage('assistant', '⚠️ Could not reach Hermes. Make sure the Hermes gateway is running (port 8642).');
@@ -1422,17 +1412,20 @@ async function sendMessage() {
 
 // === ARTIFACT DETECTION ===
 function detectArtifacts(text) {
-  // Auto-detect code blocks that look like files
+  // Auto-detect code blocks and append them (previously this wiped the whole list on every
+  // message, so only the latest message's code blocks ever showed — now it accumulates
+  // across the conversation, matching the "code blocks in this conversation" label).
   const codeBlockRegex = /```(\w+)?\s*\n([\s\S]*?)```/g;
   let match;
   const list = document.getElementById('artifactsList');
-  list.innerHTML = ''; // Clear demo items
+  let any = false;
 
   while ((match = codeBlockRegex.exec(text)) !== null) {
+    any = true;
     const lang = match[1] || 'code';
     const code = match[2];
     const ext = lang === 'javascript' ? 'js' : lang === 'html' ? 'html' : lang === 'python' ? 'py' : 'txt';
-    const name = `artifact-${Date.now()}.${ext}`;
+    const name = `snippet-${Date.now()}.${ext}`;
 
     const item = document.createElement('div');
     item.className = 'artifact-item';
@@ -1442,6 +1435,11 @@ function detectArtifacts(text) {
       <div class="artifact-meta">${lang} · ${code.length} chars</div>`;
     item.onclick = () => previewArtifact(name, code, lang);
     list.appendChild(item);
+  }
+
+  if (any) {
+    const empty = list.querySelector('.artifacts-empty');
+    if (empty) empty.remove();
   }
 }
 
@@ -1502,16 +1500,189 @@ function renderMarkdown(text) {
 }
 
 function startNewChat() {
-  document.getElementById('messages').innerHTML = '';
-  document.getElementById('artifactsList').innerHTML = '';
+  currentSessionId = null;
+  conversationHistory = [];
+  addWelcomeMessage();
+  resetArtifactsPanel();
+  document.querySelectorAll('.sidebar-session').forEach(el => el.classList.remove('active'));
   Notify.info('New chat started');
+}
+
+function addWelcomeMessage() {
+  document.getElementById('messages').innerHTML = `
+    <div class="message-row assistant">
+      <div class="message-avatar assistant">🦉</div>
+      <div class="message-content">
+        <div class="message-header"><span class="message-name">Hermes</span><span class="message-time"></span></div>
+        <div class="message-body">
+          <p>Hey Fadi 👋 I'm your autonomous agent. I can help you with:</p>
+          <ul>
+            <li><strong>Your vault</strong> — search, browse, and manage notes</li>
+            <li><strong>Tasks &amp; priorities</strong> — today's action items and deadlines</li>
+            <li><strong>FieldBridge</strong> — client meetings, proposals, project tracking</li>
+            <li><strong>Research</strong> — web searches, summaries, analysis</li>
+          </ul>
+          <p>What can I help you with?</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+function resetArtifactsPanel() {
+  document.getElementById('artifactsList').innerHTML = '<div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">No code blocks yet in this conversation.</div>';
+}
+
+// ============================================================
+// SESSION PERSISTENCE — real chat history, server-side
+// ============================================================
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return days + 'd ago';
+  return new Date(iso).toLocaleDateString();
+}
+
+async function loadSessions() {
+  try {
+    const resp = await fetch('/api/chat/sessions');
+    const data = await resp.json();
+    renderSessionList(data.data || []);
+  } catch (e) {
+    console.error('Failed to load sessions:', e);
+    document.getElementById('sessionList').innerHTML = '<div style="padding:16px;font-size:12px;color:var(--chat-text-muted);">Could not load history — is the server running?</div>';
+  }
+}
+
+function renderSessionList(sessions) {
+  const list = document.getElementById('sessionList');
+  if (!sessions.length) {
+    list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--chat-text-muted);">No saved conversations yet — start one above.</div>';
+    return;
+  }
+  list.innerHTML = sessions.map(s => `
+    <div class="sidebar-session${s.id === currentSessionId ? ' active' : ''}" data-session-id="${s.id}" onclick="loadSession('${s.id}')">
+      <div class="sidebar-session-main">
+        <div class="sidebar-session-title">${escapeHtml(s.title || 'New Chat')}</div>
+        <div class="sidebar-session-preview">${escapeHtml(s.preview || '')}</div>
+        <div class="session-time">${timeAgo(s.updated)}</div>
+      </div>
+      <button class="sidebar-session-delete" title="Delete conversation" onclick="event.stopPropagation(); deleteSession('${s.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+async function loadSession(id) {
+  try {
+    const resp = await fetch('/api/chat/session?id=' + encodeURIComponent(id));
+    if (!resp.ok) throw new Error('Failed to load session');
+    const data = await resp.json();
+    const session = data.data;
+    currentSessionId = session.id;
+    conversationHistory = session.messages || [];
+    currentCoach = session.coach || 'lifeos';
+    switchCoach(currentCoach);
+
+    document.getElementById('messages').innerHTML = '';
+    resetArtifactsPanel();
+    conversationHistory.forEach(m => {
+      renderStoredMessage(m);
+      if (m.role === 'assistant') detectArtifacts(m.content);
+    });
+
+    document.querySelectorAll('.sidebar-session').forEach(el => {
+      el.classList.toggle('active', el.dataset.sessionId === id);
+    });
+  } catch (e) {
+    console.error('Failed to load session:', e);
+    Notify.info('Could not load that conversation');
+  }
+}
+
+function renderStoredMessage(m) {
+  const container = document.getElementById('messages');
+  const isUser = m.role === 'user';
+  const row = document.createElement('div');
+  row.className = 'message-row ' + (isUser ? 'user' : 'assistant');
+  const time = m.time ? new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+  if (isUser) {
+    row.innerHTML = `<div class="message-content"><div class="message-body">${escapeHtml(m.content).replace(/\n/g, '<br>')}</div></div>`;
+  } else {
+    const coach = COACHES[currentCoach] || COACHES.lifeos;
+    row.innerHTML = `
+      <div class="message-avatar ${coach.avatarClass}">${coach.emoji}</div>
+      <div class="message-content">
+        <div class="message-header"><span class="message-name">${coach.name}</span><span class="message-time">${time}</span></div>
+        <div class="message-body">${renderMarkdown(m.content)}</div>
+      </div>`;
+  }
+  container.appendChild(row);
+  if (!isUser && typeof hljs !== 'undefined') {
+    row.querySelectorAll('pre code').forEach(block => { hljs.highlightElement(block); addCopyButton(block); });
+  }
+}
+
+async function deleteSession(id) {
+  if (!confirm('Delete this conversation? This cannot be undone.')) return;
+  try {
+    await fetch('/api/chat/session/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ id })
+    });
+    if (id === currentSessionId) startNewChat();
+    loadSessions();
+  } catch (e) {
+    console.error('Delete failed:', e);
+    Notify.info('Could not delete conversation');
+  }
+}
+
+async function persistSession() {
+  try {
+    const resp = await fetch('/api/chat/session', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        id: currentSessionId,
+        coach: currentCoach,
+        messages: conversationHistory
+      })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      currentSessionId = data.id;
+      loadSessions();
+    }
+  } catch (e) {
+    console.error('Failed to persist session:', e);
+  }
 }
 
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
   loadChatModels();
+  loadSessions();
   if (typeof mermaid !== 'undefined') {
     mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+  }
+  // Pick up a prefill handed off from another page (e.g. "Discuss in Chat"
+  // on the 3D Brain or Use Cases pages) — fills the box but doesn't
+  // auto-send, so Fadi can edit before it goes out.
+  const prefill = sessionStorage.getItem('hermes-prefill');
+  if (prefill) {
+    sessionStorage.removeItem('hermes-prefill');
+    const input = document.getElementById('chatInput');
+    if (input) {
+      input.value = prefill;
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+    }
   }
 });
 
