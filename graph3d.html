@@ -52,8 +52,9 @@ body { margin: 0; overflow: hidden; background: #0d1117; font-family: var(--font
 .domain-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .domain-tag {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer;
-  border: 1px solid transparent; font-weight: 600; transition: all 0.15s;
+  font-size: 12px; padding: 5px 11px; border-radius: 20px; cursor: pointer;
+  border: 1px solid transparent; font-weight: 700; transition: all 0.15s;
+  letter-spacing: 0.01em;
 }
 .domain-tag:hover { transform: translateY(-1px); }
 .domain-tag.active { border-color: currentColor; }
@@ -500,20 +501,27 @@ function buildGraph(nodes, links) {
     });
   }
 
-  // Create node meshes
+  // Create node meshes.
+  // Opportunity nodes keep their real domain color (so you never lose track
+  // of which domain a bridge node belongs to) and are marked as "special"
+  // with a gold emissive glow + octahedron shape instead of overriding the
+  // color to green — green wireframe at low opacity barely showed up
+  // against the #0d1117 background, and it also erased the domain color
+  // entirely on exactly the highest-degree, most-looked-at nodes.
+  const OPPORTUNITY_GLOW = 0xffd23f; // same gold used for cross-domain links
   nodes.forEach(node => {
-    const geometry = node.isOpportunity 
-      ? new THREE.OctahedronGeometry(node.val * nodeSizeMult * 1.2)
+    const geometry = node.isOpportunity
+      ? new THREE.OctahedronGeometry(node.val * nodeSizeMult * 1.25)
       : new THREE.SphereGeometry(node.val * nodeSizeMult, 16, 16);
+    const baseColor = parseInt(node.color.replace('#', ''), 16);
     const material = new THREE.MeshStandardMaterial({
-      color: node.isOpportunity ? 0x3fb950 : parseInt(node.color.replace('#', ''), 16),
-      emissive: 0x000000,
-      emissiveIntensity: 0,
+      color: baseColor,
+      emissive: node.isOpportunity ? OPPORTUNITY_GLOW : 0x000000,
+      emissiveIntensity: node.isOpportunity ? 0.55 : 0,
       roughness: 0.4,
       metalness: 0.1,
-      transparent: node.isOpportunity,
-      opacity: node.isOpportunity ? 0.6 : 1.0,
-      wireframe: node.isOpportunity,
+      transparent: false,
+      opacity: 1.0,
       side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -522,11 +530,12 @@ function buildGraph(nodes, links) {
     scene.add(mesh);
     nodeMeshes.push(mesh);
 
-    // Glow for opportunity nodes
+    // Gold halo for opportunity nodes — separate from the node's own domain
+    // color so both signals (domain identity + opportunity flag) read clearly.
     if (node.isOpportunity) {
-      const glowGeo = new THREE.SphereGeometry(node.val * nodeSizeMult * 2, 16, 16);
+      const glowGeo = new THREE.SphereGeometry(node.val * nodeSizeMult * 2.2, 16, 16);
       const glowMat = new THREE.MeshBasicMaterial({
-        color: 0x3fb950, transparent: true, opacity: 0.15
+        color: OPPORTUNITY_GLOW, transparent: true, opacity: 0.22
       });
       const glow = new THREE.Mesh(glowGeo, glowMat);
       glow.position.copy(mesh.position);
@@ -637,18 +646,23 @@ function toggleOpportunities() {
   });
 
   // Nodes: dim the whole graph except the bridge endpoints, which light up gold.
+  // "Off" state restores the default look: full opacity, real domain color,
+  // gold emissive glow only on isOpportunity nodes (set once at build time —
+  // see buildGraph()'s OPPORTUNITY_GLOW). Never drop back to the old
+  // low-opacity/green look here.
   nodeMeshes.forEach(mesh => {
     const isBridge = mesh.userData.isCrossEndpoint;
-    mesh.material.transparent = true;
     if (showOpportunities) {
+      mesh.material.transparent = true;
       mesh.material.opacity = isBridge ? 1.0 : 0.1;
       mesh.material.emissive.setHex(isBridge ? 0xffaa00 : 0x000000);
       mesh.material.emissiveIntensity = isBridge ? 0.7 : 0;
     } else {
-      mesh.material.opacity = mesh.userData.isOpportunity ? 0.6 : 1.0;
-      mesh.material.transparent = !!mesh.userData.isOpportunity;
-      mesh.material.emissive.setHex(0x000000);
-      mesh.material.emissiveIntensity = 0;
+      mesh.material.transparent = false;
+      mesh.material.opacity = 1.0;
+      const isOpp = mesh.userData.isOpportunity;
+      mesh.material.emissive.setHex(isOpp ? 0xffd23f : 0x000000);
+      mesh.material.emissiveIntensity = isOpp ? 0.55 : 0;
     }
   });
 }
@@ -700,7 +714,8 @@ function buildDomainFilters() {
       const color = DOMAIN_COLORS[domain] || DOMAIN_COLORS.default;
       const tag = document.createElement('span');
       tag.className = 'domain-tag active';
-      tag.style.background = color + '22';
+      tag.style.background = color + '33';
+      tag.style.borderColor = color + '88';
       tag.style.color = color;
       tag.style.boxShadow = `0 0 8px ${color}55`;
       tag.innerHTML = `<span>${meta.icon}</span>${meta.label}`;
@@ -760,7 +775,10 @@ function onMouseMove(e) {
       tooltip.style.left = (e.clientX + 12) + 'px';
       tooltip.style.top = (e.clientY + 12) + 'px';
       tooltip.querySelector('.tt-title').textContent = (node.isOpportunity ? '💰 ' : '') + node.title;
-      tooltip.querySelector('.tt-domain').textContent = node.domain + ' • ' + node.connections + ' links';
+      const dm = DOMAIN_META[node.domain] || { label: node.domain, icon: '📄' };
+      const domEl = tooltip.querySelector('.tt-domain');
+      domEl.textContent = `${dm.icon} ${dm.label} • ${node.connections} links`;
+      domEl.style.color = DOMAIN_COLORS[node.domain] || DOMAIN_COLORS.default;
       document.body.style.cursor = 'pointer';
       hoveredNode = node;
     } else {
@@ -929,7 +947,9 @@ async function openNodeDetail(node) {
   document.getElementById('ndTitle').textContent = (node.isOpportunity ? '💰 ' : '') + node.title;
   document.getElementById('ndBody').textContent = 'Loading…';
   const okfBadge = node.okf_conformant === false ? '<span class="not-okf-badge">⚠ not OKF-tagged yet</span>' : '';
-  document.getElementById('ndMeta').innerHTML = `<span>${node.domain}</span><span>${node.connections || 0} links</span>${okfBadge}`;
+  const dm = DOMAIN_META[node.domain] || { label: node.domain, icon: '📄' };
+  const domColor = DOMAIN_COLORS[node.domain] || DOMAIN_COLORS.default;
+  document.getElementById('ndMeta').innerHTML = `<span style="color:${domColor};font-weight:600;">${dm.icon} ${dm.label}</span><span>${node.connections || 0} links</span>${okfBadge}`;
   document.getElementById('ndFileLink').href = 'files.html?path=' + encodeURIComponent(node.path || '');
   try {
     const res = await fetch('/api/wiki/page?path=' + encodeURIComponent(node.path || ''));
