@@ -118,6 +118,14 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_wiki_lint_analyze()
         elif path == "/api/wiki/ingest-fireflies":
             self._handle_fireflies_ingest()
+        elif path == "/api/wiki/ingest-youtube":
+            self._handle_youtube_ingest()
+        elif path == "/api/wiki/ingest-gmail":
+            self._handle_gmail_ingest()
+        elif path == "/api/wiki/ingest-crm":
+            self._handle_crm_ingest()
+        elif path == "/api/wiki/extract-prompts":
+            self._handle_extract_prompts()
         else:
             self._json_error(404, "Endpoint not found")
             return
@@ -201,6 +209,10 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_wiki_lint()
         elif path == "/api/hermes-pilot":
             self._serve_hermes_pilot()
+        elif path == "/api/wiki/prompts":
+            self._serve_prompts_library()
+        elif path == "/api/wiki/crm":
+            self._serve_crm_snapshot()
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -212,6 +224,19 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         else:
             self._json_error(404, "API endpoint not found")
     
+    def _get_env_var(self, var_name):
+        """Generic reader for any NAME=value line in ~/.hermes/.env — shared
+        by all the provider-specific _get_*_key() helpers below and by
+        providers (gmail, notion) that need a plain config value rather than
+        the provider_id + '_API_KEY' convention Settings > API Keys uses."""
+        env_path = Path.home() / ".hermes" / ".env"
+        if not env_path.exists():
+            return ""
+        for line in env_path.read_text(encoding='utf-8').splitlines():
+            if line.strip().startswith(f"{var_name}="):
+                return line.split('=', 1)[1].strip().strip('\'"')
+        return ""
+
     def _get_openrouter_key(self):
         """Read OPENROUTER_API_KEY from ~/.hermes/.env — same file/format the
         Settings > API Keys page writes to (see the 'test' action above)."""
@@ -1206,6 +1231,548 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             self._json_error(500, f"Fireflies ingestion failed: {str(e)}")
 
+    # ═══════════════════════════════════════════════════════════
+    # YOUTUBE / VIDEO TRANSCRIPT INGESTION — second source integration
+    # (see life-os-ui-backlog memory, "biggest dormant-data unlock").
+    # Solves "I clip videos but never have time to watch them": finds
+    # video clips already saved via the web clipper, pulls their
+    # transcripts, and enriches the existing clip page in place rather
+    # than creating a duplicate page.
+    # ═══════════════════════════════════════════════════════════
+
+    _VIDEO_URL_RE = re.compile(
+        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/|vimeo\.com/)([\w-]{6,20})'
+    )
+
+    def _extract_video_id(self, url):
+        m = self._VIDEO_URL_RE.search(url or '')
+        return m.group(1) if m else None
+
+    def _fetch_youtube_transcript_text(self, video_id):
+        """Fetch auto-captions via youtube-transcript-api — no API key needed.
+        Raises RuntimeError with an actionable message if the library isn't
+        installed on the VPS yet, or if no captions exist for the video."""
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+        except ImportError:
+            raise RuntimeError(
+                "youtube-transcript-api not installed on the server. "
+                "Run: pip install youtube-transcript-api"
+            )
+        try:
+            segments = YouTubeTranscriptApi.get_transcript(video_id)
+        except Exception as e:
+            raise RuntimeError(f"No transcript available ({e.__class__.__name__})")
+        return ' '.join(s.get('text', '').strip() for s in segments if s.get('text'))
+
+    def _handle_youtube_ingest(self):
+        """POST /api/wiki/ingest-youtube — scan Clippings/ for video-clip
+        pages not yet transcribed, fetch their transcripts, and enrich the
+        existing page in place (frontmatter flag `transcribed: true` plus an
+        appended Transcript section) so nothing gets duplicated. Idempotent
+        via that frontmatter flag; also tracked in .youtube_ingested.json as
+        a fallback for pages whose frontmatter got hand-edited."""
+        try:
+            state_path = VAULT_DIR / ".youtube_ingested.json"
+            ingested_ids = set()
+            if state_path.exists():
+                try:
+                    ingested_ids = set(json.loads(state_path.read_text(encoding='utf-8')))
+                except Exception:
+                    ingested_ids = set()
+
+            clips_dir = VAULT_DIR / "Clippings"
+            if not clips_dir.exists():
+                self._json_response({"data": {"scanned": 0, "transcribed": 0, "skipped": 0, "message": "No Clippings folder yet."}})
+                return
+
+            scanned = 0
+            transcribed = 0
+            skipped_duplicate = 0
+            skipped_no_video = 0
+            skipped_excluded = 0
+            failed = []
+            lib_missing = False
+
+            for item in sorted(clips_dir.iterdir()):
+                if not item.is_file() or item.name.startswith('.') or not item.name.endswith('.md'):
+                    continue
+                try:
+                    raw = item.read_text(encoding='utf-8')
+                except Exception:
+                    continue
+                meta, body = self._parse_frontmatter(raw)
+                source_url = meta.get('source_url') or meta.get('resource') or ''
+                video_id = self._extract_video_id(source_url)
+                if not video_id:
+                    continue
+                scanned += 1
+                if meta.get('transcribed') or video_id in ingested_ids:
+                    skipped_duplicate += 1
+                    continue
+                title = meta.get('title', item.stem)
+                haystack = f"{title} {body}".lower()
+                if any(term in haystack for term in self._JACKMAN_EXCLUDE_TERMS):
+                    skipped_excluded += 1
+                    ingested_ids.add(video_id)
+                    continue
+                try:
+                    transcript = self._fetch_youtube_transcript_text(video_id)
+                except RuntimeError as e:
+                    msg = str(e)
+                    if 'not installed' in msg:
+                        lib_missing = True
+                    failed.append({"title": title, "reason": msg})
+                    continue
+
+                if any(term in transcript.lower() for term in self._JACKMAN_EXCLUDE_TERMS):
+                    skipped_excluded += 1
+                    ingested_ids.add(video_id)
+                    continue
+
+                # Enrich in place: flip transcribed flag in frontmatter, append transcript.
+                new_raw = raw
+                if 'transcribed:' in new_raw:
+                    new_raw = re.sub(r'transcribed:\s*\w+', 'transcribed: true', new_raw)
+                else:
+                    new_raw = new_raw.replace('---\n\n', 'transcribed: true\n---\n\n', 1)
+                new_raw += (
+                    f"\n\n## Transcript (auto-captions)\n\n{transcript}\n\n"
+                    "## Opportunity Signal\n"
+                    "_Not yet analyzed — run Wiki Health → 🔮 Ask Hermes to Analyze._\n"
+                )
+                try:
+                    item.write_text(new_raw, encoding='utf-8')
+                    transcribed += 1
+                    ingested_ids.add(video_id)
+                except Exception as e:
+                    failed.append({"title": title, "reason": f"Write failed: {e}"})
+
+            state_path.write_text(json.dumps(sorted(ingested_ids)), encoding='utf-8')
+            result = {
+                "scanned": scanned, "transcribed": transcribed,
+                "skipped_duplicate": skipped_duplicate, "skipped_excluded": skipped_excluded,
+                "failed": failed,
+            }
+            if lib_missing:
+                result["setup_needed"] = "pip install youtube-transcript-api on the VPS, then re-run."
+            self._json_response({"data": result})
+        except Exception as e:
+            self._json_error(500, f"YouTube ingestion failed: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # GMAIL INGESTION — third source integration. Uses an IMAP App
+    # Password (self-service Google Account setting, no OAuth consent
+    # screen needed) rather than full OAuth, same "paste a key in
+    # Settings" pattern as Fireflies. HARD-SCOPED: only pulls threads
+    # matching a Gmail label query (default: FieldBridge label tree) —
+    # never the whole inbox. If the scoped query returns nothing, this
+    # does NOT silently widen scope; it reports 0 and tells you why.
+    # ═══════════════════════════════════════════════════════════
+
+    def _handle_gmail_ingest(self):
+        """POST /api/wiki/ingest-gmail — pull recent FieldBridge-labeled
+        Gmail threads into 10_Sources/Gmail/ as OKF-conformant pages.
+        Body (optional JSON): {"query": "label:fieldbridge", "limit": 30}"""
+        import imaplib
+        import email as email_lib
+        from email.header import decode_header
+
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body_data = {}
+            if content_length:
+                try:
+                    body_data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+                except Exception:
+                    body_data = {}
+
+            gmail_addr = self._get_env_var('GMAIL_ADDRESS') or 'fadi@fieldbridgehq.com'
+            app_password = self._get_env_var('GMAIL_API_KEY')
+            if not app_password:
+                self._json_error(400, "No Gmail App Password configured — add one in Settings > API Keys > Gmail. Generate at https://myaccount.google.com/apppasswords")
+                return
+
+            gm_query = body_data.get('query') or 'label:fieldbridge'
+            limit = min(int(body_data.get('limit', 30)), 50)
+
+            imap = imaplib.IMAP4_SSL('imap.gmail.com', timeout=20)
+            imap.login(gmail_addr, app_password)
+            imap.select('"[Gmail]/All Mail"', readonly=True)
+            typ, data = imap.search(None, 'X-GM-RAW', f'"{gm_query}"')
+            if typ != 'OK':
+                imap.logout()
+                self._json_error(500, f"IMAP search failed: {typ}")
+                return
+            ids = data[0].split()
+            if not ids:
+                imap.logout()
+                self._json_response({"data": {
+                    "fetched": 0, "created": 0,
+                    "message": f"0 threads matched \"{gm_query}\". Scope stays narrow by design — "
+                               "apply the FieldBridge Gmail label taxonomy to threads first, or pass "
+                               "a broader \"query\" in the request body.",
+                }})
+                return
+            ids = ids[-limit:]  # most recent
+
+            state_path = VAULT_DIR / ".gmail_ingested.json"
+            ingested_ids = set()
+            if state_path.exists():
+                try:
+                    ingested_ids = set(json.loads(state_path.read_text(encoding='utf-8')))
+                except Exception:
+                    ingested_ids = set()
+
+            out_dir = VAULT_DIR / "10_Sources" / "Gmail"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            created = 0
+            skipped_duplicate = 0
+            skipped_excluded = 0
+            excluded_subjects = []
+
+            for msg_id in ids:
+                typ, msg_data = imap.fetch(msg_id, '(RFC822)')
+                if typ != 'OK' or not msg_data or not msg_data[0]:
+                    continue
+                msg = email_lib.message_from_bytes(msg_data[0][1])
+                message_id = (msg.get('Message-ID') or msg_id.decode()).strip()
+                if message_id in ingested_ids:
+                    skipped_duplicate += 1
+                    continue
+
+                def _decode(val):
+                    if not val:
+                        return ''
+                    parts = decode_header(val)
+                    return ''.join(
+                        p.decode(enc or 'utf-8', errors='ignore') if isinstance(p, bytes) else p
+                        for p, enc in parts
+                    )
+
+                subject = _decode(msg.get('Subject', 'No Subject'))
+                sender = _decode(msg.get('From', ''))
+                date_hdr = msg.get('Date', '')
+
+                text_body = ''
+                if msg.is_multipart():
+                    for part in msg.walk():
+                        if part.get_content_type() == 'text/plain' and not part.get('Content-Disposition'):
+                            try:
+                                text_body = part.get_payload(decode=True).decode(part.get_content_charset() or 'utf-8', errors='ignore')
+                            except Exception:
+                                pass
+                            break
+                else:
+                    try:
+                        text_body = msg.get_payload(decode=True).decode(msg.get_content_charset() or 'utf-8', errors='ignore')
+                    except Exception:
+                        text_body = str(msg.get_payload())
+                text_body = text_body.strip()[:6000]
+
+                haystack = f"{subject} {sender} {text_body}".lower()
+                if any(term in haystack for term in self._JACKMAN_EXCLUDE_TERMS):
+                    skipped_excluded += 1
+                    excluded_subjects.append(subject)
+                    ingested_ids.add(message_id)
+                    continue
+
+                try:
+                    date_str = email_lib.utils.parsedate_to_datetime(date_hdr).strftime('%Y-%m-%d')
+                except Exception:
+                    date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+
+                domain_text = haystack
+                if any(w in domain_text for w in ('contractor', 'claim', 'proposal', 'discovery', 'retainer', 'fieldbridge')):
+                    domain = 'fieldbridgehq'
+                elif any(w in domain_text for w in ('recruiter', 'interview', 'job offer')):
+                    domain = 'career'
+                else:
+                    domain = 'general'
+
+                safe_subject = re.sub(r'[^\w\s-]', '', subject).strip().replace(' ', '-')[:60] or 'email'
+                filename = f"{date_str}-{safe_subject}-{abs(hash(message_id)) % 100000}.md"
+                filepath = out_dir / filename
+                frontmatter_lines = [
+                    "---",
+                    "type: Email",
+                    f'title: "{subject.replace(chr(34), chr(39))}"',
+                    f"domain: {domain}",
+                    f'timestamp: "{date_str}"',
+                    f'from: "{sender.replace(chr(34), chr(39))}"',
+                    f"tags: [type/email, area/{domain}, source/gmail]",
+                    "---",
+                    "",
+                    f"# {subject}",
+                    "",
+                    f"**From:** {sender}  ",
+                    f"**Date:** {date_str}",
+                    "",
+                    "## Body",
+                    text_body or "_No plain-text body extracted._",
+                    "",
+                    "## Opportunity Signal",
+                    "_Not yet analyzed — run Wiki Health → 🔮 Ask Hermes to Analyze._",
+                    "",
+                    f"*Source: Gmail | Ingested: {datetime.datetime.now().strftime('%Y-%m-%d')}*",
+                ]
+                try:
+                    filepath.write_text('\n'.join(frontmatter_lines), encoding='utf-8')
+                    created += 1
+                    ingested_ids.add(message_id)
+                except Exception as e:
+                    print(f"[gmail-ingest] Failed to write {filename}: {e}")
+
+            imap.logout()
+            state_path.write_text(json.dumps(sorted(ingested_ids)), encoding='utf-8')
+            self._json_response({"data": {
+                "query": gm_query, "fetched": len(ids), "created": created,
+                "skipped_duplicate": skipped_duplicate, "skipped_excluded": skipped_excluded,
+                "excluded_subjects": excluded_subjects,
+            }})
+        except imaplib.IMAP4.error as e:
+            self._json_error(401, f"Gmail login failed: {str(e)}")
+        except Exception as e:
+            self._json_error(500, f"Gmail ingestion failed: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # NOTION CRM INGESTION — fourth source integration, the one the
+    # whole "CRM feedback → opportunities" loop depends on. Canonical
+    # database confirmed 2026-07-03: "Client Pipeline" (under the
+    # 🤝 CRM — Client Pipeline page, FieldBridge HQ hub) — matches the
+    # live consultancy pipeline stages (Lead→Discovery→Proposal→Active
+    # Client→Retainer). The OTHER Notion database that looked similar,
+    # "Client CRM — FieldBridge" (SaaS Shield/Bid/Command tiers), is
+    # the stale pre-pivot one — not used here.
+    # ═══════════════════════════════════════════════════════════
+
+    _CRM_DATABASE_ID = "8d843040-ffa5-4dff-891e-8178d3fc8ab9"
+
+    def _notion_plain_text(self, rich_text_or_value):
+        """Best-effort flatten of a Notion property value to plain text
+        across the handful of property types the Client Pipeline schema
+        uses (title, rich_text, select, email, phone_number, number, date,
+        url)."""
+        if rich_text_or_value is None:
+            return ''
+        t = rich_text_or_value.get('type')
+        if t in ('title', 'rich_text'):
+            return ''.join(seg.get('plain_text', '') for seg in rich_text_or_value.get(t, []))
+        if t == 'select':
+            sel = rich_text_or_value.get('select')
+            return sel.get('name', '') if sel else ''
+        if t in ('email', 'phone_number', 'url'):
+            return rich_text_or_value.get(t) or ''
+        if t == 'number':
+            n = rich_text_or_value.get('number')
+            return '' if n is None else str(n)
+        if t == 'date':
+            d = rich_text_or_value.get('date')
+            return (d or {}).get('start', '') or ''
+        return ''
+
+    def _fetch_notion_crm_rows(self):
+        import urllib.request
+        key = self._get_env_var('NOTION_API_KEY')
+        if not key:
+            raise RuntimeError("No Notion integration token configured — add one in Settings > API Keys > Notion (CRM)")
+        req = urllib.request.Request(
+            f'https://api.notion.com/v1/databases/{self._CRM_DATABASE_ID}/query',
+            data=json.dumps({"page_size": 100}).encode('utf-8'),
+            headers={'Authorization': f'Bearer {key}', 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=20) as r:
+            resp = json.loads(r.read())
+        return resp.get('results', [])
+
+    def _handle_crm_ingest(self):
+        """POST /api/wiki/ingest-crm — pull every row from the live Notion
+        Client Pipeline database into CRM/*.md pages, matching this vault's
+        existing hand-authored CRM/ convention so they show up in the graph
+        alongside everything else (CRM/ is NOT in the wiki-exclude list).
+        Full upsert every run (Notion is the source of truth, no diffing
+        needed) — one page per company, filename = company name."""
+        try:
+            rows = self._fetch_notion_crm_rows()
+        except RuntimeError as e:
+            self._json_error(400, str(e))
+            return
+        except Exception as e:
+            self._json_error(500, f"Notion fetch failed: {str(e)}")
+            return
+
+        out_dir = VAULT_DIR / "CRM"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        created = 0
+        skipped_excluded = 0
+        companies = []
+
+        for row in rows:
+            props = row.get('properties', {})
+            company = self._notion_plain_text(props.get('Company')) or 'Unnamed'
+            contact = self._notion_plain_text(props.get('Contact Name'))
+            stage = self._notion_plain_text(props.get('Stage'))
+            trade = self._notion_plain_text(props.get('Trade'))
+            region = self._notion_plain_text(props.get('Region'))
+            email_addr = self._notion_plain_text(props.get('Email'))
+            phone = self._notion_plain_text(props.get('Phone'))
+            revenue = self._notion_plain_text(props.get('Revenue Potential (CAD)'))
+            next_action = self._notion_plain_text(props.get('Next Action'))
+            next_action_date = self._notion_plain_text(props.get('Next Action Date'))
+            notes = self._notion_plain_text(props.get('Notes'))
+            last_updated = self._notion_plain_text(props.get('Last Updated'))
+
+            haystack = f"{company} {contact} {notes}".lower()
+            if any(term in haystack for term in self._JACKMAN_EXCLUDE_TERMS):
+                skipped_excluded += 1
+                continue
+
+            safe_name = re.sub(r'[^\w\s-]', '', company).strip().replace(' ', '-') or 'unnamed'
+            filepath = out_dir / f"{safe_name}.md"
+            frontmatter_lines = [
+                "---",
+                "type: Client",
+                f'title: "{company}"',
+                "domain: fieldbridgehq",
+                f'timestamp: "{last_updated[:10] if last_updated else datetime.datetime.now().strftime("%Y-%m-%d")}"',
+                "tags: [type/crm, area/fieldbridgehq, source/notion]",
+                f'stage: "{stage}"',
+                f'trade: "{trade}"',
+                f'region: "{region}"',
+                "---",
+                "",
+                f"# {company}",
+                "",
+                f"- **Contact:** {contact or '_unknown_'}",
+                f"- **Email:** {email_addr or '_unknown_'}",
+                f"- **Phone:** {phone or '_unknown_'}",
+                f"- **Stage:** {stage or '_unknown_'}",
+                f"- **Trade:** {trade or '_unknown_'}",
+                f"- **Region:** {region or '_unknown_'}",
+                f"- **Revenue Potential (CAD):** {revenue or '_unknown_'}",
+                f"- **Next Action:** {next_action or '_none logged_'} ({next_action_date or 'no date'})",
+                "",
+                "## Notes",
+                notes or "_No notes._",
+                "",
+                "## Opportunity Signal",
+                "_Not yet analyzed — run Wiki Health → 🔮 Ask Hermes to Analyze for cross-vault matches "
+                "(e.g. clipped articles or meeting transcripts that speak to this client's stated pain)._",
+                "",
+                f"*Source: Notion Client Pipeline | Synced: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}*",
+            ]
+            try:
+                filepath.write_text('\n'.join(frontmatter_lines), encoding='utf-8')
+                created += 1
+                companies.append(company)
+            except Exception as e:
+                print(f"[crm-ingest] Failed to write {filepath.name}: {e}")
+
+        self._json_response({"data": {
+            "fetched": len(rows), "created": created,
+            "skipped_excluded": skipped_excluded, "companies": companies,
+        }})
+
+    def _serve_crm_snapshot(self):
+        """GET /api/wiki/crm — quick read of the CRM/ folder as JSON, for a
+        dashboard card without re-hitting Notion on every page load."""
+        try:
+            out_dir = VAULT_DIR / "CRM"
+            rows = []
+            if out_dir.exists():
+                for f in sorted(out_dir.glob("*.md")):
+                    try:
+                        meta, _ = self._parse_frontmatter(f.read_text(encoding='utf-8'))
+                    except Exception:
+                        continue
+                    rows.append({
+                        "company": meta.get('title', f.stem),
+                        "stage": meta.get('stage', ''),
+                        "trade": meta.get('trade', ''),
+                        "region": meta.get('region', ''),
+                        "path": str(f.relative_to(VAULT_DIR)),
+                    })
+            self._json_response({"data": rows})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve CRM snapshot: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # PROMPTS LIBRARY — replaces the honest placeholder on the Hermes
+    # Playbook (use-cases.html) "Saved Prompts" tab. Heuristic extraction
+    # only (same honesty standard as skill-usage tracking): flags
+    # candidate reusable prompts from chat history, doesn't claim to
+    # understand intent. Fadi reviews before reuse.
+    # ═══════════════════════════════════════════════════════════
+
+    def _looks_like_reusable_prompt(self, text):
+        t = text.strip()
+        if not (40 <= len(t) <= 800):
+            return False
+        # Heuristic signals: imperative opener, or explicit instruction phrasing.
+        imperative_openers = (
+            'write ', 'build ', 'create ', 'draft ', 'analyze ', 'summarize ',
+            'generate ', 'review ', 'compare ', 'design ', 'plan ', 'find ',
+            'scan ', 'extract ', 'check ', 'act as', 'you are ', 'help me ',
+        )
+        low = t.lower()
+        if low.startswith(imperative_openers):
+            return True
+        if '?' not in t and any(w in low for w in ('always', 'every time', 'from now on', 'template', 'format:')):
+            return True
+        return False
+
+    def _handle_extract_prompts(self):
+        """POST /api/wiki/extract-prompts — scan .chat_sessions/*.json for
+        candidate reusable prompts (heuristic, not semantic) and cache the
+        result in .prompts_library.json. Served back via GET /api/wiki/prompts."""
+        try:
+            sessions_dir = VAULT_DIR / ".chat_sessions"
+            candidates = []
+            seen_text = set()
+            if sessions_dir.exists():
+                for sf in sessions_dir.glob("*.json"):
+                    try:
+                        session = json.loads(sf.read_text(encoding='utf-8'))
+                    except Exception:
+                        continue
+                    title = session.get('title', sf.stem)
+                    for msg in session.get('messages', []):
+                        if msg.get('role') != 'user':
+                            continue
+                        content = (msg.get('content') or '').strip()
+                        if not self._looks_like_reusable_prompt(content):
+                            continue
+                        key = content.lower()[:200]
+                        if key in seen_text:
+                            continue
+                        seen_text.add(key)
+                        candidates.append({
+                            "text": content,
+                            "source_session": sf.stem,
+                            "source_title": title,
+                        })
+            lib_path = VAULT_DIR / ".prompts_library.json"
+            lib_path.write_text(json.dumps(candidates, indent=2), encoding='utf-8')
+            self._json_response({"data": {"extracted": len(candidates)}})
+        except Exception as e:
+            self._json_error(500, f"Prompt extraction failed: {str(e)}")
+
+    def _serve_prompts_library(self):
+        """GET /api/wiki/prompts — serve the cached candidate-prompt list.
+        Honest empty state if extraction hasn't been run yet."""
+        try:
+            lib_path = VAULT_DIR / ".prompts_library.json"
+            if not lib_path.exists():
+                self._json_response({"data": [], "extracted": False})
+                return
+            candidates = json.loads(lib_path.read_text(encoding='utf-8'))
+            self._json_response({"data": candidates, "extracted": True})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve prompts library: {str(e)}")
+
     def _serve_vault_tree(self, query=None):
         """Serve vault directory structure"""
         try:
@@ -1906,6 +2473,8 @@ tags: {data.get('tags', [])}
                 {"id": "perplexity", "name": "Perplexity", "envVar": "PERPLEXITY_API_KEY", "url": "https://perplexity.ai", "icon": "❓"},
                 {"id": "cohere", "name": "Cohere", "envVar": "COHERE_API_KEY", "url": "https://cohere.com", "icon": "🔗"},
                 {"id": "fireflies", "name": "Fireflies.ai", "envVar": "FIREFLIES_API_KEY", "url": "https://app.fireflies.ai/settings", "icon": "🎙️"},
+                {"id": "notion", "name": "Notion (CRM)", "envVar": "NOTION_API_KEY", "url": "https://www.notion.so/my-integrations", "icon": "🗂️"},
+                {"id": "gmail", "name": "Gmail (App Password)", "envVar": "GMAIL_API_KEY", "url": "https://myaccount.google.com/apppasswords", "icon": "📧"},
             ]
 
             providers = []
@@ -2042,6 +2611,24 @@ tags: {data.get('tags', [])}
                             else:
                                 name = (resp.get('data') or {}).get('user', {}).get('name', 'account')
                                 self._json_response({"ok": True, "message": f"Connected ({name})"})
+                    elif provider == 'notion':
+                        req = urllib.request.Request(
+                            'https://api.notion.com/v1/users/me',
+                            headers={'Authorization': f'Bearer {key}', 'Notion-Version': '2022-06-28'}
+                        )
+                        with urllib.request.urlopen(req, timeout=10) as r:
+                            info = json.loads(r.read())
+                            self._json_response({"ok": True, "message": f"Connected ({info.get('name', 'integration')})"})
+                    elif provider == 'gmail':
+                        import imaplib
+                        gmail_addr = os.environ.get('GMAIL_ADDRESS') or self._get_env_var('GMAIL_ADDRESS') or 'fadi@fieldbridgehq.com'
+                        try:
+                            imap = imaplib.IMAP4_SSL('imap.gmail.com', timeout=10)
+                            imap.login(gmail_addr, key)
+                            imap.logout()
+                            self._json_response({"ok": True, "message": f"Connected ({gmail_addr})"})
+                        except imaplib.IMAP4.error as e:
+                            self._json_response({"ok": False, "message": f"IMAP login failed: {str(e)}"})
                     else:
                         self._json_response({"ok": True, "message": "Key present (test not implemented for this provider)"})
                 except Exception as e:

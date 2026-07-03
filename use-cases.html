@@ -64,12 +64,12 @@
   </div>
 
   <div id="tab-prompts" class="tab-content" style="display:none;">
-    <div class="pb-placeholder">
-      <div style="font-size:28px;margin-bottom:8px;">📝</div>
-      <strong>Your saved prompt library</strong><br>
-      This will fill automatically with the best prompts — pulled from your Hermes chats and the YouTube videos and sources you ingest — so your most useful prompts are always one click away.<br><br>
-      <span style="font-size:var(--font-size-xs);color:var(--text-tertiary);">Coming next: extraction from chat history + ingested sources.</span>
+    <div class="pb-intro">
+      Candidate reusable prompts, heuristically flagged from your Hermes chat history — not a semantic understanding of your intent, just a pattern match (imperative openers, template language). Review before reuse.
+      <button class="pb-run" style="margin-left:8px;" onclick="extractPrompts()">🔄 Re-scan Chat History</button>
     </div>
+    <div id="prompts-status" style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin-bottom:var(--space-3);"></div>
+    <div id="prompts-body"></div>
   </div>
 </div>
 
@@ -185,6 +185,67 @@ function showTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab).style.display = '';
   btn.classList.add('active');
+  if (tab === 'prompts') loadPrompts();
+}
+
+// ============================================================
+// SAVED PROMPTS — candidate prompts heuristically extracted from
+// Hermes chat history. See /api/wiki/extract-prompts (POST, runs the
+// scan) and /api/wiki/prompts (GET, serves the cached result).
+// ============================================================
+async function loadPrompts() {
+  const status = document.getElementById('prompts-status');
+  const body = document.getElementById('prompts-body');
+  status.textContent = 'Loading…';
+  try {
+    const res = await fetch('/api/wiki/prompts');
+    const json = await res.json();
+    if (!json.data || !json.data.length) {
+      status.textContent = json.extracted ? 'No candidate prompts found yet.' : 'Not scanned yet.';
+      body.innerHTML = '<div class="pb-placeholder"><div style="font-size:28px;margin-bottom:8px;">📝</div>Hit <strong>Re-scan Chat History</strong> above to build your prompt library.</div>';
+      return;
+    }
+    status.textContent = `${json.data.length} candidate prompts`;
+    renderPrompts(json.data);
+  } catch (e) {
+    status.textContent = 'Failed to load: ' + e.message;
+  }
+}
+
+function renderPrompts(list) {
+  const body = document.getElementById('prompts-body');
+  body.innerHTML = '<div class="card-grid">' + list.slice(0, 60).map(p => `
+    <div class="pb-card">
+      <div class="pb-card-desc" style="-webkit-line-clamp:6;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(p.text)}</div>
+      <div style="font-size:10px;color:var(--text-tertiary);">from: ${escapeHtml(p.source_title || p.source_session)}</div>
+      <button class="pb-run" onclick='runSavedPrompt(${JSON.stringify(p.text)})'>Run in Hermes</button>
+    </div>
+  `).join('') + '</div>';
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function runSavedPrompt(text) {
+  sessionStorage.setItem('hermes-prefill', text);
+  window.location.href = 'chat.html';
+}
+
+async function extractPrompts() {
+  const status = document.getElementById('prompts-status');
+  status.textContent = 'Scanning chat history…';
+  try {
+    const res = await fetch('/api/wiki/extract-prompts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const json = await res.json();
+    if (json.error) { status.textContent = '⚠️ ' + json.error; return; }
+    status.textContent = `Scan complete — ${json.data.extracted} candidates found.`;
+    loadPrompts();
+  } catch (e) {
+    status.textContent = '⚠️ Extraction failed: ' + e.message;
+  }
 }
 
 renderPlaybook();
