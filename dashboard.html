@@ -84,6 +84,17 @@
   </div>
 </div>
 
+<!-- Hermes Pilot (FB-PILOT) — read-only view into ~/hermes-pilot on this VPS -->
+<div class="cmd-section">
+  <div class="cmd-section-header">
+    <span>🛠️ Hermes Pilot — FB-PILOT</span>
+    <span class="cmd-section-count" id="pilotCounts"></span>
+  </div>
+  <div class="cmd-pilot" id="pilotBody">
+    <div class="cmd-alert info">⏳ Loading pilot status…</div>
+  </div>
+</div>
+
 <!-- Alerts / Status -->
 <div class="cmd-section">
   <div class="cmd-section-header"><span>🔔 Status</span></div>
@@ -169,6 +180,19 @@
 .cmd-launch-icon { font-size: 28px; }
 .cmd-launch-name { font-size: 12px; font-weight: 600; }
 .cmd-launch-count { font-size: 10px; color: var(--text-muted); }
+
+.cmd-pilot { display: flex; flex-direction: column; gap: 6px; }
+.pilot-row {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px;
+}
+.pilot-row .p-date { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.pilot-row .p-task { font-weight: 600; color: var(--text-primary); flex: 1; min-width: 140px; }
+.pilot-row .p-score { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pilot-row .p-score .self { color: var(--orange); }
+.pilot-row .p-score .measured { color: var(--green); font-weight: 700; }
+.pilot-row .p-lesson { width: 100%; color: var(--text-secondary); font-size: 11px; }
 
 .cmd-alerts { display: flex; flex-direction: column; gap: 6px; }
 .cmd-alert {
@@ -289,6 +313,39 @@ async function transcribeAudio(blob) {
     setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
   }
 }
+
+// Hermes Pilot card — read-only reporting on FB-PILOT (~/hermes-pilot on this VPS).
+// Separation wall: dashboard READS the pilot log only; never writes, pilot never reads back.
+function escHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+fetch('/api/hermes-pilot').then(r => r.json()).then(resp => {
+  const d = (resp && resp.data) || {};
+  const body = document.getElementById('pilotBody');
+  const counts = document.getElementById('pilotCounts');
+  if (!body) return;
+  if (!d.installed) {
+    body.innerHTML = '<div class="cmd-alert info">🗓️ Pilot not installed yet — 45-min VPS setup planned for the weekend (SETUP-GUIDE.md, task H-01). This card lights up automatically once <code>~/hermes-pilot/</code> exists.</div>';
+    return;
+  }
+  const c = d.counts || {};
+  if (counts) counts.textContent = `${c.log_entries || 0} runs · ${c.skills || 0} skills · inbox ${c.inbox || 0} / outbox ${c.outbox || 0}`;
+  const entries = (d.entries || []).slice(-3).reverse();
+  if (!entries.length) {
+    body.innerHTML = '<div class="cmd-alert ok">✅ Workspace live — no task runs logged yet. Waiting on Task 01 (drawing register extraction).</div>';
+    return;
+  }
+  body.innerHTML = entries.map(e => `
+    <div class="pilot-row">
+      <span class="p-date">${escHtml(e.date)}</span>
+      <span class="p-task">${escHtml(e.task)}</span>
+      <span class="p-score">self <span class="self">${escHtml(e.self_score) || '—'}</span> → measured <span class="measured">${escHtml(e.measured) || 'pending'}</span></span>
+      ${e.lesson ? `<span class="p-lesson">💡 ${escHtml(e.lesson)}</span>` : ''}
+    </div>`).join('');
+}).catch(() => {
+  const body = document.getElementById('pilotBody');
+  if (body) body.innerHTML = '<div class="cmd-alert warn">⚠️ Could not reach /api/hermes-pilot — server.py may need a restart to pick up the new endpoint.</div>';
+});
 
 // Load task count
 fetch('/api/tasks').then(r => r.json()).then(d => {

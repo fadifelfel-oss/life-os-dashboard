@@ -199,6 +199,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_wiki_page(query)
         elif path == "/api/wiki/lint":
             self._serve_wiki_lint()
+        elif path == "/api/hermes-pilot":
+            self._serve_hermes_pilot()
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -1356,6 +1358,61 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             self._json_error(500, f"Failed to serve use cases: {str(e)}")
     
+    def _serve_hermes_pilot(self):
+        """READ-ONLY view into the FB-PILOT workspace (~/hermes-pilot).
+        Reporting layer only — the dashboard never writes there and the pilot
+        never reads the dashboard (separation wall, see FieldBridge HQ
+        tools/hermes-pilot/HERMES-BOOTSTRAP.md). Graceful empty state until
+        the pilot is installed (planned weekend of 2026-07-04)."""
+        try:
+            pilot_dir = Path.home() / "hermes-pilot"
+            if not pilot_dir.exists():
+                self._json_response({"data": {
+                    "installed": False,
+                    "message": "Pilot not installed yet — see Fieldbridge HQ/tools/hermes-pilot/SETUP-GUIDE.md",
+                    "entries": [], "skills": [], "counts": {}
+                }})
+                return
+
+            def _names(sub):
+                d = pilot_dir / sub
+                if not d.is_dir():
+                    return []
+                return sorted(f.name for f in d.iterdir() if f.is_file())
+
+            inbox, outbox, skills = _names("inbox"), _names("outbox"), _names("skills")
+
+            # pilot-log.md format (per HERMES-BOOTSTRAP.md):
+            # date | task | self-score | measured score | skill created/updated | lesson
+            entries = []
+            log_file = pilot_dir / "log" / "pilot-log.md"
+            if log_file.exists():
+                for line in log_file.read_text(encoding='utf-8', errors='replace').splitlines():
+                    line = line.strip().lstrip('-').strip()
+                    if not line or line.startswith('#') or '|' not in line:
+                        continue
+                    parts = [p.strip() for p in line.strip('|').split('|')]
+                    if len(parts) < 2 or parts[0].lower() in ('date', '---'):
+                        continue
+                    if set(parts[0]) <= set('-: '):
+                        continue  # markdown table separator row
+                    parts += [''] * (6 - len(parts))
+                    entries.append({
+                        "date": parts[0], "task": parts[1],
+                        "self_score": parts[2], "measured": parts[3],
+                        "skill": parts[4], "lesson": parts[5],
+                    })
+
+            self._json_response({"data": {
+                "installed": True,
+                "entries": entries[-20:],
+                "skills": skills,
+                "counts": {"inbox": len(inbox), "outbox": len(outbox),
+                           "skills": len(skills), "log_entries": len(entries)},
+            }})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve hermes-pilot: {str(e)}")
+
     def _serve_state(self):
         """Serve CURRENT-STATE.md as structured JSON"""
         try:
