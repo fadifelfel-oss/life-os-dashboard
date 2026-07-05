@@ -363,8 +363,8 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .message-body {
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 18px;   /* accessibility: Fadi's eyesight — keep chat text large (was 15px) */
+  line-height: 1.7;
   color: var(--chat-text);
 }
 
@@ -511,13 +511,13 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   background: transparent;
   border: none;
   color: var(--chat-text);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 18px;   /* accessibility: match message text (was 15px) */
+  line-height: 1.6;
   font-family: inherit;
   resize: none;
   outline: none;
-  max-height: 150px;
-  min-height: 24px;
+  max-height: 320px;
+  min-height: 72px;  /* taller input area — Cowork-like composer (was 24px) */
 }
 
 .chat-input::placeholder {

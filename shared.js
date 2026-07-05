@@ -330,7 +330,7 @@ function navigateTo(page) {
     'mcp': 'mcp.html',
     'keys': 'keys.html',
     'files': 'files.html',
-    'live': 'live.html',
+    'live': 'use-cases.html',
     'brain': 'graph3d.html',
     'sessions': 'chat.html',
     'tokens': 'tokens.html',
@@ -380,7 +380,7 @@ function loadModule(page) {
     'mcp': 'mcp.html',
     'keys': 'keys.html',
     'files': 'files.html',
-    'live': 'live.html',
+    'live': 'use-cases.html',
     'brain': 'graph3d.html',
     'sessions': 'chat.html',
     'tokens': 'tokens.html',
@@ -1177,3 +1177,4 @@ const ShortcutsOverlay = {
     if (overlay) overlay.classList.remove('open');
   }
 };
+                                                                                                                                                                                                                                                                                                                                                                       

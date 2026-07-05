@@ -117,11 +117,22 @@ Approve the read-only mirror rule: vault writes happen ONLY via Cowork/agents.md
 | 2.3 | Card/status/empty-state component standardization in shared.css + sweep pages | SONNET |
 | 2.4 | SVG logo mark | FABLE (+ FADI pick between 2–3 options) |
 
-### PHASE 3 — Today page (rebuilt dashboard.html)
+### PHASE 3 — Today page + PRODUCTIVITY HUB (rebuilt dashboard.html)
+
+**Hub spec (decided 2026-07-05).** Three zones mirroring the day:
+- **Morning launch:** Power 3 (from the vault's daily journal note), calendar peek, Kanban due today, nightly digest
+- **Execution:** Kanban (quick-add + drag, state in DATA_DIR — the ONLY task system), ship-today tracker (wire the existing shared.js feature)
+- **Accountability:** open WAGER lines, evening "what did you ship?" check, Saturday review card (weekends only)
+
+**Capture consolidation (decided 2026-07-05):** ONE funnel = vault `000 Inbox`, phone-reachable. Google Tasks and Todoist RETIRE — dashboard Kanban is the only task board. Samsung Notes kept for S-Pen sketches only (Share → Inbox when it matters); all text capture goes to the funnel. Dashboard never writes knowledge into the vault (Decision Gate 1); tasks are the exception via DATA_DIR. Vault-side task capture works because the Kanban already merges vault markdown checkboxes (read-only from the mirror) with its own DATA_DIR store.
+
 | # | Task | Owner |
 |---|------|-------|
-| 3.1 | Server endpoints: /api/today aggregating radar signals, kanban due, nightly digest (from vault log.md), open WAGER lines | SONNET, spec by FABLE |
-| 3.2 | Today page UI per §3 | FABLE (layout) + SONNET (wiring) |
+| 3.1 | Server endpoint /api/today: radar signals, kanban due, nightly digest (from vault log.md), open WAGER lines, Power 3 (parse today's journal note) | SONNET, spec by FABLE |
+| 3.2 | Today/Hub page UI per spec above | FABLE (layout) + SONNET (wiring) |
+| 3.3 | Kanban quick-add polish + wire the ship-today tracker | SONNET |
+| 3.4 | Mobile capture on-ramp: Autosync/OneSync app on S25 Ultra syncing ONLY `000 Inbox` two-way + Obsidian mobile pointed at it (click-by-click session) | FADI + FABLE |
+| 3.5 | One-time migration: move open items from Google Tasks + Todoist onto the Kanban, then retire both apps | FADI |
 
 ### PHASE 4 — 3D Brain v3
 | # | Task | Owner |
@@ -170,7 +181,33 @@ One table = the whole robot workforce. The Loops page (task 5.3) renders this li
 
 ---
 
-## 7. WHAT THIS PLAN DELIBERATELY EXCLUDES
+## 7. FADI REVIEW ROUND 2 (2026-07-05, live-site walkthrough) — every item, every owner
+
+| # | Item | Resolution | Owner / When |
+|---|------|-----------|--------------|
+| R1 | Chat text too small (eyesight — high myopia is a fixed constraint, 18px minimum everywhere) | ✅ FIXED: message + input text 15→18px, composer 24→72px min-height. Full Cowork-like chat layout = Phase 5 redesign | Done + FABLE Phase 5 |
+| R2 | Coach dropdown still shows only Life OS + Health Coach | Correct for now — Virtual PM + life-area personas are Phase 5 (task 5.2). Dropdown gets restyled with area colors then | FABLE/SONNET Phase 5 |
+| R3 | "Where is the back photo we got?" | ❓ UNCLEAR — Fadi to clarify what this refers to (avatar? background image? backup?) | FADI clarify |
+| R4 | Three small icons top-right do nothing (🌙 theme / ⌘K palette / ↻ refresh) | Theme toggle + ⌘K palette exist but are broken/unclear on some pages — verify and fix or remove; icons get labels in Phase 2 icon sweep | SONNET Phase 1 |
+| R5 | Cron Jobs page shows anonymous "Scheduled Job / Never / 0 outputs" garbage | Page reads meaningless local job stubs. REPLACE with the Loops page rendering the Automation Registry (§6) with real names/schedules/status | SONNET Phase 5 (task 5.3, spec exists) |
+| R6 | Use Cases page had no visible back button + junk data (0 pages, root files as "use cases") | ✅ FIXED root cause: nav pointed at the OLD broken live.html; remapped to the rebuilt use-cases.html (has back button + curated playbook). live.html retires | Done; delete live.html SONNET Phase 1 |
+| R7 | Web Clipper page errors + "does it have a purpose now?" | NO purpose in the new flow (Obsidian Clipper → vault → nightly ingest owns clipping). ✅ Removed from nav; page file deletes in Phase 1 | Done + SONNET Phase 1 |
+| R8 | Kanban content stale (June cards) | Board WORKS; content needs the one-time grooming — merge with Google Tasks/Todoist migration | FADI task 3.5 |
+| R9 | Hermes Map — functional? useful? | It's a hand-coded static architecture diagram, not live data. Verdict: RETIRE (already in plan §3); its one good idea (visual system map) is superseded by the 3D Brain | SONNET Phase 1 |
+| R10 | Token usage by month | Add monthly aggregation view when tokens merges into models.html | SONNET Phase 1 (task 1.2) |
+| R11 | Skills page incomplete → wants a SKILLS HUB: all skills across Cowork/FieldBridge/Hermes, what they do, usage counts, test scores, feedback/improvement loop status | NEW SPEC: vault becomes source of truth (a skills-registry page the dashboard renders; FieldBridge test scores from SKILLS-GAP-REGISTER; usage where measurable). Added as task 5.4 | FABLE spec + SONNET build, Phase 5 |
+| R12 | Meetings page — well designed? part of Hub? | Not yet verified against live data post-repoint. Verdict next session; likely folds into Hub Zone 1 (calendar + vault meeting notes via OPERATION 6) rather than standalone | FABLE next session |
+| R13 | "You promised design options/themes" | Correct — not yet delivered. Committed: theme-preview page (3 selectable directions: Blueprint Dark, Graphite & Gold, Site-Office Light) as the FIRST deliverable of Phase 2, before any rollout | FABLE, Phase 2 kickoff |
+| R14 | Dashboard capture box says "Access from Tasks tab" (deleted page) + saves to browser-only storage | Ghost reference; the box is replaced by the Hub in Phase 3 — remove the broken hint text in Phase 1 | SONNET Phase 1 |
+| R15 | Node-count mismatch (tile 196 vs graph 149) | Two count sources; unify via /api/today in Phase 3 | SONNET Phase 3 |
+| R16 | Chat "No saved conversations" | Sessions store moved to DATA_DIR and history copied; new chats save fine (verified — Fadi's test chat appears). Old chats: localStorage per-browser, may never have been server-side. Watch, don't chase | — |
+
+### PHASE 5 addition
+| # | Task | Owner |
+|---|------|-------|
+| 5.4 | Skills Hub (per R11): vault skills-registry rendered with usage, test scores, gap-register status, improvement-loop feedback per skill | FABLE spec + SONNET build |
+
+## 8. WHAT THIS PLAN DELIBERATELY EXCLUDES
 - Voice/JARVIS layer — after the above ships (roadmap discipline; it was the seductive trap named in the wiki)
 - Airtable/Notion as live graph nodes (old Phase 2 idea) — CRM sync via the vault covers the need for now
 - Any new page not listed — additions go to the backlog memory first
