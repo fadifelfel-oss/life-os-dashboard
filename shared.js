@@ -333,7 +333,6 @@ function navigateTo(page) {
     'live': 'live.html',
     'brain': 'graph3d.html',
     'sessions': 'chat.html',
-    'tasks': 'tasks.html',
     'tokens': 'tokens.html',
     'skills': 'skills.html',
     'kanban': 'kanban.html',
@@ -384,7 +383,6 @@ function loadModule(page) {
     'live': 'live.html',
     'brain': 'graph3d.html',
     'sessions': 'chat.html',
-    'tasks': 'tasks.html',
     'tokens': 'tokens.html',
     'skills': 'skills.html',
     'kanban': 'kanban.html',
@@ -674,7 +672,6 @@ function getDefaultActions() {
   return [
     { id: 'nav-dashboard', icon: '⚡', title: 'Go to Dashboard', desc: 'Main overview and KPIs', keywords: ['dashboard', 'home', 'overview'], execute: () => { window.location.href = 'index.html'; } },
     { id: 'nav-chat', icon: '💬', title: 'New Chat', desc: 'Start a conversation with Hermes', keywords: ['chat', 'message', 'talk', 'hermes'], execute: () => { window.location.href = 'chat.html'; } },
-    { id: 'nav-tasks', icon: '📋', title: 'Task Board', desc: 'View and manage your tasks', keywords: ['tasks', 'todo', 'kanban', 'board'], execute: () => { window.location.href = 'tasks.html'; } },
     { id: 'nav-files', icon: '📁', title: 'File Browser', desc: 'Browse vault files and folders', keywords: ['files', 'browse', 'vault', 'folder'], execute: () => { window.location.href = 'files.html'; } },
     { id: 'nav-graph3d', icon: '🧠', title: '3D Knowledge Brain', desc: '3D force graph of vault', keywords: ['3d', 'brain', 'graph', 'force'], execute: () => { window.location.href = 'graph3d.html'; } },
     { id: 'nav-skills', icon: '🔧', title: 'Skills Library', desc: 'Browse installed skills', keywords: ['skills', 'plugins', 'tools'], execute: () => { window.location.href = 'skills.html'; } },
@@ -749,8 +746,8 @@ const ContextSwitcher = {
   },
 
   updateUI() {
-    const icons = { all: '🏗️', jackman: '🏢', fieldbridge: '🌉', personal: '🏠' };
-    const labels = { all: 'All Projects', jackman: 'Jackman Construction', fieldbridge: 'FieldBridge HQ', personal: 'Personal' };
+    const icons = { all: '🏗️', fieldbridge: '🌉', personal: '🏠' };
+    const labels = { all: 'All Projects', fieldbridge: 'FieldBridge HQ', personal: 'Personal' };
     const iconEl = document.getElementById('ctxCurrentIcon');
     const labelEl = document.getElementById('ctxCurrentLabel');
     if (iconEl) iconEl.textContent = icons[this.current] || '🏗️';
@@ -997,7 +994,6 @@ const I18n = {
       cases: '💡 حالات الاستخدام',
       // Context
       allProjects: 'جميع المشاريع',
-      jackman: 'جاكمان للإنشاءات',
       fieldbridge: 'فيلد بريدج',
       personal: 'شخصي',
       // Ship Today

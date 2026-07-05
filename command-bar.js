@@ -149,7 +149,7 @@ function getDefaultActions() {
   return [
     { id: 'nav-dashboard', icon: '⚡', title: 'Go to Dashboard', desc: 'Main overview and KPIs', shortcut: 'G D', keywords: ['dashboard', 'home', 'overview'], execute: () => { window.location.href = 'index.html'; } },
     { id: 'nav-chat', icon: '💬', title: 'New Chat', desc: 'Start a conversation with Hermes', shortcut: '', keywords: ['chat', 'message', 'talk', 'hermes'], execute: () => { window.location.href = 'chat.html'; } },
-    { id: 'nav-tasks', icon: '📋', title: 'Task Board', desc: 'View and manage your tasks', shortcut: 'G T', keywords: ['tasks', 'todo', 'kanban', 'board'], execute: () => { window.location.href = 'tasks.html'; } },
+    { id: 'nav-kanban', icon: '📝', title: 'Kanban Board', desc: 'View and manage your tasks', shortcut: 'G T', keywords: ['tasks', 'todo', 'kanban', 'board'], execute: () => { window.location.href = 'kanban.html'; } },
     { id: 'nav-files', icon: '📁', title: 'File Browser', desc: 'Browse vault files and folders', shortcut: 'G F', keywords: ['files', 'browse', 'vault', 'folder'], execute: () => { window.location.href = 'files.html'; } },
     { id: 'nav-graph', icon: '🕸️', title: 'Knowledge Graph', desc: '2D radial graph of vault', shortcut: '', keywords: ['graph', 'knowledge', '2d', 'nodes'], execute: () => { window.location.href = 'graph.html'; } },
     { id: 'nav-graph3d', icon: '🧠', title: '3D Knowledge Brain', desc: '3D force graph of vault', shortcut: '', keywords: ['3d', 'brain', 'graph', 'force'], execute: () => { window.location.href = 'graph3d.html'; } },
