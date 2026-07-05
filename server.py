@@ -18,7 +18,10 @@ import threading
 
 # Configuration
 STATIC_DIR = Path(__file__).parent
-VAULT_DIR = Path("/root/knowledge")
+VAULT_DIR = Path("/root/second-brain")   # READ-ONLY git mirror of the Second Brain vault (Decision Gate 1)
+DATA_DIR = Path("/root/life-os-data")    # ALL server-side writes go here — never into VAULT_DIR
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+(DATA_DIR / "clippings").mkdir(exist_ok=True)
 PORT = 8090
 HERMES_CHAT_PROXY_URL = "http://127.0.0.1:8642"  # Hermes API Server
 
@@ -475,7 +478,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         tasks = []
         
         # Load kanban store (manual tasks)
-        store_path = VAULT_DIR / ".kanban_store.json"
+        store_path = DATA_DIR / ".kanban_store.json"
         kanban_tasks = []
         if store_path.exists():
             try:
@@ -576,18 +579,32 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
     # ═══════════════════════════════════════════════════════════
 
     # Top-level vault folders considered part of the "wiki" surface for the
-    # 3D Brain graph. Excludes system/dotfiles and raw, unprocessed sources.
+    # 3D Brain graph — SECOND BRAIN vault structure (agents.md governs; the
+    # old 20_Wiki/OKF structure is retired). Excludes system/dotfiles and
+    # raw, unprocessed sources.
     _WIKI_DOMAIN_FOLDERS = {
-        "20_Wiki": "ai-tools",       # overridden per-subfolder below when possible
-        "50_FieldBridge": "fieldbridgehq",
-        "60_Career": "career",
-        "70_Trading": "trading",
-        "90_Skills": "general",
-        "95_Outputs": "general",
-        "40_Tasks": "general",
-        "00_Kernel": "general",
+        "030 Resources": "ai-tools",   # overridden per-subfolder in _infer_domain
+        "010 Projects": "general",     # overridden per-subfolder in _infer_domain
+        "020 Areas": "general",        # overridden per-subfolder in _infer_domain
+        "30_Context": "construction",  # overridden per-subfolder in _infer_domain
+        "CRM": "fieldbridgehq",
+        "journal": "general",
     }
-    _KNOWN_DOMAINS = {"career", "fieldbridgehq", "trading", "construction", "ai-tools", "health", "general"}
+    # Pretty frontmatter domain names (as written by agents.md) → graph domain keys.
+    # NOTE Phase 2 (Blueprint Dark) renames these keys to the life-area palette;
+    # until then "Personal & Mindset" maps to general.
+    _PRETTY_DOMAINS = {
+        "ai & aios": "ai-tools",
+        "pkm & second brain": "ai-tools",
+        "business & strategy": "fieldbridgehq",
+        "construction pm": "construction",
+        "construction law": "construction",
+        "personal & mindset": "general",
+        "trading": "trading",
+        "trading & finance": "trading",
+        "fieldbridge": "fieldbridgehq",
+    }
+    _KNOWN_DOMAINS = {"career", "fieldbridgehq", "trading", "construction", "ai-tools", "health", "family", "inbox", "general"}
 
     @staticmethod
     def _parse_frontmatter(content):
@@ -646,24 +663,44 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             return None
 
     def _infer_domain(self, rel_path, meta):
-        """Resolve a page's domain — explicit frontmatter wins, else inferred
-        from vault folder, else 'general'."""
-        if meta.get('domain') in self._KNOWN_DOMAINS:
-            return meta['domain']
+        """Resolve a page's domain — explicit frontmatter wins (raw key or
+        pretty agents.md name), else inferred from vault folder/subfolder,
+        else 'general'."""
+        fm = str(meta.get('domain', '')).strip()
+        if fm in self._KNOWN_DOMAINS:
+            return fm
+        if fm.lower() in self._PRETTY_DOMAINS:
+            return self._PRETTY_DOMAINS[fm.lower()]
         parts = rel_path.split('/')
         top = parts[0] if parts else ''
-        if top == "20_Wiki" and len(parts) > 1:
-            sub = parts[1].lower()
-            if 'career' in sub:
+        sub = parts[1].lower() if len(parts) > 1 else ''
+        if top in ("030 Resources", "30_Context") and sub:
+            if sub in self._PRETTY_DOMAINS:
+                return self._PRETTY_DOMAINS[sub]
+            # keyword fallback so any NEW domain folder agents.md creates
+            # still lands somewhere sensible without a code change
+            for kw, dom in (('construction', 'construction'), ('trading', 'trading'),
+                            ('health', 'health'), ('family', 'family'),
+                            ('business', 'fieldbridgehq'), ('ai', 'ai-tools'),
+                            ('pkm', 'ai-tools'), ('knowledge', 'ai-tools')):
+                if kw in sub:
+                    return dom
+            return 'general'
+        if top in ("010 Projects", "020 Areas") and sub:
+            if 'fieldbridge' in sub:
+                return 'fieldbridgehq'
+            if 'career' in sub or 'job' in sub:
                 return 'career'
-            if 'trading' in sub or 'crypto' in sub:
+            if 'trading' in sub or 'crypto' in sub or 'finance' in sub:
                 return 'trading'
-            if 'construction' in sub:
-                return 'construction'
             if 'health' in sub:
                 return 'health'
-            if 'ai' in sub:
+            if 'family' in sub:
+                return 'family'
+            if 'knowledge' in sub or 'learning' in sub:
                 return 'ai-tools'
+            if 'work' in sub:
+                return 'construction'
             return 'general'
         return self._WIKI_DOMAIN_FOLDERS.get(top, 'general')
 
@@ -671,7 +708,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         """Yield every markdown file considered part of the wiki surface —
         the whole vault minus dotfiles, raw Clippings, and processed-source
         archives (those are 'raw sources', not wiki pages, per the schema)."""
-        exclude_top = {"Clippings", "10_Sources", ".chat_sessions"}
+        exclude_top = {"Clippings", "10_Sources", ".chat_sessions",
+                       "000 Inbox", "_Templates", "040 Archive"}
         for md_file in VAULT_DIR.rglob("*.md"):
             if not md_file.is_file():
                 continue
@@ -719,9 +757,11 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                 "type": meta.get('type', ''),
                 "description": meta.get('description', ''),
                 "tags": meta.get('tags', []),
-                "timestamp": meta.get('timestamp') or meta.get('last_reviewed') or '',
-                "resource": meta.get('resource') or meta.get('source_url') or '',
-                "okf_conformant": bool(meta.get('type')),
+                "timestamp": meta.get('timestamp') or meta.get('last_reviewed') or meta.get('date_processed') or meta.get('created') or '',
+                "resource": meta.get('resource') or meta.get('source_url') or meta.get('source') or '',
+                # agents.md pages carry domain/tags rather than the old OKF 'type' —
+                # count either convention as conformant so lint doesn't false-flag the new vault
+                "okf_conformant": bool(meta.get('type') or meta.get('domain') or meta.get('tags')),
                 "words": len(body.split()),
                 "links": len(wikilinks),
                 "wikilinks": wikilinks,
@@ -970,6 +1010,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         pass that backfills missing OKF-required frontmatter on every wiki
         page. Never overwrites an existing field, only adds what's missing.
         Also writes OKF-WIKI-SCHEMA.md into 00_Kernel/ if not already present."""
+        # ── RETIRED 2026-07-05 (Decision Gate 1): the vault is a read-only git
+        # mirror; ALL ingestion runs in Claude Cowork via agents.md operations
+        # (OPERATION 1/5/6/7 + the nightly-second-brain-sync task). Server-side
+        # writes into the vault would break the 15-min git pull. This endpoint
+        # is kept for API compatibility but performs no writes.
+        self._json_response({
+            "retired": True,
+            "message": "Ingestion moved to Cowork (agents.md operations). Drop sources into the vault's 10_Sources/raw/ or 000 Inbox/ — the nightly sync ingests them and this mirror receives the result within 15 minutes of the 9:30 PM vault push."
+        }, status=410)
+        return
         try:
             updated = 0
             scanned = 0
@@ -1143,6 +1193,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         into the wiki as OKF-conformant pages under 10_Sources/Fireflies/.
         Idempotent (tracks ingested IDs in .fireflies_ingested.json) and
         hard-excludes anything matching _JACKMAN_EXCLUDE_TERMS."""
+        # ── RETIRED 2026-07-05 (Decision Gate 1): the vault is a read-only git
+        # mirror; ALL ingestion runs in Claude Cowork via agents.md operations
+        # (OPERATION 1/5/6/7 + the nightly-second-brain-sync task). Server-side
+        # writes into the vault would break the 15-min git pull. This endpoint
+        # is kept for API compatibility but performs no writes.
+        self._json_response({
+            "retired": True,
+            "message": "Ingestion moved to Cowork (agents.md operations). Drop sources into the vault's 10_Sources/raw/ or 000 Inbox/ — the nightly sync ingests them and this mirror receives the result within 15 minutes of the 9:30 PM vault push."
+        }, status=410)
+        return
         try:
             state_path = VAULT_DIR / ".fireflies_ingested.json"
             ingested_ids = set()
@@ -1272,6 +1332,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         appended Transcript section) so nothing gets duplicated. Idempotent
         via that frontmatter flag; also tracked in .youtube_ingested.json as
         a fallback for pages whose frontmatter got hand-edited."""
+        # ── RETIRED 2026-07-05 (Decision Gate 1): the vault is a read-only git
+        # mirror; ALL ingestion runs in Claude Cowork via agents.md operations
+        # (OPERATION 1/5/6/7 + the nightly-second-brain-sync task). Server-side
+        # writes into the vault would break the 15-min git pull. This endpoint
+        # is kept for API compatibility but performs no writes.
+        self._json_response({
+            "retired": True,
+            "message": "Ingestion moved to Cowork (agents.md operations). Drop sources into the vault's 10_Sources/raw/ or 000 Inbox/ — the nightly sync ingests them and this mirror receives the result within 15 minutes of the 9:30 PM vault push."
+        }, status=410)
+        return
         try:
             state_path = VAULT_DIR / ".youtube_ingested.json"
             ingested_ids = set()
@@ -1281,7 +1351,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                 except Exception:
                     ingested_ids = set()
 
-            clips_dir = VAULT_DIR / "Clippings"
+            clips_dir = DATA_DIR / "clippings"
             if not clips_dir.exists():
                 self._json_response({"data": {"scanned": 0, "transcribed": 0, "skipped": 0, "message": "No Clippings folder yet."}})
                 return
@@ -1374,6 +1444,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         """POST /api/wiki/ingest-gmail — pull recent FieldBridge-labeled
         Gmail threads into 10_Sources/Gmail/ as OKF-conformant pages.
         Body (optional JSON): {"query": "label:fieldbridge", "limit": 30}"""
+        # ── RETIRED 2026-07-05 (Decision Gate 1): the vault is a read-only git
+        # mirror; ALL ingestion runs in Claude Cowork via agents.md operations
+        # (OPERATION 1/5/6/7 + the nightly-second-brain-sync task). Server-side
+        # writes into the vault would break the 15-min git pull. This endpoint
+        # is kept for API compatibility but performs no writes.
+        self._json_response({
+            "retired": True,
+            "message": "Ingestion moved to Cowork (agents.md operations). Drop sources into the vault's 10_Sources/raw/ or 000 Inbox/ — the nightly sync ingests them and this mirror receives the result within 15 minutes of the 9:30 PM vault push."
+        }, status=410)
+        return
         import imaplib
         import email as email_lib
         from email.header import decode_header
@@ -1594,6 +1674,16 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         alongside everything else (CRM/ is NOT in the wiki-exclude list).
         Full upsert every run (Notion is the source of truth, no diffing
         needed) — one page per company, filename = company name."""
+        # ── RETIRED 2026-07-05 (Decision Gate 1): the vault is a read-only git
+        # mirror; ALL ingestion runs in Claude Cowork via agents.md operations
+        # (OPERATION 1/5/6/7 + the nightly-second-brain-sync task). Server-side
+        # writes into the vault would break the 15-min git pull. This endpoint
+        # is kept for API compatibility but performs no writes.
+        self._json_response({
+            "retired": True,
+            "message": "Ingestion moved to Cowork (agents.md operations). Drop sources into the vault's 10_Sources/raw/ or 000 Inbox/ — the nightly sync ingests them and this mirror receives the result within 15 minutes of the 9:30 PM vault push."
+        }, status=410)
+        return
         try:
             rows = self._fetch_notion_crm_rows()
         except RuntimeError as e:
@@ -1729,7 +1819,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         candidate reusable prompts (heuristic, not semantic) and cache the
         result in .prompts_library.json. Served back via GET /api/wiki/prompts."""
         try:
-            sessions_dir = VAULT_DIR / ".chat_sessions"
+            sessions_dir = DATA_DIR / ".chat_sessions"
             candidates = []
             seen_text = set()
             if sessions_dir.exists():
@@ -2355,7 +2445,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         
         try:
             # Create clip file in Clippings directory
-            clips_dir = VAULT_DIR / "Clippings"
+            clips_dir = DATA_DIR / "clippings"
             clips_dir.mkdir(parents=True, exist_ok=True)
             
             # Generate filename from title
@@ -2642,7 +2732,7 @@ tags: {data.get('tags', [])}
     def _serve_clippings(self, query=None):
         """Serve unprocessed clips from Clippings/ folder"""
         try:
-            clips_dir = VAULT_DIR / "Clippings"
+            clips_dir = DATA_DIR / "clippings"
             clips = []
             if clips_dir.exists() and clips_dir.is_dir():
                 for item in sorted(clips_dir.iterdir()):
@@ -2735,8 +2825,8 @@ tags: {data.get('tags', [])}
             if not filename:
                 self._json_response({"ok": False, "error": "filename required"})
                 return
-            src = VAULT_DIR / "Clippings" / filename
-            processed_dir = VAULT_DIR / "10_Sources" / "processed" / "clippings"
+            src = DATA_DIR / "clippings" / filename
+            processed_dir = DATA_DIR / "clippings" / "processed"
             processed_dir.mkdir(parents=True, exist_ok=True)
             dst = processed_dir / filename
             # Avoid overwrite by appending timestamp if exists
@@ -2765,7 +2855,7 @@ tags: {data.get('tags', [])}
             # Delete flag
             if data.get('_delete'):
                 # Remove from kanban store
-                store_path = VAULT_DIR / ".kanban_store.json"
+                store_path = DATA_DIR / ".kanban_store.json"
                 if store_path.exists():
                     with open(store_path, 'r') as f:
                         store = json.load(f)
@@ -2776,7 +2866,7 @@ tags: {data.get('tags', [])}
                 return
             
             # Upsert task to store
-            store_path = VAULT_DIR / ".kanban_store.json"
+            store_path = DATA_DIR / ".kanban_store.json"
             store = []
             if store_path.exists():
                 with open(store_path, 'r') as f:
@@ -2818,7 +2908,7 @@ tags: {data.get('tags', [])}
         if not session_id:
             self._json_error(400, "Session id required")
             return
-        session_path = VAULT_DIR / ".chat_sessions" / f"{session_id}.json"
+        session_path = DATA_DIR / ".chat_sessions" / f"{session_id}.json"
         if not session_path.exists():
             self._json_error(404, "Session not found")
             return
@@ -2844,7 +2934,7 @@ tags: {data.get('tags', [])}
             if 'created' not in data:
                 data['created'] = data['updated']
 
-            sessions_dir = VAULT_DIR / ".chat_sessions"
+            sessions_dir = DATA_DIR / ".chat_sessions"
             sessions_dir.mkdir(parents=True, exist_ok=True)
             session_path = sessions_dir / f"{session_id}.json"
 
@@ -2908,7 +2998,7 @@ tags: {data.get('tags', [])}
                 self._json_error(400, "Session id required")
                 return
 
-            session_path = VAULT_DIR / ".chat_sessions" / f"{session_id}.json"
+            session_path = DATA_DIR / ".chat_sessions" / f"{session_id}.json"
             if session_path.exists():
                 session_path.unlink()
 
