@@ -293,7 +293,7 @@
   <div class="tabs">
     <button class="tab active" onclick="showTab('byjob', this)">🎯 By Job</button>
     <button class="tab" onclick="showTab('models', this)">🤖 All Models</button>
-    <button class="tab" onclick="showTab('tracker', this)">📊 Token Tracker</button>
+    <button class="tab" onclick="showTab('tracker', this)">📊 Usage</button>
     <button class="tab" onclick="showTab('compare', this)">⚖️ Compare</button>
     <button class="tab" onclick="showTab('calculator', this)">🧮 Cost Calculator</button>
     <button class="tab" onclick="showTab('hermes', this)">⚙️ Hermes Guide</button>
@@ -383,6 +383,11 @@
     <div class="section">
       <div class="section-title">📈 Usage by Model</div>
       <div class="token-chart" id="usage-chart"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📅 Usage by Month</div>
+      <div id="usage-by-month"></div>
     </div>
 
     <div class="section">
@@ -933,11 +938,56 @@ function renderUsage() {
     chart.innerHTML += `<div class="chart-bar" style="height:${pct}%;background:${color};" title="${model}: ${formatNumber(tokens)} tokens"></div>`;
   });
 
+  renderUsageByMonth();
+
   if (!usageLog.length) { log.innerHTML = '<div class="empty"><div class="icon">📊</div><div>No usage data yet</div></div>'; return; }
   log.innerHTML = '';
   usageLog.slice().reverse().forEach(e => {
     log.innerHTML += `<div class="usage-row"><span class="usage-model">${e.model}</span><span class="usage-tokens">${formatNumber(e.tokens||0)} tok</span><span class="usage-cost">$${(e.cost||0).toFixed(4)}</span><span class="usage-time">${e.time||'—'}</span></div>`;
   });
+}
+
+// R10 — by-month aggregation. Merges the retired Token Analysis page's auto-recorded
+// chat sessions ('owl-tokens', ISO timestamps) with the manual usage log ('fb-usage-log').
+function renderUsageByMonth() {
+  const container = document.getElementById('usage-by-month');
+  if (!container) return;
+  const months = {}; // 'YYYY-MM' -> { tokens, cost, calls }
+  const bump = (key, tokens, cost) => {
+    if (!months[key]) months[key] = { tokens: 0, cost: 0, calls: 0 };
+    months[key].tokens += tokens || 0;
+    months[key].cost += cost || 0;
+    months[key].calls += 1;
+  };
+  // Auto-recorded chat sessions migrated from the retired Token Analysis page
+  let owl = { sessions: [] };
+  try { owl = JSON.parse(localStorage.getItem('owl-tokens') || '{"sessions":[]}'); } catch (e) {}
+  (owl.sessions || []).forEach(s => {
+    const key = (s.time && s.time.length >= 7) ? s.time.slice(0, 7) : 'Unknown';
+    bump(key, (s.input || 0) + (s.output || 0), s.cost || 0);
+  });
+  // Manual usage log (locale-formatted timestamps — parse defensively)
+  usageLog.forEach(e => {
+    let key = 'Unknown';
+    const d = new Date(e.time);
+    if (!isNaN(d.getTime())) key = d.toISOString().slice(0, 7);
+    bump(key, e.tokens || 0, e.cost || 0);
+  });
+  const keys = Object.keys(months).sort().reverse();
+  if (!keys.length) {
+    container.innerHTML = '<div class="empty" style="font-size:18px;"><div class="icon">📅</div><div>No monthly usage yet — start chatting or log an entry.</div></div>';
+    return;
+  }
+  const cell = 'padding:8px 12px;border-bottom:1px solid var(--border-secondary);';
+  const head = 'padding:8px 12px;border-bottom:1px solid var(--border-primary);';
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:18px;">'
+    + `<thead><tr style="text-align:left;color:var(--text-secondary);"><th style="${head}">Month</th><th style="${head}">Calls</th><th style="${head}">Tokens</th><th style="${head}">Cost</th></tr></thead><tbody>`;
+  keys.forEach(k => {
+    const m = months[k];
+    html += `<tr><td style="${cell}">${k}</td><td style="${cell}">${m.calls}</td><td style="${cell}">${formatNumber(m.tokens)}</td><td style="${cell}">$${m.cost.toFixed(4)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
 }
 
 function addUsageEntry() {
