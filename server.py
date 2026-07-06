@@ -57,6 +57,130 @@ def _load_whisper_model():
 # Start model loading in background thread so server can start immediately
 threading.Thread(target=_load_whisper_model, daemon=True).start()
 
+
+# ============================================================
+# /api/today aggregation helpers (Task 3.1)
+# Pure, read-only parsers over vault markdown. Unit-tested against the real
+# vault files. These NEVER write to VAULT_DIR (Decision Gate 1).
+# ============================================================
+
+def _today_parse_radar(text):
+    """Opportunity Radar.md -> {"high":[...], "medium":[...]}.
+    HIGH table cols:   | Signal | Source Clip | Pipeline Match | Action |
+    MEDIUM table cols: | Topic  | # Clips      | Potential Angle | Explore? |
+    """
+    high, medium = [], []
+    section = None  # 'high' | 'medium' | None
+    for raw in text.split('\n'):
+        line = raw.strip()
+        low = line.lower()
+        if line.startswith('#'):
+            if 'high confidence' in low:
+                section = 'high'
+            elif 'medium signal' in low:
+                section = 'medium'
+            elif line.startswith('## '):
+                section = None
+            continue
+        if section and line.startswith('|'):
+            cells = [c.strip() for c in line.strip('|').split('|')]
+            if len(cells) < 2:
+                continue
+            first = cells[0].lower()
+            # skip header + separator rows
+            if first in ('signal', 'topic') or (cells[0] and set(cells[0]) <= set('-: ')):
+                continue
+            if not cells[0]:
+                continue
+            if section == 'high':
+                high.append({
+                    "title": cells[0],
+                    "match": cells[2] if len(cells) > 2 else "",
+                    "action": cells[3] if len(cells) > 3 else "",
+                    "confidence": "HIGH",
+                })
+            else:
+                medium.append({
+                    "title": cells[0],
+                    "angle": cells[2] if len(cells) > 2 else "",
+                    "action": cells[3] if len(cells) > 3 else "",
+                    "confidence": "MEDIUM",
+                })
+    return {"high": high, "medium": medium}
+
+
+def _today_parse_log(text):
+    """log.md -> latest NIGHTLY digest + open WAGER lines.
+    Line format: - YYYY-MM-DD | OPERATION | Detail | Outcome
+    A WAGER is 'open' unless resolved (no checkmark/cross) or explicitly 'TBD'.
+    """
+    nightly, nightly_date, wagers = None, "", []
+    for raw in text.split('\n'):
+        line = raw.strip()
+        if not line.startswith('- '):
+            continue
+        body = line[2:].strip()
+        parts = [p.strip() for p in body.split('|')]
+        if len(parts) < 2:
+            continue
+        date, op = parts[0], parts[1].upper()
+        detail = parts[2] if len(parts) > 2 else ""
+        outcome = parts[3] if len(parts) > 3 else ""
+        if op in ('NIGHTLY', 'DIGEST'):
+            nightly, nightly_date = (detail or outcome), date  # log is chronological; last wins
+        elif op == 'WAGER':
+            full = ' | '.join(parts[2:]) if len(parts) > 2 else body
+            is_open = ('✅' not in body and '❌' not in body) or ('tbd' in body.lower())
+            wagers.append({"date": date, "text": full, "open": is_open})
+    return {
+        "nightly_digest": nightly,
+        "nightly_date": nightly_date,
+        "wagers_open": [w for w in wagers if w["open"]],
+    }
+
+
+def _today_parse_power3(text):
+    """Daily journal note -> Power 3 items (numbered list under the 'Power 3' heading)."""
+    items, in_section = [], False
+    for raw in text.split('\n'):
+        line = raw.strip()
+        if line.startswith('#'):
+            if 'power 3' in line.lower():
+                in_section = True
+                continue
+            elif in_section:
+                break  # next heading ends the section
+        if in_section:
+            m = re.match(r'^\d+[.)]\s*(.+)$', line)
+            if m and m.group(1).strip():
+                items.append(m.group(1).strip())
+    return items
+
+
+def _today_select_kanban(cards):
+    """Kanban store cards -> {"in_progress":[...], "due":[...]}.
+    No due-date field exists in the current schema; 'due' is supported defensively."""
+    today = datetime.date.today().isoformat()
+    in_progress, due = [], []
+    for c in cards:
+        col = (c.get('column') or '').lower()
+        card = {
+            "id": c.get('id', ''),
+            "title": c.get('title', 'Untitled'),
+            "priority": c.get('priority', 'medium'),
+            "tag": c.get('tag', ''),
+            "column": col,
+        }
+        if col in ('progress', 'in progress', 'doing', 'active'):
+            in_progress.append(card)
+        d = c.get('due') or c.get('dueDate')
+        if d and str(d)[:10] <= today and col != 'done':
+            c2 = dict(card)
+            c2["due"] = str(d)[:10]
+            due.append(c2)
+    return {"in_progress": in_progress, "due": due}
+
+
 class LifeOSHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests"""
@@ -174,6 +298,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         
         if path == "/api/models":
             self._serve_models()
+        elif path == "/api/today":
+            self._serve_today()
         elif path == "/api/tasks":
             self._serve_tasks()
         elif path == "/api/wiki":
@@ -474,6 +600,73 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         ]
 
     def _serve_tasks(self):
+        """Serve tasks: combine vault markdown checkboxes + kanban store"""
+        return self._serve_tasks_impl()
+
+    def _serve_today(self):
+        """GET /api/today (Task 3.1) — aggregate the day for the Today/Hub page:
+        (a) Opportunity Radar HIGH/MEDIUM signals, (b) kanban due/in-progress,
+        (c) latest NIGHTLY digest line, (d) open WAGER lines, (e) today's Power 3.
+        Read-only from VAULT_DIR; kanban from DATA_DIR. Never writes."""
+        result = {
+            "date": datetime.date.today().isoformat(),
+            "radar": {"high": [], "medium": []},
+            "kanban": {"due": [], "in_progress": []},
+            "nightly_digest": None,
+            "nightly_date": "",
+            "wagers_open": [],
+            "power3": [],
+            "sources": {},
+        }
+        # (a) Opportunity Radar
+        radar_path = VAULT_DIR / "Opportunity Radar.md"
+        try:
+            if radar_path.exists():
+                result["radar"] = _today_parse_radar(radar_path.read_text(encoding='utf-8'))
+                result["sources"]["radar"] = True
+            else:
+                result["sources"]["radar"] = False
+        except Exception as e:
+            result["sources"]["radar_error"] = str(e)
+        # (c) + (d) log.md — nightly digest + open wagers
+        log_path = VAULT_DIR / "log.md"
+        try:
+            if log_path.exists():
+                parsed = _today_parse_log(log_path.read_text(encoding='utf-8'))
+                result["nightly_digest"] = parsed["nightly_digest"]
+                result["nightly_date"] = parsed["nightly_date"]
+                result["wagers_open"] = parsed["wagers_open"]
+                result["sources"]["log"] = True
+            else:
+                result["sources"]["log"] = False
+        except Exception as e:
+            result["sources"]["log_error"] = str(e)
+        # (e) Power 3 from today's journal note
+        journal_path = VAULT_DIR / "journal" / (result["date"] + ".md")
+        try:
+            if journal_path.exists():
+                result["power3"] = _today_parse_power3(journal_path.read_text(encoding='utf-8'))
+                result["sources"]["journal"] = True
+            else:
+                result["sources"]["journal"] = False
+        except Exception as e:
+            result["sources"]["journal_error"] = str(e)
+        # (b) Kanban due / in-progress from DATA_DIR
+        store_path = DATA_DIR / ".kanban_store.json"
+        try:
+            if store_path.exists():
+                with open(store_path, 'r', encoding='utf-8') as f:
+                    cards = json.load(f)
+                if isinstance(cards, list):
+                    result["kanban"] = _today_select_kanban(cards)
+                result["sources"]["kanban"] = True
+            else:
+                result["sources"]["kanban"] = False
+        except Exception as e:
+            result["sources"]["kanban_error"] = str(e)
+        self._json_response(result)
+
+    def _serve_tasks_impl(self):
         """Serve tasks: combine vault markdown checkboxes + kanban store"""
         tasks = []
         
