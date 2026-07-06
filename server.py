@@ -15,6 +15,7 @@ import asyncio
 import urllib.parse
 from pathlib import Path
 import threading
+import brain  # BUILD SPEC v1 Part A -- deterministic retrieval ladder
 
 # Configuration
 STATIC_DIR = Path(__file__).parent
@@ -1143,9 +1144,12 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_error(500, f"Lint analysis failed: {str(e)}")
 
     def _handle_wiki_query(self):
-        """POST /api/wiki/query — Karpathy's 'Query' operation: search the
-        wiki, read full candidate pages (not just snippets), and answer with
-        citations back to the source pages."""
+        """POST /api/wiki/query — brain.py's deterministic retrieval ladder
+        (BUILD SPEC v1, Part A / GAP A): score the index without opening any
+        wiki page body, open exactly the one top-scoring page, pull the one
+        best section (capped 1500 chars), optionally follow one [[wikilink]]
+        pointer, then make exactly one Hermes call citing that page. Replaces
+        the old 'open every page, score raw content, send top-6' pattern."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length == 0:
@@ -1157,34 +1161,23 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                 self._json_error(400, "Missing 'question'")
                 return
 
-            terms = [t.lower() for t in re.findall(r'\w+', question) if len(t) > 2]
-            pages = self._load_wiki_pages()
-            scored = []
-            for p in pages:
-                lower = p['rawContent'].lower()
-                score = sum(lower.count(t) for t in terms)
-                if score > 0:
-                    scored.append((score, p))
-            scored.sort(key=lambda x: x[0], reverse=True)
-            top = [p for _, p in scored[:6]]
+            evidence = brain.retrieve(question, VAULT_DIR, data_dir=DATA_DIR)
 
-            if not top:
+            if not evidence.get("found"):
                 self._json_response({"data": {
                     "answer": "Nothing in the vault matches that yet — this might be a genuine knowledge gap worth filling.",
                     "sources": [],
+                    "evidence": evidence,
                 }})
                 return
 
-            context_blocks = []
-            for p in top:
-                context_blocks.append(f"### {p['title']} (path: {p['path']}, domain: {p['domain']})\n{p['rawContent'][:2000]}")
-            context = "\n\n".join(context_blocks)
-
             prompt = (
-                f"Answer this question using ONLY the vault pages below. Cite the page title "
-                f"for every claim (e.g. 'per [Page Title]'). If the pages don't actually answer "
+                f"Answer this question using ONLY the vault excerpt below. Cite the page title "
+                f"for every claim (e.g. 'per [Page Title]'). If the excerpt doesn't actually answer "
                 f"the question, say so plainly rather than guessing.\n\n"
-                f"QUESTION: {question}\n\nVAULT PAGES:\n{context}"
+                f"QUESTION: {question}\n\n"
+                f"PAGE: {evidence['page_title']} (path: {evidence['page_path']}, domain: {evidence['domain']})\n"
+                f"SECTION: {evidence['section_heading']}\n{evidence['text']}"
             )
             answer = self._call_hermes([{"role": "user", "content": prompt}], max_tokens=900)
             if answer is None:
@@ -1193,7 +1186,12 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
 
             self._json_response({"data": {
                 "answer": answer,
-                "sources": [{"title": p['title'], "path": p['path'], "domain": p['domain']} for p in top],
+                "sources": [{
+                    "title": evidence['page_title'],
+                    "path": evidence['page_path'],
+                    "domain": evidence['domain'],
+                }],
+                "evidence": evidence,
             }})
         except Exception as e:
             self._json_error(500, f"Wiki query failed: {str(e)}")
@@ -3214,46 +3212,23 @@ tags: {data.get('tags', [])}
     # ═══════════════════════════════════════════════════════════
 
     def _serve_kb_search(self, query):
-        """GET /api/kb/search?q=... — keyword search across vault markdown files, used to
-        inject real vault context into chat before Hermes answers."""
+        """GET /api/kb/search?q=... — brain.py ladder steps 1-2 only (BUILD
+        SPEC v1 Part A): score the index/CRM/30_Context candidate lines and
+        return the top paths + their index-line snippets. Never opens a
+        wiki page body — chat context injection stops reading file bodies
+        here; replaces the old full-vault rglob."""
         q = (query.get('q') or [''])[0].strip()
         if not q:
             self._json_response({"data": []})
             return
-        terms = [t.lower() for t in re.findall(r'\w+', q) if len(t) > 2]
-        if not terms:
-            self._json_response({"data": []})
-            return
-
-        results = []
         try:
-            for md_file in VAULT_DIR.rglob("*.md"):
-                if any(part.startswith('.') for part in md_file.parts):
-                    continue
-                try:
-                    with open(md_file, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                except Exception:
-                    continue
-                lower = content.lower()
-                score = sum(lower.count(t) for t in terms)
-                if score == 0:
-                    continue
-                idx = -1
-                for t in terms:
-                    idx = lower.find(t)
-                    if idx != -1:
-                        break
-                start = max(0, idx - 150)
-                end = min(len(content), idx + 250)
-                snippet = content[start:end].strip()
-                results.append({
-                    "file": str(md_file.relative_to(VAULT_DIR)),
-                    "score": score,
-                    "snippet": snippet
-                })
-            results.sort(key=lambda r: r['score'], reverse=True)
-            self._json_response({"data": results[:5]})
+            result = brain.score_index(q, VAULT_DIR, data_dir=DATA_DIR, top_n=5)
+            results = [{
+                "file": r["path"],
+                "score": r["score"],
+                "snippet": r["insight"],
+            } for r in result["results"] if r["score"] > 0]
+            self._json_response({"data": results})
         except Exception as e:
             self._json_error(500, f"KB search failed: {str(e)}")
 
