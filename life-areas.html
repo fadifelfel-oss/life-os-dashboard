@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life Areas — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Placeholder page — Phase 6 (task 6.1) replaces this with real area pages.
+   Keeps current CSS language only; Blueprint Dark palette is Fable's Phase 2. */
+.area-intro { max-width: 820px; margin: 0 0 var(--space-6); }
+.area-intro h1 { font-size: 28px; font-weight: 800; margin: 0 0 var(--space-2); }
+.area-intro p { font-size: 18px; line-height: 1.6; color: var(--text-secondary); margin: 0; }
+.area-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+.area-card {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl); padding: var(--space-5);
+  transition: all var(--transition-base);
+}
+.area-card:target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-border); }
+.area-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.area-card .area-emoji { font-size: 30px; line-height: 1; }
+.area-card h3 { font-size: 20px; font-weight: 700; margin: var(--space-3) 0 var(--space-1); }
+.area-card p { font-size: 18px; line-height: 1.5; color: var(--text-secondary); margin: 0; }
+.area-soon {
+  display: inline-block; margin-top: var(--space-3); font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+  border: 1px dashed var(--border-primary); border-radius: var(--radius-md); padding: 2px 10px;
+}
+.area-group-label {
+  font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-tertiary); margin: var(--space-6) 0 var(--space-3);
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1>🧭 Life Areas</h1>
+</div>
+<div class="container">
+  <div class="area-intro">
+    <h1>Life Areas</h1>
+    <p>One page per area — goals, tasks, radar signals, and related wiki nodes — is coming in
+    Phase 6. For now this is a placeholder so the navigation is complete. Each area will get its
+    own colour and its own dashboard once the Blueprint Dark design language lands.</p>
+  </div>
+
+  <div class="area-group-label">Income engines</div>
+  <div class="area-grid">
+    <div class="area-card" id="career">
+      <div class="area-emoji">💼</div>
+      <h3>Career</h3>
+      <p>Senior/executive PM search — Ontario, Egypt, UAE, Saudi. Recruiters, network, applications.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+    <div class="area-card" id="fieldbridge">
+      <div class="area-emoji">🌉</div>
+      <h3>FieldBridge</h3>
+      <p>The AI workflow consultancy for construction. Discovery → implementation → retainer pipeline.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+    <div class="area-card" id="construction">
+      <div class="area-emoji">🏗️</div>
+      <h3>Construction</h3>
+      <p>25-year PM knowledge base — CCDC, FIDIC, claims, schedules, cost control.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+    <div class="area-card" id="trading">
+      <div class="area-emoji">📈</div>
+      <h3>Trading</h3>
+      <p>AI-assisted prop trading exploration — strategy, sizing, TP/SL, journals.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+  </div>
+
+  <div class="area-group-label">Life &amp; system</div>
+  <div class="area-grid">
+    <div class="area-card" id="health">
+      <div class="area-emoji">🩺</div>
+      <h3>Health</h3>
+      <p>Post-surgery rebuild — training, sleep, recovery, energy protocols.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+    <div class="area-card" id="family">
+      <div class="area-emoji">👨‍👩‍👧</div>
+      <h3>Family</h3>
+      <p>Sara, Salah, Seela, Yousef — presence, priorities, and protected time.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+    <div class="area-card" id="knowledge">
+      <div class="area-emoji">📚</div>
+      <h3>Knowledge</h3>
+      <p>Second Brain — web clippings, notes, and the wiki that feeds every area.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+    <div class="area-card" id="admin">
+      <div class="area-emoji">🗂️</div>
+      <h3>Admin / Inbox</h3>
+      <p>Capture funnel, logistics, and everything that doesn't fit another area yet.</p>
+      <span class="area-soon">Coming soon</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

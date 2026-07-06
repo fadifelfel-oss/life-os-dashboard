@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fadi Life OS v2.0</title>
 <link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="command-bar.css">
 <style>
 /* Page-specific: Dashboard modules */
 .welcome-banner {
@@ -140,28 +141,22 @@
 </head>
 <body>
 
-<!-- MOBILE BOTTOM NAV -->
+<!-- MOBILE BOTTOM NAV (5 items per IA §3: Today · Areas · Brain · Chat · Kanban) -->
 <nav class="mobile-bottom-nav" role="navigation" aria-label="Mobile navigation">
   <button class="mobile-nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-    <span class="mobile-nav-icon">⚡</span><span class="mobile-nav-label" data-i18n="home">Home</span>
+    <span class="mobile-nav-icon">⚡</span><span class="mobile-nav-label" data-i18n="today">Today</span>
+  </button>
+  <button class="mobile-nav-item" data-page="area-career" onclick="navigateTo('area-career')">
+    <span class="mobile-nav-icon">🧭</span><span class="mobile-nav-label" data-i18n="areas">Areas</span>
+  </button>
+  <button class="mobile-nav-item" data-page="brain" onclick="navigateTo('brain')">
+    <span class="mobile-nav-icon">🧠</span><span class="mobile-nav-label" data-i18n="brain">Brain</span>
   </button>
   <button class="mobile-nav-item" data-page="sessions" onclick="navigateTo('sessions')">
     <span class="mobile-nav-icon">💬</span><span class="mobile-nav-label" data-i18n="chat">Chat</span>
   </button>
-  <button class="mobile-nav-item" data-page="files" onclick="navigateTo('files')">
-    <span class="mobile-nav-icon">📁</span><span class="mobile-nav-label" data-i18n="files">Files</span>
-  </button>
-  <button class="mobile-nav-item" data-page="models" onclick="navigateTo('models')">
-    <span class="mobile-nav-icon">🤖</span><span class="mobile-nav-label" data-i18n="models">Models</span>
-  </button>
-  <button class="mobile-nav-item" data-page="kanban" onclick="window.location.href='kanban.html'">
+  <button class="mobile-nav-item" data-page="kanban" onclick="navigateTo('kanban')">
     <span class="mobile-nav-icon">📝</span><span class="mobile-nav-label" data-i18n="kanban">Kanban</span>
-  </button>
-  <button class="mobile-nav-item" data-page="construction" onclick="window.location.href='hermes-map.html'">
-    <span class="mobile-nav-icon">🗺️</span><span class="mobile-nav-label" data-i18n="construction">Map</span>
-  </button>
-  <button class="mobile-nav-item" data-page="meetings" onclick="window.location.href='meetings.html'">
-    <span class="mobile-nav-icon">🎙️</span><span class="mobile-nav-label" data-i18n="meetings">Meetings</span>
   </button>
 </nav>
 
@@ -173,68 +168,101 @@
   </div>
   
   <nav class="sidebar-nav">
+    <!-- ⚡ TODAY (home) -->
     <div class="nav-section">
-      <div class="nav-section-title">Main</div>
+      <div class="nav-section-title">Today</div>
       <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-        <span class="nav-icon">⚡</span><span data-i18n="dashboard">Dashboard</span>
+        <span class="nav-icon">⚡</span><span data-i18n="today">Today</span>
+      </button>
+      <button class="nav-item" data-page="kanban" onclick="navigateTo('kanban')">
+        <span class="nav-icon">📝</span><span data-i18n="kanban">Kanban</span>
+      </button>
+    </div>
+
+    <!-- 🧭 LIFE AREAS (placeholder — Phase 6 builds these) -->
+    <div class="nav-section">
+      <div class="nav-section-title">Life Areas · coming soon</div>
+      <button class="nav-item" data-page="area-career" onclick="navigateTo('area-career')">
+        <span class="nav-icon">💼</span><span data-i18n="career">Career</span>
+      </button>
+      <button class="nav-item" data-page="area-fieldbridge" onclick="navigateTo('area-fieldbridge')">
+        <span class="nav-icon">🌉</span><span data-i18n="fieldbridge">FieldBridge</span>
+      </button>
+      <button class="nav-item" data-page="area-construction" onclick="navigateTo('area-construction')">
+        <span class="nav-icon">🏗️</span><span data-i18n="construction">Construction</span>
+      </button>
+      <button class="nav-item" data-page="area-trading" onclick="navigateTo('area-trading')">
+        <span class="nav-icon">📈</span><span data-i18n="trading">Trading</span>
+      </button>
+      <button class="nav-item" data-page="area-health" onclick="navigateTo('area-health')">
+        <span class="nav-icon">🩺</span><span data-i18n="health">Health</span>
+      </button>
+      <button class="nav-item" data-page="area-family" onclick="navigateTo('area-family')">
+        <span class="nav-icon">👨‍👩‍👧</span><span data-i18n="family">Family</span>
+      </button>
+      <button class="nav-item" data-page="area-knowledge" onclick="navigateTo('area-knowledge')">
+        <span class="nav-icon">📚</span><span data-i18n="knowledge">Knowledge</span>
+      </button>
+      <button class="nav-item" data-page="area-admin" onclick="navigateTo('area-admin')">
+        <span class="nav-icon">🗂️</span><span data-i18n="admin">Admin</span>
+      </button>
+    </div>
+
+    <!-- 🧠 BRAIN -->
+    <div class="nav-section">
+      <div class="nav-section-title">Brain</div>
+      <button class="nav-item" data-page="brain" onclick="navigateTo('brain')">
+        <span class="nav-icon">🧠</span><span data-i18n="brain">3D Brain</span>
+      </button>
+      <button class="nav-item" data-page="files" onclick="navigateTo('files')">
+        <span class="nav-icon">📁</span><span data-i18n="files">Files &amp; Reader</span>
+      </button>
+    </div>
+
+    <!-- 🤖 AGENTS -->
+    <div class="nav-section">
+      <div class="nav-section-title">Agents</div>
+      <button class="nav-item" data-page="sessions" onclick="navigateTo('sessions')">
+        <span class="nav-icon">💬</span><span data-i18n="chat">Chat</span>
+      </button>
+      <button class="nav-item" data-page="live" onclick="navigateTo('live')">
+        <span class="nav-icon">⚡</span><span data-i18n="playbook">Playbook</span>
+      </button>
+      <button class="nav-item" data-page="loops" onclick="navigateTo('loops')">
+        <span class="nav-icon">🔁</span><span data-i18n="loops">Loops</span>
+      </button>
+      <button class="nav-item" data-page="skills" onclick="navigateTo('skills')">
+        <span class="nav-icon">🧩</span><span data-i18n="skills">Skills</span>
       </button>
       <button class="nav-item" data-page="models" onclick="navigateTo('models')">
-        <span class="nav-icon">🤖</span><span data-i18n="models">Models & Tokens</span>
+        <span class="nav-icon">🤖</span><span data-i18n="models">Models &amp; Usage</span>
+      </button>
+    </div>
+
+    <!-- ⚙️ SYSTEM -->
+    <div class="nav-section">
+      <div class="nav-section-title">System</div>
+      <button class="nav-item" data-page="keys" onclick="navigateTo('keys')">
+        <span class="nav-icon">🔑</span><span data-i18n="keys">API Keys</span>
       </button>
       <button class="nav-item" data-page="mcp" onclick="navigateTo('mcp')">
         <span class="nav-icon">🔌</span><span data-i18n="mcp">MCP Servers</span>
       </button>
-    </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Tools</div>
-      <button class="nav-item" data-page="keys" onclick="navigateTo('keys')">
-        <span class="nav-icon">🔑</span><span data-i18n="keys">API Keys</span>
-      </button>
-      <button class="nav-item" data-page="artifacts" onclick="navigateTo('artifacts')">
-        <span class="nav-icon">🎨</span><span data-i18n="artifacts">Live Artifacts</span>
-      </button>
-      <button class="nav-item" data-page="imagegen" onclick="window.location.href='imagegen.html'">
-        <span class="nav-icon">🖼️</span><span data-i18n="imagegen">Image Generation</span>
-      </button>
-      <button class="nav-item" data-page="browser" onclick="window.location.href='browser.html'">
-        <span class="nav-icon">🤖</span><span data-i18n="browser">Browser Automation</span>
-      </button>
-      <button class="nav-item" data-page="cron-jobs" onclick="window.location.href='cron-jobs.html'">
-        <span class="nav-icon">⏰</span><span data-i18n="cron">Cron Jobs</span>
-      </button>
-      <button class="nav-item" data-page="files" onclick="navigateTo('files')">
-        <span class="nav-icon">📁</span><span data-i18n="files">File Browser</span>
-      </button>
-      <button class="nav-item" data-page="live" onclick="navigateTo('live')">
-        <span class="nav-icon">⚡</span><span data-i18n="live">Use Cases & Prompts</span>
-      </button>
-    </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Visualize</div>
-      <button class="nav-item" data-page="brain" onclick="navigateTo('brain')">
-        <span class="nav-icon">🧠</span><span data-i18n="brain">3D Brain</span>
-      </button>
-      <button class="nav-item" data-page="kanban" onclick="window.location.href='kanban.html'">
-        <span class="nav-icon">📝</span><span data-i18n="kanban">Kanban Board</span>
-      </button>
-      <button class="nav-item" data-page="construction" onclick="window.location.href='hermes-map.html'">
-        <span class="nav-icon">🗺️</span><span data-i18n="construction">Hermes Map</span>
-      </button>
-      <button class="nav-item" data-page="tokens" onclick="navigateTo('tokens')">
-        <span class="nav-icon">📊</span><span data-i18n="tokens">Token Analysis</span>
-      </button>
-      <button class="nav-item" data-page="skills" onclick="navigateTo('skills')">
-        <span class="nav-icon">🧩</span><span data-i18n="skills">Skills Library</span>
-      </button>
-      <button class="nav-item" data-page="meetings" onclick="window.location.href='meetings.html'">
+      <button class="nav-item" data-page="meetings" onclick="navigateTo('meetings')">
         <span class="nav-icon">🎙️</span><span data-i18n="meetings">Meetings</span>
       </button>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-title">Data</div>
+      <button class="nav-item" data-page="voice" onclick="navigateTo('voice')">
+        <span class="nav-icon">🎧</span><span data-i18n="voice">Voice</span>
+      </button>
+      <button class="nav-item" data-page="browser" onclick="navigateTo('browser')">
+        <span class="nav-icon">🌐</span><span data-i18n="browser">Browser</span>
+      </button>
+      <button class="nav-item" data-page="imagegen" onclick="navigateTo('imagegen')">
+        <span class="nav-icon">🖼️</span><span data-i18n="imagegen">Image Gen</span>
+      </button>
+      <button class="nav-item" data-page="artifacts" onclick="navigateTo('artifacts')">
+        <span class="nav-icon">🎨</span><span data-i18n="artifacts">Artifacts</span>
+      </button>
       <button class="nav-item" onclick="DataManager.backup()">
         <span class="nav-icon">💾</span> Backup Data
       </button>
@@ -279,9 +307,9 @@
       <button class="i18n-btn" id="i18nToggle" onclick="I18n.toggle()" aria-label="تبديل اللغة / Toggle Language">
         <span id="i18nLabel">عربي</span>
       </button>
-      <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="Theme.toggle()" aria-label="Toggle theme">🌙</button>
-      <button class="btn btn-ghost btn-icon" onclick="CommandBar.toggle()" aria-label="Command bar (Ctrl+K)">⌘K</button>
-      <button class="btn btn-ghost btn-icon" onclick="location.reload()" aria-label="Refresh">↻</button>
+      <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="Theme.toggle()" title="Toggle light / dark theme" aria-label="Toggle theme">🌙</button>
+      <button class="btn btn-ghost btn-icon" onclick="CommandBar.toggle()" title="Command palette (Ctrl+K)" aria-label="Command bar (Ctrl+K)">⌘K</button>
+      <button class="btn btn-ghost btn-icon" onclick="location.reload()" title="Refresh this page" aria-label="Refresh">↻</button>
   </header>
   
   <!-- CONTENT AREA -->
