@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loops — Life OS</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Loops = the whole robot workforce. Source of truth: UI-MASTER-PLAN.md §6.
+   Keeps current CSS language only; Blueprint Dark palette is Fable's Phase 2.
+   Every reading surface here is >=18px (accessibility rule). */
+.loops-intro { max-width: 900px; margin: 0 0 var(--space-5); }
+.loops-intro h1 { font-size: 28px; font-weight: 800; margin: 0 0 var(--space-2); }
+.loops-intro p { font-size: 18px; line-height: 1.6; color: var(--text-secondary); margin: 0 0 var(--space-3); }
+.loop-frame {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center;
+  font-size: 16px; font-weight: 700; color: var(--text-secondary); margin: 0 0 var(--space-2);
+}
+.loop-frame .step {
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 4px 12px;
+}
+.loop-frame .arrow { color: var(--text-muted); }
+.loops-rule {
+  font-size: 16px; line-height: 1.6; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--accent); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-5); max-width: 900px;
+}
+.loops-table-wrap { overflow-x: auto; }
+table.loops { width: 100%; border-collapse: collapse; font-size: 18px; }
+table.loops th {
+  text-align: left; padding: 12px 14px; color: var(--text-secondary); font-weight: 700;
+  border-bottom: 2px solid var(--border-primary); white-space: nowrap;
+}
+table.loops td { padding: 12px 14px; border-bottom: 1px solid var(--border-secondary); vertical-align: top; }
+table.loops tr:last-child td { border-bottom: none; }
+.loop-name { font-weight: 700; color: var(--text-primary); }
+.loop-name code { font-family: var(--font-mono, monospace); font-size: 16px; }
+.loop-runner, .loop-sched { color: var(--text-secondary); white-space: nowrap; }
+.loop-status { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; }
+.loop-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.dot-live { background: var(--green, #3fb950); }
+.dot-new  { background: var(--blue, #58a6ff); }
+.dot-kill { background: var(--red, #f85149); }
+.dot-hold { background: var(--yellow, #d29922); }
+.loop-status-note { display: block; font-size: 15px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1>🔁 Loops</h1>
+</div>
+<div class="container">
+  <div class="loops-intro">
+    <h1>Loops — the whole robot workforce</h1>
+    <p>Every scheduled job across Cowork, the VPS, and Windows Task Scheduler, in one place.
+    Rule: every new automation gets a row here <em>before</em> it's created — no orphan crons.</p>
+    <div class="loop-frame">
+      <span class="step">Trigger</span><span class="arrow">→</span>
+      <span class="step">Signal</span><span class="arrow">→</span>
+      <span class="step">Action</span><span class="arrow">→</span>
+      <span class="step">Eval</span><span class="arrow">→</span>
+      <span class="step">Stop</span>
+    </div>
+  </div>
+
+  <div class="loops-rule">
+    <strong>Division of labor.</strong> Cowork scheduled tasks own anything that touches the vault's
+    content or Notion (they run under agents.md with connectors). Hermes / VPS crons own anything that
+    touches the server (pull, restart, mirror). Windows Task Scheduler owns anything that must run even
+    when the Claude app is closed (git pushes of local folders). Never give two runners the same job.
+  </div>
+
+  <div class="loops-table-wrap">
+    <table class="loops">
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Runs where</th>
+          <th>Schedule</th>
+          <th>What it does</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="loopsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// Automation Registry — hardcoded per UI-MASTER-PLAN.md §6 (source of truth until wired live).
+// status: live | new | kill | hold  (drives the colored dot; text label always shown).
+const LOOPS = [
+  { name: 'nightly-second-brain-sync', code: true, runner: 'Claude Cowork (scheduled task)', schedule: 'Daily 21:00',
+    does: 'Vault ingest + project sync + mini-lint + digest',
+    status: 'live', statusLabel: 'Live', note: 'Created 2026-07-04; needs one "Run now" to pre-approve tools' },
+  { name: 'fieldbridge-kanban-nightly-cleanup', code: true, runner: 'Claude Cowork (scheduled task)', schedule: 'Daily 21:00',
+    does: 'Reconciles FieldBridge Notion Kanban vs CRM / Home / session-logs',
+    status: 'live', statusLabel: 'Live', note: '' },
+  { name: 'sync-to-git-nightly.bat', code: true, runner: "Windows Task Scheduler (Fadi's PC)", schedule: 'Daily 22:00',
+    does: 'Pushes FieldBridge HQ project folder → fieldbridgehq-skills repo',
+    status: 'live', statusLabel: 'Live', note: '' },
+  { name: 'auto-pull.sh', code: true, runner: 'VPS cron', schedule: 'Every minute',
+    does: 'Pulls life-os-dashboard repo; restarts server.py if changed',
+    status: 'live', statusLabel: 'Live', note: 'The deploy pipe' },
+  { name: 'sync_gdrive.sh', code: true, runner: 'VPS cron', schedule: '~15 min',
+    does: 'rclone Google Drive LifeOS-Vault → repo → push',
+    status: 'kill', statusLabel: 'KILL (task 0.1)', note: 'Backwards — feeds from soon-archived folder' },
+  { name: 'Vault mirror pull (second-brain-vault → /root/knowledge)', code: false, runner: 'VPS cron', schedule: '15 min',
+    does: 'Read-only mirror of the Second Brain vault for the dashboard',
+    status: 'new', statusLabel: 'New (task 0.3)', note: 'Replaces old vault' },
+  { name: 'Vault → git push (second-brain-vault)', code: false, runner: 'Windows Task Scheduler OR folded into nightly Cowork task', schedule: 'Daily (after 21:00 sync)',
+    does: 'Pushes the OneDrive vault to its private repo so the VPS mirror updates',
+    status: 'new', statusLabel: 'New (task 0.2)', note: 'Decide mechanism at Decision Gate 1' },
+  { name: 'OpenRouter catalog refresh', code: false, runner: 'server.py (in-process)', schedule: '6h cache',
+    does: 'Live model catalog for models.html',
+    status: 'live', statusLabel: 'Live', note: '' },
+  { name: 'Monthly model-picks review', code: false, runner: 'Claude Cowork (scheduled task)', schedule: 'Monthly',
+    does: 'Review By-Job match[] picks in model-catalog.js',
+    status: 'hold', statusLabel: 'Backlogged', note: 'Low priority' },
+];
+
+function renderLoops() {
+  const body = document.getElementById('loopsBody');
+  body.innerHTML = LOOPS.map(l => {
+    const nameHtml = l.code ? `<code>${l.name}</code>` : l.name;
+    const note = l.note ? `<span class="loop-status-note">${l.note}</span>` : '';
+    return `<tr>
+      <td class="loop-name">${nameHtml}</td>
+      <td class="loop-runner">${l.runner}</td>
+      <td class="loop-sched">${l.schedule}</td>
+      <td>${l.does}</td>
+      <td><span class="loop-status"><span class="loop-dot dot-${l.status}"></span>${l.statusLabel}</span>${note}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', renderLoops);
+</script>
+</body>
+</html>
