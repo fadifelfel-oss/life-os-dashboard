@@ -31,7 +31,7 @@
     <button class="cmd-capture-btn" onclick="cmdCapture()">→</button>
     <button class="voice-btn" id="voiceBtn" onclick="startVoiceCapture()" title="Voice capture (click to start/stop)">🎙️</button>
   </div>
-  <div class="cmd-capture-hint" id="captureHint">Saved to local inbox • Access from Tasks tab</div>
+  <div class="cmd-capture-hint" id="captureHint">Saved to local inbox</div>
 </div>
 
 <!-- Today's Big 3 -->
@@ -264,7 +264,7 @@ async function startVoiceCapture() {
   } catch (err) {
     console.error('Mic access denied:', err);
     hint.textContent = '❌ Microphone access denied';
-    setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
+    setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
   }
 }
 
@@ -301,16 +301,16 @@ async function transcribeAudio(blob) {
       // Auto-save after 2 seconds
       setTimeout(() => {
         cmdCapture();
-        hint.textContent = 'Saved to local inbox • Access from Tasks tab';
+        hint.textContent = 'Saved to local inbox';
       }, 2000);
     } else {
       hint.textContent = '❌ Transcription failed';
-      setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
+      setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
     }
   } catch (err) {
     console.error('Transcription error:', err);
     hint.textContent = '❌ Transcription error';
-    setTimeout(() => { hint.textContent = 'Saved to local inbox • Access from Tasks tab'; }, 3000);
+    setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
   }
 }
 
