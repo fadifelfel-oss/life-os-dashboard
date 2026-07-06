@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life OS — Theme Preview (pick your direction)</title>
+<style>
+  /* ══════════════════════════════════════════════════════════
+     THEME PREVIEW — three complete directions, live-switchable.
+     Fadi picks ONE; Phase 2 rolls it into shared.css site-wide.
+     All text ≥18px (accessibility rule).
+     ══════════════════════════════════════════════════════════ */
+
+  /* ---------- THEME 1: BLUEPRINT DARK (recommended) ---------- */
+  body[data-theme="blueprint"] {
+    --bg: #0b1220; --bg-2: #111a2c; --bg-3: #17233a;
+    --border: #24334d; --text: #e8eef7; --text-2: #94a5bd;
+    --accent: #f5b942; --accent-2: #3d7bd9;
+    --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  }
+  /* ---------- THEME 2: GRAPHITE & GOLD ---------- */
+  body[data-theme="graphite"] {
+    --bg: #0e0e11; --bg-2: #17171c; --bg-3: #1f1f26;
+    --border: #2e2e38; --text: #f0efe9; --text-2: #9c9b93;
+    --accent: #d4af37; --accent-2: #8a7cff;
+    --font-display: Georgia, 'Times New Roman', serif;
+  }
+  /* ---------- THEME 3: SITE-OFFICE LIGHT ---------- */
+  body[data-theme="light"] {
+    --bg: #f4f2ec; --bg-2: #ffffff; --bg-3: #eae7de;
+    --border: #d5d0c3; --text: #1e2430; --text-2: #5b6474;
+    --accent: #c47b1e; --accent-2: #1e5fa8;
+    --font-display: 'Segoe UI', sans-serif;
+  }
+
+  /* Life-area palette — SAME in every theme (the unifying idea) */
+  :root {
+    --area-career: #e8b93e; --area-fieldbridge: #e8833e;
+    --area-construction: #5b8dd9; --area-trading: #3ec97e;
+    --area-health: #35c2b0; --area-family: #e56b8c;
+    --area-knowledge: #a07ce8; --area-admin: #8b96a8;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 18px/1.65 'Segoe UI', system-ui, sans-serif;
+    transition: background .3s, color .3s; padding: 32px; min-height: 100vh;
+  }
+  .switcher { display:flex; gap:12px; margin-bottom:28px; flex-wrap:wrap; }
+  .switcher button {
+    font-size:18px; font-weight:700; padding:14px 22px; border-radius:12px;
+    border:2px solid var(--border); background:var(--bg-2); color:var(--text); cursor:pointer;
+  }
+  .switcher button.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  h1 { font-family: var(--font-display); font-size: 30px; margin-bottom: 6px; }
+  .sub { color: var(--text-2); margin-bottom: 28px; font-size: 18px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px; max-width:1300px; }
+
+  .card {
+    background: var(--bg-2); border:1px solid var(--border); border-radius:16px; padding:22px;
+  }
+  .eyebrow { font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-2); font-weight:700; margin-bottom:8px; }
+  .big { font-family:var(--font-display); font-size:44px; font-weight:800; font-variant-numeric: tabular-nums; line-height:1.1; }
+  .delta { color: var(--accent); font-weight:700; font-size:16px; margin-top:4px; }
+  .card p { color: var(--text-2); font-size:17px; margin-top:10px; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; font-size:16px; font-weight:700;
+          padding:8px 14px; border-radius:999px; border:1.5px solid; background:var(--bg-3); }
+  .dot { width:10px; height:10px; border-radius:50%; }
+
+  .btn { display:inline-block; margin-top:16px; font-size:18px; font-weight:700; padding:12px 20px;
+         border-radius:10px; border:none; cursor:pointer; background:var(--accent); color:var(--bg); }
+  .btn.ghost { background:transparent; color:var(--accent); border:2px solid var(--accent); margin-left:10px; }
+
+  .chat-sample { background:var(--bg-3); border-radius:14px; padding:16px 18px; margin-top:12px; font-size:18px; }
+  .chat-sample .who { font-weight:800; font-family:var(--font-display); }
+  .status { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:16px; }
+  .status .dot { width:12px; height:12px; }
+  .note { margin-top:32px; color:var(--text-2); font-size:16px; max-width:900px; }
+</style>
+</head>
+<body data-theme="blueprint">
+
+<h1>Life OS — pick your theme</h1>
+<div class="sub">Same components, three directions. Click each button, live with it for a minute, pick one. Your choice becomes the whole dashboard in Phase 2.</div>
+
+<div class="switcher">
+  <button class="active" onclick="setTheme('blueprint', this)">🏗️ Blueprint Dark — recommended</button>
+  <button onclick="setTheme('graphite', this)">◆ Graphite &amp; Gold</button>
+  <button onclick="setTheme('light', this)">☀️ Site-Office Light</button>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="eyebrow">Job Search — 32 days to Aug 6</div>
+    <div class="big">0 → 1</div>
+    <div class="delta">▲ first application this week</div>
+    <p>KPI card: display font, tabular numbers, left-aligned, delta in the accent color.</p>
+    <button class="btn">Ship one today</button><button class="btn ghost">Details</button>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Life areas — one color everywhere</div>
+    <div class="chips">
+      <span class="chip" style="border-color:var(--area-career); color:var(--area-career)"><span class="dot" style="background:var(--area-career)"></span>Career</span>
+      <span class="chip" style="border-color:var(--area-fieldbridge); color:var(--area-fieldbridge)"><span class="dot" style="background:var(--area-fieldbridge)"></span>FieldBridge</span>
+      <span class="chip" style="border-color:var(--area-construction); color:var(--area-construction)"><span class="dot" style="background:var(--area-construction)"></span>Construction</span>
+      <span class="chip" style="border-color:var(--area-trading); color:var(--area-trading)"><span class="dot" style="background:var(--area-trading)"></span>Trading</span>
+      <span class="chip" style="border-color:var(--area-health); color:var(--area-health)"><span class="dot" style="background:var(--area-health)"></span>Health</span>
+      <span class="chip" style="border-color:var(--area-family); color:var(--area-family)"><span class="dot" style="background:var(--area-family)"></span>Family</span>
+      <span class="chip" style="border-color:var(--area-knowledge); color:var(--area-knowledge)"><span class="dot" style="background:var(--area-knowledge)"></span>Knowledge</span>
+      <span class="chip" style="border-color:var(--area-admin); color:var(--area-admin)"><span class="dot" style="background:var(--area-admin)"></span>Admin</span>
+    </div>
+    <p>These eight colors stay identical across themes — nav, 3D Brain domains, Kanban labels, chat personas. That consistency is the design's soul.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Chat — Virtual PM persona</div>
+    <div class="chat-sample">
+      <span class="who" style="color:var(--area-fieldbridge)">🏗️ Virtual PM</span><br>
+      Brett's decision is due today. Based on the Jul 3 meeting, lead with the site-diary workflow — that's the pain he stated in his own words.
+    </div>
+    <div class="status"><span class="dot" style="background:var(--area-trading)"></span> Opportunity Radar: 1 HIGH signal active</div>
+    <p>18px chat text everywhere. Status = dot + label, never colored text alone.</p>
+  </div>
+</div>
+
+<div class="note">
+  <strong>What each direction says:</strong> <em>Blueprint Dark</em> — construction-blueprint navy with amber signal color; calm, technical, yours. <em>Graphite &amp; Gold</em> — darker, more luxurious, serif display; the "executive office" read. <em>Site-Office Light</em> — warm paper tones for daylight use and tired eyes; can also become the light mode of whichever dark theme wins.
+</div>
+
+<script>
+function setTheme(t, btn) {
+  document.body.setAttribute('data-theme', t);
+  document.querySelectorAll('.switcher button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
