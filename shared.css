@@ -51,6 +51,31 @@
   --yellow: #e3b341;
   --yellow-bg: rgba(227,179,65,0.08);
 
+  /* === LIFE-AREA PALETTE (Blueprint Dark §2 — one color per life area, everywhere)
+     Drives nav, Today cards, 3D Brain domains, kanban labels, chat personas, ARMS rings.
+     Pages read these via var()/getComputedStyle — NEVER hardcode area colors in pages. */
+  --area-career: #e3b341;        /* Career — gold */
+  --area-career-bg: rgba(227,179,65,0.10);
+  --area-fieldbridge: #f0883e;   /* FieldBridge — amber-orange (brand accent) */
+  --area-fieldbridge-bg: rgba(240,136,62,0.10);
+  --area-construction: #6d9dc5;  /* Construction — steel blue */
+  --area-construction-bg: rgba(109,157,197,0.10);
+  --area-trading: #3fb950;       /* Trading — green */
+  --area-trading-bg: rgba(63,185,80,0.10);
+  --area-health: #39d2c0;        /* Health — teal */
+  --area-health-bg: rgba(57,210,192,0.10);
+  --area-family: #f778ba;        /* Family — rose */
+  --area-family-bg: rgba(247,120,186,0.10);
+  --area-knowledge: #bc8cff;     /* Knowledge — purple */
+  --area-knowledge-bg: rgba(188,140,255,0.10);
+  --area-admin: #8b949e;         /* Admin / Inbox — grey */
+  --area-admin-bg: rgba(139,148,158,0.10);
+  /* Status dots (always pair with a text label — never color alone) */
+  --status-live: #3fb950;
+  --status-stale: #d29922;
+  --status-failed: #f85149;
+  --status-orphan: #6e7681;
+
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
@@ -123,7 +148,29 @@
   --cyan-bg: rgba(57,210,192,0.06);
   --pink-bg: rgba(247,120,186,0.06);
   --yellow-bg: rgba(227,179,65,0.06);
-  
+
+  /* Life-area palette — darkened for light-background contrast (WCAG-safe on #fff) */
+  --area-career: #9e6a03;
+  --area-career-bg: rgba(158,106,3,0.08);
+  --area-fieldbridge: #bc4c00;
+  --area-fieldbridge-bg: rgba(188,76,0,0.08);
+  --area-construction: #316dad;
+  --area-construction-bg: rgba(49,109,173,0.08);
+  --area-trading: #1a7f37;
+  --area-trading-bg: rgba(26,127,55,0.08);
+  --area-health: #1b7c83;
+  --area-health-bg: rgba(27,124,131,0.08);
+  --area-family: #bf3989;
+  --area-family-bg: rgba(191,57,137,0.08);
+  --area-knowledge: #8250df;
+  --area-knowledge-bg: rgba(130,80,223,0.08);
+  --area-admin: #656d76;
+  --area-admin-bg: rgba(101,109,118,0.08);
+  --status-live: #1a7f37;
+  --status-stale: #9a6700;
+  --status-failed: #cf222e;
+  --status-orphan: #8b949e;
+
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
