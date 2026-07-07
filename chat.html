@@ -1031,17 +1031,17 @@ pre:hover .copy-btn {
       </select>
       <div class="toolbar-divider"></div>
       <button class="toolbar-btn" id="kbToggle" onclick="toggleKB()" title="Search your vault for relevant notes before answering">
-        🧠 <span style="font-size:11px;">KB</span>
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> <span style="font-size:11px;">KB</span>
       </button>
       <button class="toolbar-btn" id="thinkingToggle" onclick="toggleThinking()" title="Ask Hermes to reason step-by-step before answering">
-        💭 <span style="font-size:11px;">Think</span>
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-lightbulb"/></svg> <span style="font-size:11px;">Think</span>
       </button>
       <div class="toolbar-spacer"></div>
       <button class="toolbar-btn" id="artifactsToggle" onclick="toggleArtifacts()" title="Code blocks detected in this conversation (separate from the Live Artifacts library)">
-        📎 <span style="font-size:11px;">Code Blocks</span>
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-code"/></svg> <span style="font-size:11px;">Code Blocks</span>
       </button>
       <button class="toolbar-btn" title="Settings" onclick="Notify.info('Settings coming soon')">
-        ⚙️
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-settings"/></svg>
       </button>
     </div>
 
@@ -1127,8 +1127,8 @@ pre:hover .copy-btn {
 <!-- ARTIFACTS PANEL -->
 <div class="artifacts-panel" id="artifactsPanel">
   <div class="artifacts-header">
-    <h2>📎 Code Blocks</h2>
-    <button class="artifacts-close" onclick="toggleArtifacts()">✕</button>
+    <h2><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-code"/></svg> Code Blocks</h2>
+    <button class="artifacts-close" onclick="toggleArtifacts()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button>
   </div>
   <p style="padding:0 16px;margin:8px 0 0;font-size:11px;color:var(--chat-text-muted);">Code blocks Hermes writes in this conversation. For your saved artifact library, use Live Artifacts in the main menu.</p>
   <div class="artifacts-list" id="artifactsList">
@@ -1573,7 +1573,7 @@ function renderSessionList(sessions) {
         <div class="sidebar-session-preview">${escapeHtml(s.preview || '')}</div>
         <div class="session-time">${timeAgo(s.updated)}</div>
       </div>
-      <button class="sidebar-session-delete" title="Delete conversation" onclick="event.stopPropagation(); deleteSession('${s.id}')">✕</button>
+      <button class="sidebar-session-delete" title="Delete conversation" onclick="event.stopPropagation(); deleteSession('${s.id}')"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button>
     </div>
   `).join('');
 }

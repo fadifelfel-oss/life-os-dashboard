@@ -47,7 +47,7 @@
 
 /* Skill detail panel (replaces alert()) */
 .skill-detail-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: none; position: fixed; inset: 0; background: var(--bg-overlay);
   z-index: 1000; align-items: center; justify-content: center;
 }
 .skill-detail-overlay.open { display: flex; }
@@ -65,15 +65,15 @@
 <div class="container">
 <div class="header">
   <a href="index.html" class="header-back">← Life OS</a>
-<div class="header-title">🧩 Skills Library</div>
+<div class="header-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-puzzle"/></svg> Skills Library</div>
 <div class="header-actions">
-<button class="btn btn-sm" onclick="refreshSkills()">↻ Refresh</button>
+<button class="btn btn-sm" onclick="refreshSkills()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
 </div>
 </div>
 
 <!-- SKILL HEALTH CHECK -->
 <div class="health-check" id="healthCheck">
-  <div class="health-check-header"><h2>🩺 Skill Health Check</h2></div>
+  <div class="health-check-header"><h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-stethoscope"/></svg> Skill Health Check</h2></div>
   <div class="health-check-caveat">
     Hermes runs skills internally and doesn't report that back to this dashboard, so this can't be an exact invocation counter.
     It counts how often each skill's name is mentioned in Hermes's replies — a real signal, not a perfect one.
@@ -82,12 +82,12 @@
 </div>
 
 <div class="skill-section">
-<h2>🗂️ Vault Skills</h2>
+<h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Vault Skills</h2>
 <div class="skills-grid" id="fb-skills"><div style="color:var(--text-muted)">Loading...</div></div>
 </div>
 
 <div class="skill-section">
-<h2>📦 Installed Skills</h2>
+<h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-package"/></svg> Installed Skills</h2>
 <div class="skills-grid" id="installed-skills"><div style="color:var(--text-muted)">Loading...</div></div>
 </div>
 </div>
@@ -95,7 +95,7 @@
 <!-- SKILL DETAIL PANEL (replaces the old alert() popup) -->
 <div class="skill-detail-overlay" id="skillDetailOverlay" onclick="if(event.target===this) closeSkillDetail()">
   <div class="skill-detail">
-    <button class="close-btn" onclick="closeSkillDetail()">✕</button>
+    <button class="close-btn" onclick="closeSkillDetail()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button>
     <h3 id="skillDetailName"></h3>
     <p id="skillDetailDesc"></p>
     <div class="meta-row">
@@ -242,12 +242,12 @@ function renderSkills(containerId, skills, prefix) {
 function showSkill(skill) {
   document.getElementById('skillDetailName').textContent = skill.name;
   document.getElementById('skillDetailDesc').textContent = skill.description || 'No description available.';
-  document.getElementById('skillDetailSource').textContent = '📁 ' + (skill.type === 'installed' ? 'Installed on Hermes' : 'Vault skill') + (skill.path ? ` — ${skill.path}` : '');
+  document.getElementById('skillDetailSource').textContent = (skill.type === 'installed' ? 'Installed on Hermes' : 'Vault skill') + (skill.path ? ` — ${skill.path}` : '');
   const count = SKILL_STATS.counts[skill.name] || 0;
   const rankEntry = (SKILL_STATS.ranking || []).find(r => r.skill === skill.name);
   document.getElementById('skillDetailUsage').textContent = count
-    ? `🩺 Mentioned ${count}× · last ${timeAgoShort(rankEntry?.last_used)}`
-    : '🩺 Not mentioned in tracked chats yet';
+    ? `Mentioned ${count}× · last ${timeAgoShort(rankEntry?.last_used)}`
+    : 'Not mentioned in tracked chats yet';
   document.getElementById('skillDetailOverlay').classList.add('open');
 }
 

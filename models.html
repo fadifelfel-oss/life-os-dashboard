@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🤖 Models & Token Tracker — Life OS</title>
+<title>Models & Token Tracker — Life OS</title>
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
@@ -48,13 +48,13 @@
 
 .model-card.free-card {
   border-color: var(--green);
-  background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02));
-  box-shadow: 0 0 12px rgba(34,197,94,0.15);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--green) 6%, transparent), color-mix(in srgb, var(--green) 2%, transparent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--green) 15%, transparent);
 }
 
 .model-card.free-card:hover {
   border-color: var(--green);
-  box-shadow: 0 0 20px rgba(34,197,94,0.3);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--green) 30%, transparent);
 }
 
 .model-header {
@@ -126,15 +126,15 @@
   display:flex; flex-direction:column; gap:6px;
 }
 .pick-card.rec { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-border) inset; }
-.pick-card.premium { border-color: var(--cyan, #38bdf8); }
+.pick-card.premium { border-color: var(--cyan); }
 .pick-card.budget { border-color: var(--green); }
 .pick-badge {
   align-self:flex-start; font-size: 10px; font-weight:800; text-transform:uppercase;
   letter-spacing:.05em; padding: 2px 8px; border-radius: var(--radius-full);
 }
-.pick-badge.rec { background: var(--accent); color:#fff; }
-.pick-badge.premium { background: rgba(56,189,248,.15); color: var(--cyan,#38bdf8); }
-.pick-badge.budget { background: rgba(34,197,94,.15); color: var(--green); }
+.pick-badge.rec { background: var(--accent); color: var(--on-accent); }
+.pick-badge.premium { background: var(--cyan-bg); color: var(--cyan); }
+.pick-badge.budget { background: var(--green-bg); color: var(--green); }
 .pick-name { font-size: var(--font-size-md); font-weight: 800; }
 .pick-provider { font-size: var(--font-size-xs); color: var(--text-tertiary); }
 .pick-price { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-primary); }
@@ -264,7 +264,7 @@
 }
 
 .filter-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* === Hermes guide === */
 .guide-grid { display:grid; grid-template-columns: repeat(2,1fr); gap: var(--space-4); }
@@ -292,12 +292,12 @@
 <div class="container">
   <!-- TABS -->
   <div class="tabs">
-    <button class="tab active" onclick="showTab('byjob', this)">🎯 By Job</button>
-    <button class="tab" onclick="showTab('models', this)">🤖 All Models</button>
-    <button class="tab" onclick="showTab('tracker', this)">📊 Usage</button>
-    <button class="tab" onclick="showTab('compare', this)">⚖️ Compare</button>
-    <button class="tab" onclick="showTab('calculator', this)">🧮 Cost Calculator</button>
-    <button class="tab" onclick="showTab('hermes', this)">⚙️ Hermes Guide</button>
+    <button class="tab active" onclick="showTab('byjob', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> By Job</button>
+    <button class="tab" onclick="showTab('models', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-bot"/></svg> All Models</button>
+    <button class="tab" onclick="showTab('tracker', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg> Usage</button>
+    <button class="tab" onclick="showTab('compare', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Compare</button>
+    <button class="tab" onclick="showTab('calculator', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-candlestick-chart"/></svg> Cost Calculator</button>
+    <button class="tab" onclick="showTab('hermes', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-settings"/></svg> Hermes Guide</button>
   </div>
 
   <!-- BY JOB TAB -->
@@ -312,7 +312,7 @@
   <div id="tab-models" class="tab-content" style="display:none;">
     <div class="models-layout">
       <div>
-        <input type="text" class="input" placeholder="🔍 Search models by name, provider, or tag..." oninput="filterModels(this.value)" style="margin-bottom:var(--space-3);">
+        <input type="text" class="input" placeholder="Search models by name, provider, or tag..." oninput="filterModels(this.value)" style="margin-bottom:var(--space-3);">
         <div class="provider-chips" id="provider-chips"></div>
         <div id="models-list"></div>
       </div>
@@ -320,40 +320,38 @@
         <div class="sidebar-section">
           <div class="sidebar-section-title">Job Filters</div>
           <div>
-            <span class="filter-btn active" onclick="setFilter('all', this)">🌐 All</span>
-            <span class="filter-btn" onclick="setFilter('free', this)">🏆 Free</span>
-            <span class="filter-btn" onclick="setFilter('reasoning', this)">🧠 Reasoning</span>
-            <span class="filter-btn" onclick="setFilter('coding', this)">💻 Coding</span>
-            <span class="filter-btn" onclick="setFilter('chat', this)">💬 Chat</span>
-            <span class="filter-btn" onclick="setFilter('vision', this)">👁️ Vision</span>
+            <span class="filter-btn active" onclick="setFilter('all', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-globe"/></svg> All</span>
+            <span class="filter-btn" onclick="setFilter('free', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-award"/></svg> Free</span>
+            <span class="filter-btn" onclick="setFilter('reasoning', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> Reasoning</span>
+            <span class="filter-btn" onclick="setFilter('coding', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-code"/></svg> Coding</span>
+            <span class="filter-btn" onclick="setFilter('chat', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg> Chat</span>
+            <span class="filter-btn" onclick="setFilter('vision', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-eye"/></svg> Vision</span>
           </div>
         </div>
         <div class="sidebar-section">
           <div class="sidebar-section-title">Price Tier</div>
           <div>
             <span class="tier-btn filter-btn active" onclick="setTier('all', this)">All</span>
-            <span class="tier-btn filter-btn" onclick="setTier('free', this)">🟢 Free</span>
-            <span class="tier-btn filter-btn" onclick="setTier('budget', this)">💰 Budget &lt;$1</span>
-            <span class="tier-btn filter-btn" onclick="setTier('standard', this)">⚖️ Standard $1–5</span>
-            <span class="tier-btn filter-btn" onclick="setTier('premium', this)">💎 Premium $5–15</span>
-            <span class="tier-btn filter-btn" onclick="setTier('flagship', this)">🚀 Flagship &gt;$15</span>
+            <span class="tier-btn filter-btn" onclick="setTier('free', this)"><svg class="icon icon-sm" width="11" height="11" style="color:var(--green);"><use href="assets/lucide-sprite.svg#icon-circle"/></svg> Free</span>
+            <span class="tier-btn filter-btn" onclick="setTier('budget', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-dollar-sign"/></svg> Budget &lt;$1</span>
+            <span class="tier-btn filter-btn" onclick="setTier('standard', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Standard $1–5</span>
+            <span class="tier-btn filter-btn" onclick="setTier('premium', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-gem"/></svg> Premium $5–15</span>
+            <span class="tier-btn filter-btn" onclick="setTier('flagship', this)"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-rocket"/></svg> Flagship &gt;$15</span>
           </div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Tier = output price per 1M tokens.</div>
         </div>
         <div class="sidebar-section">
           <div class="sidebar-section-title">Compare Queue <span id="compare-count" style="color:var(--accent);">(0/4)</span></div>
           <div id="compare-queue"></div>
-          <button class="btn btn-primary" style="width:100%;margin-top:var(--space-2);" onclick="showTab('compare', document.querySelectorAll('.tab')[3])">⚖️ Compare</button>
+          <button class="btn btn-primary" style="width:100%;margin-top:var(--space-2);" onclick="showTab('compare', document.querySelectorAll('.tab')[3])"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Compare</button>
         </div>
         <div class="sidebar-section">
           <div class="sidebar-section-title">Legend</div>
           <div style="font-size:11px;color:var(--text-secondary);line-height:1.8;">
-            <div>🏆 #1-3 — Top ranked in category</div>
-            <div>⚡ Fast • 🐢 Slow</div>
-            <div>🔵 Score 90+ — Excellent</div>
-            <div>🟢 Score 80-89 — Very Good</div>
-            <div>🟢 Price — Free / Cheap</div>
-            <div>🔵 Price — Premium</div>
+            <div><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-award"/></svg> #1-3 — Top ranked in category</div>
+            <div><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Fast</div>
+            <div><span class="status-dot" style="background:var(--green);display:inline-block;"></span> Score 90+ — Excellent</div>
+            <div><span class="status-dot" style="background:var(--orange);display:inline-block;"></span> Score 80-89 — Very Good</div>
           </div>
         </div>
       </div>
@@ -382,22 +380,22 @@
     </div>
 
     <div class="section">
-      <div class="section-title">📈 Usage by Model</div>
+      <div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-trending-up"/></svg> Usage by Model</div>
       <div class="token-chart" id="usage-chart"></div>
     </div>
 
     <div class="section">
-      <div class="section-title">📅 Usage by Month</div>
+      <div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg> Usage by Month</div>
       <div id="usage-by-month"></div>
     </div>
 
     <div class="section">
-      <div class="section-title">📜 Usage Log</div>
+      <div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Usage Log</div>
       <div class="toolbar">
         <button class="btn btn-primary" onclick="addUsageEntry()">+ Log Usage</button>
-        <button class="btn" onclick="exportUsage()">📤 Export</button>
-        <button class="btn" onclick="importUsage()">📥 Import</button>
-        <button class="btn btn-danger" onclick="clearUsage()">🗑️ Clear</button>
+        <button class="btn" onclick="exportUsage()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-save"/></svg> Export</button>
+        <button class="btn" onclick="importUsage()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Import</button>
+        <button class="btn btn-danger" onclick="clearUsage()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-trash-2"/></svg> Clear</button>
       </div>
       <div id="usage-log"></div>
     </div>
@@ -406,11 +404,11 @@
   <!-- COMPARE TAB -->
   <div id="tab-compare" class="tab-content" style="display:none;">
     <div class="section">
-      <div class="section-title">⚖️ Model Comparison</div>
+      <div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Model Comparison</div>
       <div class="section-desc">Select models from the All Models tab, then compare here.</div>
       <div class="compare-grid" id="compare-grid"></div>
       <div style="margin-top:var(--space-4);text-align:center;">
-        <button class="btn btn-primary btn-lg" onclick="runComparison()">⚖️ Run Comparison</button>
+        <button class="btn btn-primary btn-lg" onclick="runComparison()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Run Comparison</button>
       </div>
     </div>
     <div id="compare-results"></div>
@@ -419,7 +417,7 @@
   <!-- CALCULATOR TAB -->
   <div id="tab-calculator" class="tab-content" style="display:none;">
     <div class="section">
-      <div class="section-title">🧮 Cost Calculator</div>
+      <div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-candlestick-chart"/></svg> Cost Calculator</div>
       <div class="grid grid-3" style="gap:var(--space-3);margin-bottom:var(--space-3);">
         <div>
           <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:4px;">Model</label>
@@ -441,7 +439,7 @@
     </div>
 
     <div class="section">
-      <div class="section-title">📊 Cost Comparison (per call)</div>
+      <div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg> Cost Comparison (per call)</div>
       <div style="overflow-x:auto;">
         <table class="cost-table" id="cost-table"></table>
       </div>
@@ -455,7 +453,7 @@
     </div>
     <div class="guide-grid">
       <div class="guide-card">
-        <h3>🧠 Which model to run</h3>
+        <h3><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> Which model to run</h3>
         <p>Hermes 3 (Llama-3.1 8B/70B/405B) and Hermes 4 (70B/405B) are natively agentic: they emit <code>&lt;tool_call&gt;</code> JSON to self-select tools, carry 128K context, and hold JSON-schema structured output. On tool-use benchmarks they track GPT-4 / Claude-3-Sonnet.</p>
         <ul>
           <li><strong>Hermes 4 70B</strong> — default for most agent work: fast, cheap, reliable tool-calling.</li>
@@ -464,7 +462,7 @@
         </ul>
       </div>
       <div class="guide-card">
-        <h3>🔧 Tool / function calling</h3>
+        <h3><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> Tool / function calling</h3>
         <p>Hermes decides <em>when</em> a tool is needed and returns a JSON <code>&lt;tool_call&gt;</code>. Design for reliability:</p>
         <ul>
           <li>Keep each tool <strong>atomic and narrow</strong> (one job, clear args) — easier for the model to call correctly.</li>
@@ -474,7 +472,7 @@
         </ul>
       </div>
       <div class="guide-card">
-        <h3>🔀 OpenRouter routing</h3>
+        <h3><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-repeat"/></svg> OpenRouter routing</h3>
         <p>Route by <strong>job, not habit</strong> — this is where cost is won or lost:</p>
         <ul>
           <li>Cheap/fast models for <strong>ingestion &amp; summarizing</strong> (high volume).</li>
@@ -485,7 +483,7 @@
         <p style="margin-top:8px;">See the <strong>By Job</strong> tab for the exact model to route each task to.</p>
       </div>
       <div class="guide-card">
-        <h3>💸 Cost &amp; reliability discipline</h3>
+        <h3><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-dollar-sign"/></svg> Cost &amp; reliability discipline</h3>
         <ul>
           <li>Log every call in the <strong>Token Tracker</strong> tab — you can't optimize spend you don't measure.</li>
           <li>Cache/skip re-processing clippings already ingested.</li>
@@ -637,7 +635,7 @@ const FALLBACK_MODELS = [
 // fb prices shown as $/1M in comments for readability.
 const JOBS = window.LIFEOS_JOBS || [
   {
-    key:'ingest', emoji:'📥', title:'Ingest & Summarize',
+    key:'ingest', emoji:'inbox', title:'Ingest & Summarize',
     sub:'Web clippings, PDFs, transcripts — high volume, needs cheap + fast + big context.',
     tip:'Your highest-volume job. DeepSeek V4 Flash summarizes a 1M-token doc for pennies — route the bulk here and only escalate dense technical sources.',
     picks:[
@@ -647,7 +645,7 @@ const JOBS = window.LIFEOS_JOBS || [
     ],
   },
   {
-    key:'analyze', emoji:'🔎', title:'Analyze & Find Opportunities',
+    key:'analyze', emoji:'search', title:'Analyze & Find Opportunities',
     sub:'Connect knowledge + CRM feedback to surface monetization angles — needs real reasoning.',
     tip:'The core of your AIOS thesis. Worth spending more here — a better insight pays for itself. First-pass free, then a paid deep run on the shortlist.',
     picks:[
@@ -657,7 +655,7 @@ const JOBS = window.LIFEOS_JOBS || [
     ],
   },
   {
-    key:'agent', emoji:'🤖', title:'Agent / Tool-use (Hermes routes)',
+    key:'agent', emoji:'bot', title:'Agent / Tool-use (Hermes routes)',
     sub:'VPS automations, function-calling, ingestion pipelines — needs reliable structured output.',
     tip:'Note: the hermes-agent framework routes to ANY OpenRouter model — Nous Hermes weights aren\'t in the current catalog, so pick the best tool-caller by job. Match the model to the tool set: cheap for simple tools, escalate only for multi-step planning.',
     picks:[
@@ -667,7 +665,7 @@ const JOBS = window.LIFEOS_JOBS || [
     ],
   },
   {
-    key:'code', emoji:'💻', title:'Coding & Building',
+    key:'code', emoji:'code', title:'Coding & Building',
     sub:'Dashboard code, scripts, fixes — needs code strength and instruction-following.',
     tip:'For anything that touches the repo, keep a review step. Free coder for scaffolding, premium for tricky multi-file logic.',
     picks:[
@@ -677,7 +675,7 @@ const JOBS = window.LIFEOS_JOBS || [
     ],
   },
   {
-    key:'everyday', emoji:'💬', title:'Everyday & Admin',
+    key:'everyday', emoji:'message-square', title:'Everyday & Admin',
     sub:'Chat, Notion, drafting docs, emails — balanced, low-cost, good writing.',
     tip:'Your bread-and-butter. Claude Haiku covers 90% of drafting cleanly and cheaply; only reach for premium on client-facing writing.',
     picks:[
@@ -742,19 +740,19 @@ function renderJobs() {
           <div class="pick-provider">${provider}${ctx?` • ${ctx} ctx`:''}${live?'':' • <span class="pick-missing">est. price</span>'}</div>
           <div class="pick-price">in ${fmtP(m.pp||0)} / out ${fmtP(m.pc||0)} <span style="color:var(--text-muted);">per 1M</span></div>
           <div class="pick-why">${pick.why}</div>
-          ${live ? `<button onclick="setDefaultModel('${live.id}')" style="align-self:flex-start;margin-top:6px;font-size:11px;font-weight:700;background:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'var(--accent)':'var(--bg-primary)'};color:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'#fff':'var(--accent)'};border:1px solid var(--accent-border);padding:4px 10px;border-radius:var(--radius-full);cursor:pointer;">${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'★ Chat default':'☆ Set as chat default'}</button>` : ''}
+          ${live ? `<button onclick="setDefaultModel('${live.id}')" style="align-self:flex-start;margin-top:6px;font-size:11px;font-weight:700;background:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'var(--accent)':'var(--bg-primary)'};color:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'var(--on-accent)':'var(--accent)'};border:1px solid var(--accent-border);padding:4px 10px;border-radius:var(--radius-full);cursor:pointer;">${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'★ Chat default':'☆ Set as chat default'}</button>` : ''}
         </div>`;
     });
     wrap.innerHTML += `
       <div class="job-section">
         <div class="job-head">
-          <span class="job-emoji">${job.emoji}</span>
+          <span class="job-emoji"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-${job.emoji}"/></svg></span>
           <div>
             <div class="job-title">${job.title}</div>
             <div class="job-sub">${job.sub}</div>
           </div>
         </div>
-        <div class="job-tip">💡 ${job.tip}</div>
+        <div class="job-tip"><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-lightbulb"/></svg> ${job.tip}</div>
         <div class="job-picks">${cards}</div>
       </div>`;
   });
@@ -783,20 +781,20 @@ function renderModels() {
   });
 
   const categoryLabels = {
-    free: '🏆 Free Champions — Best zero-cost models',
-    reasoning: '🧠 Reasoning — Deep thinking & analysis',
-    coding: '💻 Coding — Code generation & debugging',
-    chat: '💬 Chat — Conversation & general use',
-    vision: '👁️ Vision — Image & diagram understanding',
-    budget: '💰 Budget — Best value models',
-    agent: '🕊️ Agent — Tool-use & automation',
-    general: '🔧 Other Models'
+    free: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-award"/></svg> Free Champions — Best zero-cost models',
+    reasoning: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> Reasoning — Deep thinking & analysis',
+    coding: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-code"/></svg> Coding — Code generation & debugging',
+    chat: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg> Chat — Conversation & general use',
+    vision: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-eye"/></svg> Vision — Image & diagram understanding',
+    budget: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-dollar-sign"/></svg> Budget — Best value models',
+    agent: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-bot"/></svg> Agent — Tool-use & automation',
+    general: '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> Other Models'
   };
 
   list.innerHTML = '';
   Object.keys(groups).forEach(cat => {
-    const label = categoryLabels[cat] || `🔧 ${cat}`;
-    list.innerHTML += `<div style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-primary);padding:18px 0 8px;font-weight:800;border-bottom:2px solid var(--border-primary);margin-bottom:8px;">${label}</div>`;
+    const label = categoryLabels[cat] || `<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> ${cat}`;
+    list.innerHTML += `<div style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-primary);padding:18px 0 8px;font-weight:800;border-bottom:2px solid var(--border-primary);margin-bottom:8px;display:flex;align-items:center;gap:6px;">${label}</div>`;
     list.innerHTML += '<div class="grid grid-2" style="gap:10px;margin-bottom:16px;">';
     groups[cat].forEach(m => {
       const pp = m.pp;
@@ -819,7 +817,7 @@ function renderModels() {
           <div class="model-header">
             <span class="model-icon">${m.icon || '🔧'}</span>
             <span class="model-name">${m.name}</span>
-            ${cat === 'free' ? '<span style="font-size:10px;background:var(--green);color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;margin-left:4px;">FREE</span>' : ''}
+            ${cat === 'free' ? '<span style="font-size:10px;background:var(--green);color:var(--on-accent);border-radius:4px;padding:1px 6px;font-weight:700;margin-left:4px;">FREE</span>' : ''}
             ${rankBadge}
             ${speedIcon ? `<span style="font-size:10px;">${speedIcon}</span>` : ''}
           </div>
@@ -841,7 +839,7 @@ function renderModels() {
     list.innerHTML += '</div>';
   });
 
-  if (!filtered.length) list.innerHTML = '<div class="empty"><div class="icon">🔍</div><div>No models match</div></div>';
+  if (!filtered.length) list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-search"/></svg></div><div class="empty-state-text">No models match</div></div>';
   document.getElementById('compare-count').textContent = `(${compareSelection.length}/4)`;
   renderCompareQueue();
 }
@@ -893,7 +891,7 @@ function renderCompareQueue() {
   compareSelection.forEach(id => {
     const m = MODELS.find(x => x.id === id);
     if (!m) return;
-    q.innerHTML += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;"><span>${m.icon}</span><span style="flex:1;">${m.name}</span><button class="btn btn-sm btn-danger" onclick="toggleCompare('${id}')" style="padding:1px 4px;">✕</button></div>`;
+    q.innerHTML += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;"><span>${m.icon}</span><span style="flex:1;">${m.name}</span><button class="btn btn-sm btn-danger" onclick="toggleCompare('${id}')" style="padding:1px 4px;"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button></div>`;
   });
   if (!compareSelection.length) q.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">Click models to add</div>';
 }
@@ -911,7 +909,7 @@ function runComparison() {
   if (compareSelection.length < 2) { Notify.error('Select at least 2 models'); return; }
   const models = compareSelection.map(id => MODELS.find(m => m.id === id)).filter(Boolean);
   const c = document.getElementById('compare-results');
-  c.innerHTML = '<div class="section"><div class="section-title">⚖️ Results</div><div style="overflow-x:auto;"><table class="cost-table"><tr style="border-bottom:1px solid var(--border-primary);"><th style="padding:6px 8px;text-align:left;color:var(--text-secondary);">Metric</th>' + models.map(m => `<th style="padding:6px 8px;text-align:center;">${m.icon} ${m.name}</th>`).join('') + '</tr>';
+  c.innerHTML = '<div class="section"><div class="section-title"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Results</div><div style="overflow-x:auto;"><table class="cost-table"><tr style="border-bottom:1px solid var(--border-primary);"><th style="padding:6px 8px;text-align:left;color:var(--text-secondary);">Metric</th>' + models.map(m => `<th style="padding:6px 8px;text-align:center;">${m.icon} ${m.name}</th>`).join('') + '</tr>';
   [['Score', m => scoreOf(m)], ['Context', m => m.ctx >= 1000 ? (m.ctx/1000).toFixed(0)+'K' : m.ctx+'K'], ['In /1M', m => m.pp === 0 ? 'FREE' : '$'+(m.pp*1000000).toFixed(2)], ['Out /1M', m => m.pc === 0 ? 'FREE' : '$'+(m.pc*1000000).toFixed(2)], ['Tier', m => tierOf(m)], ['Tags', m => (m.tags||[]).join(', ')]].forEach(([label, fn]) => {
     c.querySelector('table').innerHTML += `<tr style="border-bottom:1px solid var(--border-secondary);"><td style="padding:6px 8px;color:var(--text-secondary);font-weight:600;">${label}</td>${models.map(m => `<td style="padding:6px 8px;text-align:center;">${fn(m)}</td>`).join('')}</tr>`;
   });
@@ -941,7 +939,7 @@ function renderUsage() {
 
   renderUsageByMonth();
 
-  if (!usageLog.length) { log.innerHTML = '<div class="empty"><div class="icon">📊</div><div>No usage data yet</div></div>'; return; }
+  if (!usageLog.length) { log.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg></div><div class="empty-state-text">No usage data yet</div></div>'; return; }
   log.innerHTML = '';
   usageLog.slice().reverse().forEach(e => {
     log.innerHTML += `<div class="usage-row"><span class="usage-model">${e.model}</span><span class="usage-tokens">${formatNumber(e.tokens||0)} tok</span><span class="usage-cost">$${(e.cost||0).toFixed(4)}</span><span class="usage-time">${e.time||'—'}</span></div>`;
@@ -976,7 +974,7 @@ function renderUsageByMonth() {
   });
   const keys = Object.keys(months).sort().reverse();
   if (!keys.length) {
-    container.innerHTML = '<div class="empty" style="font-size:18px;"><div class="icon">📅</div><div>No monthly usage yet — start chatting or log an entry.</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg></div><div class="empty-state-text">No monthly usage yet — start chatting or log an entry.</div></div>';
     return;
   }
   const cell = 'padding:8px 12px;border-bottom:1px solid var(--border-secondary);';

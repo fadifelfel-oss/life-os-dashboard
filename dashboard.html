@@ -28,9 +28,9 @@
 <!-- Quick Capture -->
 <div class="cmd-capture">
   <div class="cmd-capture-input-wrap">
-    <input type="text" id="cmdCaptureInput" class="cmd-capture-input" placeholder="💭 Type a thought, task, or note — press Enter to save to inbox" onkeydown="if(event.key==='Enter')cmdCapture()">
+    <input type="text" id="cmdCaptureInput" class="cmd-capture-input" placeholder="Type a thought, task, or note — press Enter to save to inbox" onkeydown="if(event.key==='Enter')cmdCapture()">
     <button class="cmd-capture-btn" onclick="cmdCapture()">→</button>
-    <button class="voice-btn" id="voiceBtn" onclick="startVoiceCapture()" title="Voice capture (click to start/stop)">🎙️</button>
+    <button class="voice-btn" id="voiceBtn" onclick="startVoiceCapture()" title="Voice capture (click to start/stop)"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-mic"/></svg></button>
   </div>
   <div class="cmd-capture-hint" id="captureHint">Saved to local inbox</div>
 </div>
@@ -38,7 +38,7 @@
 <!-- Today's Big 3 -->
 <div class="cmd-section">
   <div class="cmd-section-header">
-    <span>🎯 Today's Priorities</span>
+    <span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Today's Priorities</span>
     <span class="cmd-section-count" id="cmdTodayCount">3 items</span>
   </div>
   <div class="cmd-priorities" id="cmdPriorities">
@@ -50,35 +50,35 @@
 
 <!-- Quick Launch -->
 <div class="cmd-section">
-  <div class="cmd-section-header"><span>⚡ Quick Launch</span></div>
+  <div class="cmd-section-header"><span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Quick Launch</span></div>
   <div class="cmd-launch-grid">
     <button class="cmd-launch-btn" onclick="navigateTo('tasks')">
-      <span class="cmd-launch-icon">✅</span>
+      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg></span>
       <span class="cmd-launch-name">Tasks</span>
       <span class="cmd-launch-count" id="cmdTaskCount">--</span>
     </button>
     <button class="cmd-launch-btn" onclick="navigateTo('brain')">
-      <span class="cmd-launch-icon">🧠</span>
+      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-brain"/></svg></span>
       <span class="cmd-launch-name">3D Brain</span>
       <span class="cmd-launch-count">196 nodes</span>
     </button>
     <button class="cmd-launch-btn" onclick="navigateTo('sessions')">
-      <span class="cmd-launch-icon">💬</span>
+      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg></span>
       <span class="cmd-launch-name">Chat</span>
       <span class="cmd-launch-count">OWL</span>
     </button>
     <button class="cmd-launch-btn" onclick="navigateTo('files')">
-      <span class="cmd-launch-icon">📁</span>
+      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></span>
       <span class="cmd-launch-name">Files</span>
       <span class="cmd-launch-count">Vault</span>
     </button>
     <button class="cmd-launch-btn" onclick="navigateTo('models')">
-      <span class="cmd-launch-icon">🤖</span>
+      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-bot"/></svg></span>
       <span class="cmd-launch-name">Models</span>
       <span class="cmd-launch-count">25</span>
     </button>
     <button class="cmd-launch-btn" onclick="navigateTo('skills')">
-      <span class="cmd-launch-icon">🧩</span>
+      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-puzzle"/></svg></span>
       <span class="cmd-launch-name">Skills</span>
       <span class="cmd-launch-count">15+</span>
     </button>
@@ -88,21 +88,21 @@
 <!-- Hermes Pilot (FB-PILOT) — read-only view into ~/hermes-pilot on this VPS -->
 <div class="cmd-section">
   <div class="cmd-section-header">
-    <span>🛠️ Hermes Pilot — FB-PILOT</span>
+    <span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> Hermes Pilot — FB-PILOT</span>
     <span class="cmd-section-count" id="pilotCounts"></span>
   </div>
   <div class="cmd-pilot" id="pilotBody">
-    <div class="cmd-alert info">⏳ Loading pilot status…</div>
+    <div class="cmd-alert info"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pilot status…</div>
   </div>
 </div>
 
 <!-- Alerts / Status -->
 <div class="cmd-section">
-  <div class="cmd-section-header"><span>🔔 Status</span></div>
+  <div class="cmd-section-header"><span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-bell"/></svg> Status</span></div>
   <div class="cmd-alerts" id="cmdAlerts">
-    <div class="cmd-alert warn">⚠️ <strong>P1 Job Search:</strong> 0 applications sent — URGENT</div>
-    <div class="cmd-alert info">📌 <strong>FieldBridge:</strong> SSL issue on fieldbridgehq.com — fix before driving traffic</div>
-    <div class="cmd-alert ok">✅ <strong>Vault:</strong> Synced to GitHub</div>
+    <div class="cmd-alert warn"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> <strong>P1 Job Search:</strong> 0 applications sent — URGENT</div>
+    <div class="cmd-alert info"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-pin"/></svg> <strong>FieldBridge:</strong> SSL issue on fieldbridgehq.com — fix before driving traffic</div>
+    <div class="cmd-alert ok"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> <strong>Vault:</strong> Synced to GitHub</div>
   </div>
 </div>
 
@@ -110,7 +110,7 @@
 <style>
 .cmd-hero {
   display: flex; justify-content: space-between; align-items: center;
-  background: linear-gradient(135deg, rgba(88,166,255,0.1) 0%, rgba(188,140,255,0.08) 100%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, color-mix(in srgb, var(--purple) 8%, transparent) 100%);
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-xl); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3);
 }
@@ -132,7 +132,7 @@
 .cmd-capture-input:focus { border-color: var(--accent); }
 .cmd-capture-input::placeholder { color: var(--text-muted); }
 .cmd-capture-btn {
-  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-lg);
+  background: var(--accent); color: var(--on-accent); border: none; border-radius: var(--radius-lg);
   padding: 0 20px; font-size: 20px; cursor: pointer; font-weight: 700; transition: opacity 0.2s;
 }
 .cmd-capture-btn:hover { opacity: 0.85; }
@@ -200,9 +200,11 @@
   font-size: 12px; padding: 10px 14px; border-radius: var(--radius-md);
   border-left: 3px solid;
 }
-.cmd-alert.warn { background: rgba(248,81,73,0.08); border-left-color: var(--red); }
-.cmd-alert.info { background: rgba(88,166,255,0.08); border-left-color: var(--accent); }
-.cmd-alert.ok { background: rgba(63,185,80,0.08); border-left-color: var(--green); }
+.cmd-alert { display: flex; align-items: flex-start; gap: 6px; }
+.cmd-alert .icon { flex-shrink: 0; margin-top: 1px; }
+.cmd-alert.warn { background: var(--red-bg); border-left-color: var(--red); }
+.cmd-alert.info { background: var(--accent-bg); border-left-color: var(--accent); }
+.cmd-alert.ok { background: var(--green-bg); border-left-color: var(--green); }
 
 @media (max-width: 768px) {
   .cmd-hero { flex-direction: column; gap: 16px; text-align: center; }
@@ -221,8 +223,8 @@ function cmdCapture() {
   localStorage.setItem('cmd-inbox', JSON.stringify(inbox.slice(0, 100)));
   input.value = '';
   // Visual feedback
-  input.placeholder = '✅ Saved! Type another...';
-  setTimeout(() => { input.placeholder = '💭 Type a thought, task, or note — press Enter to save to inbox'; }, 2000);
+  input.placeholder = 'Saved! Type another...';
+  setTimeout(() => { input.placeholder = 'Type a thought, task, or note — press Enter to save to inbox'; }, 2000);
 }
 
 // Voice Capture
@@ -258,13 +260,13 @@ async function startVoiceCapture() {
     mediaRecorder.start();
     isRecording = true;
     btn.classList.add('recording');
-    btn.textContent = '⏹️';
-    hint.textContent = '🎙️ Recording... Click to stop';
-    input.placeholder = '🎙️ Listening...';
-    
+    btn.innerHTML = '<svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg>';
+    hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--red);"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Recording... Click to stop';
+    input.placeholder = 'Listening...';
+
   } catch (err) {
     console.error('Mic access denied:', err);
-    hint.textContent = '❌ Microphone access denied';
+    hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Microphone access denied';
     setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
   }
 }
@@ -276,41 +278,41 @@ function stopRecording() {
   isRecording = false;
   const btn = document.getElementById('voiceBtn');
   btn.classList.remove('recording');
-  btn.textContent = '🎙️';
+  btn.innerHTML = '<svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-mic"/></svg>';
 }
 
 async function transcribeAudio(blob) {
   const hint = document.getElementById('captureHint');
   const input = document.getElementById('cmdCaptureInput');
-  
-  hint.textContent = '⏳ Transcribing...';
-  
+
+  hint.innerHTML = '<svg class="icon icon-sm icon-spin" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Transcribing...';
+
   try {
     const formData = new FormData();
     formData.append('audio', blob, 'voice-capture.webm');
-    
+
     const resp = await fetch('/api/transcribe', {
       method: 'POST',
       body: formData
     });
-    
+
     const data = await resp.json();
-    
+
     if (data.success && data.text) {
       input.value = data.text;
-      hint.textContent = `✅ Captured: "${data.text.slice(0, 50)}..."`;
+      hint.innerHTML = `<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Captured: "${data.text.slice(0, 50)}..."`;
       // Auto-save after 2 seconds
       setTimeout(() => {
         cmdCapture();
         hint.textContent = 'Saved to local inbox';
       }, 2000);
     } else {
-      hint.textContent = '❌ Transcription failed';
+      hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Transcription failed';
       setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
     }
   } catch (err) {
     console.error('Transcription error:', err);
-    hint.textContent = '❌ Transcription error';
+    hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Transcription error';
     setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
   }
 }
@@ -326,14 +328,14 @@ fetch('/api/hermes-pilot').then(r => r.json()).then(resp => {
   const counts = document.getElementById('pilotCounts');
   if (!body) return;
   if (!d.installed) {
-    body.innerHTML = '<div class="cmd-alert info">🗓️ Pilot not installed yet — 45-min VPS setup planned for the weekend (SETUP-GUIDE.md, task H-01). This card lights up automatically once <code>~/hermes-pilot/</code> exists.</div>';
+    body.innerHTML = '<div class="cmd-alert info"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg> Pilot not installed yet — 45-min VPS setup planned for the weekend (SETUP-GUIDE.md, task H-01). This card lights up automatically once <code>~/hermes-pilot/</code> exists.</div>';
     return;
   }
   const c = d.counts || {};
   if (counts) counts.textContent = `${c.log_entries || 0} runs · ${c.skills || 0} skills · inbox ${c.inbox || 0} / outbox ${c.outbox || 0}`;
   const entries = (d.entries || []).slice(-3).reverse();
   if (!entries.length) {
-    body.innerHTML = '<div class="cmd-alert ok">✅ Workspace live — no task runs logged yet. Waiting on Task 01 (drawing register extraction).</div>';
+    body.innerHTML = '<div class="cmd-alert ok"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Workspace live — no task runs logged yet. Waiting on Task 01 (drawing register extraction).</div>';
     return;
   }
   body.innerHTML = entries.map(e => `
@@ -341,11 +343,11 @@ fetch('/api/hermes-pilot').then(r => r.json()).then(resp => {
       <span class="p-date">${escHtml(e.date)}</span>
       <span class="p-task">${escHtml(e.task)}</span>
       <span class="p-score">self <span class="self">${escHtml(e.self_score) || '—'}</span> → measured <span class="measured">${escHtml(e.measured) || 'pending'}</span></span>
-      ${e.lesson ? `<span class="p-lesson">💡 ${escHtml(e.lesson)}</span>` : ''}
+      ${e.lesson ? `<span class="p-lesson"><svg class="icon icon-sm" width="11" height="11"><use href="assets/lucide-sprite.svg#icon-lightbulb"/></svg> ${escHtml(e.lesson)}</span>` : ''}
     </div>`).join('');
 }).catch(() => {
   const body = document.getElementById('pilotBody');
-  if (body) body.innerHTML = '<div class="cmd-alert warn">⚠️ Could not reach /api/hermes-pilot — server.py may need a restart to pick up the new endpoint.</div>';
+  if (body) body.innerHTML = '<div class="cmd-alert warn"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> Could not reach /api/hermes-pilot — server.py may need a restart to pick up the new endpoint.</div>';
 });
 
 // Load task count

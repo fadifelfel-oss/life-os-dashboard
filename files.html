@@ -135,14 +135,14 @@
 <div class="container">
 <div class="header">
   <a href="index.html" class="header-back">← Life OS</a>
-<div class="header-title">📁 File Browser</div>
+<div class="header-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> File Browser</div>
 <div class="header-actions">
-<button class="btn btn-sm" onclick="refreshTree()">↻ Refresh</button>
+<button class="btn btn-sm" onclick="refreshTree()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
 </div>
 </div>
 <div class="files-layout">
 <div class="file-sidebar" id="file-sidebar">
-<input type="text" class="file-search" id="file-search" placeholder="🔍 Search files by name..." oninput="handleSearch(this.value)">
+<input type="text" class="file-search" id="file-search" placeholder="Search files by name..." oninput="handleSearch(this.value)">
 <div class="file-sidebar-title" id="sidebar-title">Vault Structure</div>
 <div id="tree-container"><div style="padding:16px;color:var(--text-muted)">Loading...</div>
 </div>
@@ -150,15 +150,12 @@
 <div class="file-reader" id="file-reader">
 <div class="file-reader-header">
   <span class="breadcrumb" id="reader-title"><span class="file-reader-title">Select a file</span></span>
-  <button class="btn btn-sm" onclick="closeReader()">✕ Close</button>
+  <button class="btn btn-sm" onclick="closeReader()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-x"/></svg> Close</button>
 </div>
 <div class="file-reader-content" id="reader-content">
-<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
-<div style="text-align:center;">
-<div style="font-size:48px;margin-bottom:12px;">📂</div>
-<div>Click a file to view its contents</div>
-</div>
-</div>
+<div class="empty-state">
+<div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></div>
+<div class="empty-state-text">Click a file to view its contents</div>
 </div>
 </div>
 </div>
@@ -319,14 +316,14 @@ async function openFolder(el, path) {
     const found = findFolder(allItems, path);
     const items = found ? found : allItems;
     if (items.length === 0) {
-      content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)"><div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">📭</div><div>Empty folder</div></div></div>';
+      content.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-inbox"/></svg></div><div class="empty-state-text">Empty folder</div></div>';
       return;
     }
     let html = '<div style="padding:0;">';
     items.forEach(item => {
       if (VAULT_EXCLUDE.includes(item.name)) return;
       const isDir = item.type === 'dir' || item.type === 'directory';
-      const icon = isDir ? '📁' : getFileIcon(item.name);
+      const icon = isDir ? '<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-folder"/></svg>' : getFileIcon(item.name);
       const size = item.size ? formatSize(item.size) : '';
       const safePath = item.path.replace(/'/g, '&#39;');
       html += `<div class="file-item" data-path="${safePath}" onclick="${isDir ? 'openFolder(this,this.dataset.path)' : 'openFile(this.dataset.path,this)'}" style="padding:8px 16px;border-bottom:1px solid var(--border-secondary)">
@@ -342,16 +339,20 @@ async function openFolder(el, path) {
   }
 }
 
+function getFileIconName(name) {
+  if (name.endsWith('.md')) return 'file-text';
+  if (name.endsWith('.py')) return 'code';
+  if (name.endsWith('.json')) return 'clipboard-list';
+  if (name.endsWith('.html')) return 'globe';
+  if (name.endsWith('.js')) return 'zap';
+  if (name.endsWith('.css')) return 'palette';
+  if (name.endsWith('.pdf')) return 'file-text';
+  if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.webp')) return 'image';
+  return 'file-text';
+}
+
 function getFileIcon(name) {
-  if (name.endsWith('.md')) return '📄';
-  if (name.endsWith('.py')) return '🐍';
-  if (name.endsWith('.json')) return '📋';
-  if (name.endsWith('.html')) return '🌐';
-  if (name.endsWith('.js')) return '⚡';
-  if (name.endsWith('.css')) return '🎨';
-  if (name.endsWith('.pdf')) return '📕';
-  if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.webp')) return '🖼️';
-  return '📎';
+  return `<svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-${getFileIconName(name)}"/></svg>`;
 }
 
 function formatSize(bytes) {
@@ -407,11 +408,9 @@ function closeReader() {
   currentReaderPath = '';
   document.getElementById('reader-title').innerHTML = '<span class="file-reader-title">Select a file</span>';
   document.getElementById('reader-content').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
-      <div style="text-align:center;">
-        <div style="font-size:48px;margin-bottom:12px;">📂</div>
-        <div>Click a file to view its contents</div>
-      </div>
+    <div class="empty-state" style="height:100%;justify-content:center;">
+      <div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></div>
+      <div class="empty-state-text">Click a file to view its contents</div>
     </div>`;
 }
 

@@ -30,7 +30,7 @@
 .pb-run {
   align-self:flex-start; margin-top:4px;
   font-size: var(--font-size-xs); font-weight:700;
-  background: var(--accent); color:#fff; border:none;
+  background: var(--accent); color:var(--on-accent); border:none;
   padding: 5px 12px; border-radius: var(--radius-full); cursor:pointer;
   transition: all var(--transition-fast);
 }
@@ -53,8 +53,8 @@
 
 <div class="container">
   <div class="tabs">
-    <button class="tab active" onclick="showTab('playbook', this)">🎯 Playbook</button>
-    <button class="tab" onclick="showTab('prompts', this)">📝 Saved Prompts</button>
+    <button class="tab active" onclick="showTab('playbook', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Playbook</button>
+    <button class="tab" onclick="showTab('prompts', this)"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Saved Prompts</button>
   </div>
 
   <div id="tab-playbook" class="tab-content">
@@ -67,7 +67,7 @@
   <div id="tab-prompts" class="tab-content" style="display:none;">
     <div class="pb-intro">
       Candidate reusable prompts, heuristically flagged from your Hermes chat history — not a semantic understanding of your intent, just a pattern match (imperative openers, template language). Review before reuse.
-      <button class="pb-run" style="margin-left:8px;" onclick="extractPrompts()">🔄 Re-scan Chat History</button>
+      <button class="pb-run" style="margin-left:8px;" onclick="extractPrompts()"><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Re-scan Chat History</button>
     </div>
     <div id="prompts-status" style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin-bottom:var(--space-3);"></div>
     <div id="prompts-body"></div>
@@ -203,7 +203,7 @@ async function loadPrompts() {
     const json = await res.json();
     if (!json.data || !json.data.length) {
       status.textContent = json.extracted ? 'No candidate prompts found yet.' : 'Not scanned yet.';
-      body.innerHTML = '<div class="pb-placeholder"><div style="font-size:28px;margin-bottom:8px;">📝</div>Hit <strong>Re-scan Chat History</strong> above to build your prompt library.</div>';
+      body.innerHTML = '<div class="pb-placeholder"><div style="margin-bottom:8px;"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></div>Hit <strong>Re-scan Chat History</strong> above to build your prompt library.</div>';
       return;
     }
     status.textContent = `${json.data.length} candidate prompts`;

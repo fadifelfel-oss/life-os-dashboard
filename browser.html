@@ -181,7 +181,7 @@
           <option value="click">Click Element</option>
           <option value="scroll">Scroll Page</option>
         </select>
-      </>
+      </div>
       <div class="control-group" id="action-specific-controls">
         <!-- Dynamically populated based on action type -->
       </div>
@@ -603,13 +603,18 @@
       previewContent.scrollTop = previewContent.scrollHeight;
     }
 
+    function addLogEntry(level, message) {
+      logEntries.push({ level, message, timestamp: new Date().toLocaleTimeString() });
+      renderLogs();
+    }
+
     function renderLogs() {
       logsContainer.innerHTML = logEntries.map(entry => `
         <div class="log-entry log-${entry.level}">
           <div class="log-timestamp">[${entry.timestamp}]</div>
           <div class="log-message ${entry.level}">${entry.message}</div>
         </div>
-      ).join('');
+      `).join('');
       logsContainer.scrollTop = logsContainer.scrollHeight;
     }
 

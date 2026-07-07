@@ -1,4 +1,83 @@
-# NEXT SESSION — UI Build (Sonnet handoff, 2026-07-06 evening)
+# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-07)
+
+## 2026-07-07 session — card anatomy (4 pages) + light-touch sweep (8 pages) + 2 real bugs fixed
+
+**Why this session stopped here:** mid-sweep, flagged the $10k-by-Jul-24 FieldBridge
+tripwire (17 days left, WMEG follow-up already overdue) against continued dashboard
+polish. Fadi chose "finish all the light fixes now" — so this pass completed the
+remaining 8 pages at light-touch depth (chrome emoji + obvious hardcoded colors only,
+no card-anatomy rebuild) rather than the original full Stage 3 scope, then stopped.
+Stage 4 (ARMS/graph3d) and Stage 5 (Hub rebuild) were NOT started.
+
+**Card-anatomy + empty-state (full treatment, Task #10 — done):**
+- `shared.css`: added `.card-kpi`/`.card-eyebrow`/`.card-value`/`.card-sparkline`/
+  `.card-delta`/`.card-footer` (card anatomy) and `.empty-state`/`.empty-state-icon`/
+  `.empty-state-text`/`.empty-state-action` (designed empty states). Also fixed a real
+  bug: `--text-muted` was never defined in `:root` — added as alias for
+  `--text-secondary` (was silently breaking 93 references across 11 pages since the
+  R13 rename).
+- `dashboard.html`: colors + emoji only (card-anatomy deferred to the eventual Stage 5
+  Hub rebuild since it has bespoke hero/widget markup, not generic KPI cards).
+- `files.html`, `skills.html`: full icon/color/empty-state sweep. `files.html` had a
+  div-nesting regression from a 3-level-to-1-level empty-state collapse — caught and
+  fixed (2 stray orphan `</div>` tags) before it shipped.
+- `models.html` (largest page, ~1065 lines): full sweep — tab bar, sidebar filters,
+  legend, JOBS array, categoryLabels, empty states, all hardcoded colors. Deliberately
+  left `getModelIcon()`, `FALLBACK_MODELS.icon`, `speedIcon` as content (30+ per-model/
+  provider brand identifiers, same exemption class as vault/chat/kanban content).
+  Verified via `node --check` on the extracted script — `SYNTAX_OK`. A raw grep
+  div-count showed 109 open/110 close; traced this by hand (static HTML 1-510 is
+  exactly 80/80 balanced; every template-literal block in the script individually
+  balances) and confirmed it's a known-pattern false positive from HTML-tag text
+  living inside JS string literals, not a real bug.
+
+**Light-touch sweep (Task #11+#12 collapsed, chrome-only depth — done):**
+- `chat.html`: toolbar-only (KB/Think/Code-Blocks/Settings buttons + 2 close buttons)
+  converted to sprite icons. Deliberately left everything else untouched — this page
+  is a fully bespoke dark-only chat UI with its own hardcoded `:root` (not on the
+  shared token system at all), and a full migration would be a rebuild, not a sweep.
+- `mcp.html`: 4 status rows converted from `● Connected` text to the `.status-dot`
+  component pattern used elsewhere.
+- `keys.html`: header title, Refresh/Test All/Export/Remove All buttons, and the
+  per-provider eye/test/trash buttons converted to sprite icons.
+- `loops.html`: already clean, no changes needed.
+- `imagegen.html`: already clean, no changes needed.
+- `browser.html`: no chrome emoji or hardcoded colors present. **Found and fixed 2 real
+  bugs while reading the file** (not part of the icon sweep, just noticed while in
+  there): (1) a malformed `</>` closing tag instead of `</div>` after the action-type
+  `<select>` — invalid HTML the browser was silently error-recovering from; (2) a
+  missing closing backtick in `renderLogs()`'s template literal (`).join('')` instead
+  of `` `).join('')` ``) — this made the entire script contents inside `<script>` after
+  that point either become swallowed into a runaway string or throw a JS syntax error,
+  which would have broken the whole page's JS depending on exact parse behavior.
+  Also found `addLogEntry()` called 5 times but never defined anywhere — every
+  automation run (success, error, or stop) would throw `ReferenceError` and silently
+  break the log/status flow. Added the missing function. Verified with `node --check`
+  AND an actual `node` execution of a stubbed-DOM version — both passed clean.
+- `life-areas.html`: already clean, no changes needed. Per-area emoji (💼🌉🏗️📈🩺
+  👨‍👩‍👧📚🗂️) left as content — each is the primary visual identifier for a distinct
+  life area, same exemption class as models.html.
+- `use-cases.html`: tab icons (Playbook/Saved Prompts), Re-scan button, empty-state
+  icon, and one hardcoded `color:#fff` → `var(--on-accent)` fixed. Per-area brand
+  colors (`color:'#7F77DD'` etc, one hex per life area) deliberately left as-is —
+  intentional per-area accent colors, not accidental hardcoded grays.
+
+**Verification done this pass:** NUL scan via Grep tool (not bash — mount is stale
+again this session, confirmed by comparing `wc -l` output to the real file) on all 9
+touched files — all clean. `node --check` + live execution on the browser.html fix.
+`node --check` on the models.html script. Manual div-balance trace on models.html's
+static HTML portion (80/80).
+
+**Explicitly NOT done — real remaining scope:**
+- Card-anatomy/empty-state treatment on chat/mcp/keys/loops/imagegen/browser/
+  life-areas/use-cases — these got chrome-only fixes, not the full component
+  standardization the original Stage 3 brief called for. chat.html in particular
+  would need a full color-architecture migration (not a sweep) to join the shared
+  theme system.
+- Stage 4 (ARMS endpoint + graph3d rebuild) — not started.
+- Stage 5 (Hub/dashboard rebuild) — not started.
+- Full hardcoded-color audit of graph3d.html, index.html body chrome beyond what
+  Stage 1/2 already covered.
 
 ## Stage 3 — IN PROGRESS (component standardization, Phase 2.3)
 
@@ -235,27 +314,20 @@ registry side panels, all colors via `getComputedStyle` off the new
 
 ## Git — I never ran git add/commit/push (hard rule). Exact commands for Fadi:
 
-**If you already ran the Stage 1+2 commit (`2f9c2f1` per your screenshot),
-use this block instead — it covers everything since then (Stage 3's 4-page
-legacy migration: kanban/voice/meetings/artifacts + sprite additions):**
+**Always run `git status` first and read it** — this session's bash mount was stale
+(confirmed again), so I can't tell you exactly what's already committed vs not. Below
+is everything I personally touched this session (2026-07-07); some of it may already
+be in a prior commit if you ran one mid-session.
 
 ```
 cd C:\Dev\life-os-dashboard
 git status
-# review the pre-existing use-cases/voice rename+deletion mess above BEFORE staging
-git add kanban.html voice.html meetings.html artifacts.html assets/lucide-sprite.svg NEXT-SESSION-UI.md
-git commit -m "Stage 3 (Phase 2.3) partial: migrate kanban/voice/meetings/artifacts onto shared design tokens, fix remaining hardcoded colors, full emoji sweep on all 4 pages, add calendar/users/target/copy/maximize icons to sprite"
+# review the pre-existing use-cases/voice rename+deletion mess (noted earlier in this
+# file, under "Pre-existing repo issue") BEFORE staging anything, if still present
+git add shared.css assets/lucide-sprite.svg dashboard.html files.html skills.html models.html chat.html mcp.html keys.html imagegen.html browser.html life-areas.html use-cases.html NEXT-SESSION-UI.md
+git commit -m "Stage 3: card anatomy + empty-state components (shared.css), full sweep of dashboard/files/skills/models, light-touch chrome sweep of chat/mcp/keys/imagegen/browser/life-areas/use-cases, fix broken --text-muted CSS var, fix 2 real bugs in browser.html (malformed closing tag, missing template-literal backtick, missing addLogEntry function)"
 git push origin main
 ```
 
-**If you have NOT yet run any commit this session**, use the full block below
-instead (includes Stage 1+2+3 in one commit):
-
-```
-cd C:\Dev\life-os-dashboard
-git status
-# review the pre-existing use-cases/voice rename+deletion mess above BEFORE staging
-git add shared.css shared.js index.html dashboard.html use-cases.html skills.html models.html mcp.html keys.html loops.html imagegen.html files.html graph3d.html browser.html life-areas.html chat.html artifacts.html voice.html meetings.html kanban.html assets/lucide-sprite.svg NEXT-SESSION-UI.md
-git commit -m "Phase 2.1 + R13 theme system + Phase 2.2 icon sweep + Phase 2.3 partial: three-theme system, anti-flash pre-paint, self-hosted Lucide-style sprite, chrome emoji swept, 4-page legacy migration onto shared tokens"
-git push origin main
-```
+If `git status` shows `loops.html` as modified, it wasn't touched this session
+(reviewed, already clean) — don't stage it unless you know why it's dirty.

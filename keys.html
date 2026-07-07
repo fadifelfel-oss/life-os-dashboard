@@ -93,10 +93,10 @@
 <div class="container">
 <div class="header">
   <a href="index.html" class="header-back">← Life OS</a>
-<div class="header-title">🔑 Connectors & API Keys</div>
+<div class="header-title"><svg class="icon icon-sm" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-key-round"/></svg> Connectors & API Keys</div>
 <div class="header-actions">
-<button class="btn btn-sm" onclick="refreshAll()">↻ Refresh</button>
-<button class="btn btn-sm btn-success" onclick="testAll()">⚡ Test All</button>
+<button class="btn btn-sm" onclick="refreshAll()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
+<button class="btn btn-sm btn-success" onclick="testAll()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Test All</button>
 </div>
 </div>
 
@@ -142,9 +142,9 @@
 <div class="sidebar-section">
 <div class="sidebar-title">Quick Actions</div>
 <div style="display:flex;flex-direction:column;gap:6px;">
-<button class="btn btn-success btn-sm" onclick="testAll()">⚡ Test All Providers</button>
-<button class="btn btn-sm" onclick="exportConfig()">📤 Export Config</button>
-<button class="btn btn-danger btn-sm" onclick="clearAll()">🗑️ Remove All</button>
+<button class="btn btn-success btn-sm" onclick="testAll()"><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Test All Providers</button>
+<button class="btn btn-sm" onclick="exportConfig()"><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-save"/></svg> Export Config</button>
+<button class="btn btn-danger btn-sm" onclick="clearAll()"><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-trash-2"/></svg> Remove All</button>
 </div>
 </div>
 <div class="sidebar-section">
@@ -209,9 +209,9 @@ function renderProviders() {
           <input type="password" class="provider-input input" id="key-${p.id}"
                  placeholder="Enter ${p.envVar || 'API key'}" value="${keyVal}"
                  oninput="updateCardStatus('${p.id}')">
-          <button class="btn btn-ghost btn-sm" onclick="toggleKey('${p.id}')">👁️</button>
-          <button class="btn btn-success btn-sm" onclick="testProvider('${p.id}')">⚡ Test</button>
-          <button class="btn btn-danger btn-sm" onclick="removeKey('${p.id}')">🗑️</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleKey('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-eye"/></svg></button>
+          <button class="btn btn-success btn-sm" onclick="testProvider('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Test</button>
+          <button class="btn btn-danger btn-sm" onclick="removeKey('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-trash-2"/></svg></button>
         </div>
         <div class="test-result" id="test-${p.id}"></div>
       </div>

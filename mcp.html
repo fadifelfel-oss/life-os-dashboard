@@ -11,9 +11,10 @@
 .mcp-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-xl); padding: var(--space-4); }
 .mcp-card h3 { margin: 0 0 var(--space-2); font-size: var(--font-size-md); }
 .mcp-card p { color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0; }
-.mcp-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+.mcp-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
 .mcp-status.online { color: var(--green); }
 .mcp-status.offline { color: var(--text-muted); }
+.mcp-status .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 </style>
 </head>
 <body>
@@ -26,22 +27,22 @@
     <div class="mcp-card">
       <h3>File System</h3>
       <p>Read, write, and search vault files</p>
-      <div class="mcp-status online">● Connected</div>
+      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
     </div>
     <div class="mcp-card">
       <h3>Browser</h3>
       <p>Navigate the web for research</p>
-      <div class="mcp-status online">● Connected</div>
+      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
     </div>
     <div class="mcp-card">
       <h3>Terminal</h3>
       <p>Execute shell commands on VPS</p>
-      <div class="mcp-status online">● Connected</div>
+      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
     </div>
     <div class="mcp-card">
       <h3>Obsidian Vault</h3>
       <p>Direct access to /root/knowledge</p>
-      <div class="mcp-status online">● Connected</div>
+      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
     </div>
   </div>
 </div>

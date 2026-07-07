@@ -33,6 +33,13 @@
   --text-secondary: #94a5bd;
   --text-tertiary: color-mix(in srgb, var(--text-secondary) 65%, var(--bg-primary));
   --text-link: var(--accent-2);
+  /* Compat alias: --text-muted was the pre-R13 token name. 11 pages still
+     reference it directly (dashboard/files/graph3d/browser/keys/life-areas/
+     loops/mcp/models/skills/use-cases) and were silently falling back to
+     `inherit` since the Stage 1 rename — this was a real correctness bug,
+     not just an inconsistency. Fixed at the root here instead of touching
+     93 call sites across 11 files. */
+  --text-muted: var(--text-secondary);
 
   --accent: #f5b942;        /* signature brand accent — amber/gold (promoted from opportunity-gold) */
   --accent-2: #3d7bd9;      /* secondary accent — steel blue (links, informational) */
@@ -956,6 +963,120 @@ body.dashboard-mode #dashboardContainer {
   font-weight: 700;
 }
 
+/* === CARD ANATOMY (Phase 2.3, UI-MASTER-PLAN §2.3) ===
+   Standard KPI/stat card shape: eyebrow label -> value (display font) ->
+   delta -> footer action. Left-aligned. Use inside .card, e.g.:
+   <div class="card card-kpi">
+     <div class="card-eyebrow">Open RFIs</div>
+     <div class="card-value">12</div>
+     <div class="card-delta card-delta-up">+3 this week</div>
+     <div class="card-footer"><a href="...">View all →</a></div>
+   </div>
+   .card-sparkline is an optional trend-line slot (svg/canvas) between
+   value and delta, only when a real trend exists — don't add for its own
+   sake. */
+.card-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.card-eyebrow {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.card-value {
+  font-family: var(--font-display);
+  font-size: var(--font-size-3xl, 2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-sparkline {
+  width: 100%;
+  height: 32px;
+  margin-top: var(--space-2);
+  color: var(--accent-2);
+}
+
+.card-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.card-delta-up { color: var(--green); }
+.card-delta-down { color: var(--red); }
+.card-delta .icon { width: 12px; height: 12px; }
+
+.card-footer {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-primary);
+  width: 100%;
+  font-size: var(--font-size-xs);
+}
+
+.card-footer a {
+  color: var(--text-link);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.card-footer a:hover { text-decoration: underline; }
+
+/* === EMPTY STATES (Phase 2.3) ===
+   Designed empty state: small icon + one line of text + optional one
+   action button. Replaces every page's ad-hoc empty-state markup.
+   <div class="empty-state">
+     <div class="empty-state-icon"><svg class="icon" ...>...</svg></div>
+     <div class="empty-state-text">No signals today — clip something worth knowing</div>
+     <button class="btn btn-primary empty-state-action">Clip something</button>
+   </div> */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.empty-state-icon .icon { width: 20px; height: 20px; }
+
+.empty-state-text {
+  font-size: var(--font-size-sm);
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.empty-state-action { margin-top: var(--space-3); }
+
 /* === BUTTONS === */
 .btn {
   display: inline-flex;
@@ -992,10 +1113,10 @@ body.dashboard-mode #dashboardContainer {
 }
 
 .btn-success { border-color: var(--green); color: var(--green); }
-.btn-success:hover { background: var(--green); color: #fff; }
+.btn-success:hover { background: var(--green); color: var(--on-accent); }
 
 .btn-danger { border-color: var(--red); color: var(--red); }
-.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-danger:hover { background: var(--red); color: var(--on-accent); }
 
 .btn-ghost {
   background: transparent;
