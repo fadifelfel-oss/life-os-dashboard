@@ -1,29 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meeting Assistant — Life OS</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
 <style>
 :root {
-  --bg: #1a1a2e;
-  --bg-card: #16213e;
-  --bg-elevated: #0f3460;
-  --accent: #6c63ff;
-  --accent-light: #8b83ff;
-  --text: #e8e8f0;
-  --text-muted: #8888a8;
-  --border: #2a2a4a;
-  --green: #00d4aa;
-  --amber: #f4a261;
-  --red: #e76f51;
-  --blue: #4cc9f0;
-  --pink: #f72585;
-  --purple: #7209b7;
-  --col-backlog: #1e3a5f;
-  --col-progress: #3a1f5e;
-  --col-review: #1f4e3a;
-  --col-done: #2a2a2a;
+  --bg: var(--bg-primary);
+  --bg-card: var(--bg-secondary);
+  --accent-light: var(--accent-hover);
+  --text: var(--text-primary);
+  --text-muted: var(--text-secondary);
+  --border: var(--border-primary);
+  --amber: var(--orange);
+  --blue: var(--accent-2);
+  --col-backlog: color-mix(in srgb, var(--area-construction) 22%, var(--bg-secondary));
+  --col-progress: color-mix(in srgb, var(--accent) 22%, var(--bg-secondary));
+  --col-review: color-mix(in srgb, var(--area-knowledge) 22%, var(--bg-secondary));
+  --col-done: color-mix(in srgb, var(--status-live) 18%, var(--bg-secondary));
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -69,9 +65,9 @@ body {
 .btn-primary:hover { background: var(--accent-light); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-danger { border-color: var(--red); color: var(--red); }
-.btn-danger:hover { background: var(--red); color: white; }
+.btn-danger:hover { background: var(--red); color: var(--on-accent); }
 .btn-success { border-color: var(--green); color: var(--green); }
-.btn-success:hover { background: var(--green); color: white; }
+.btn-success:hover { background: var(--green); color: var(--on-accent); }
 
 /* Status bar */
 .status-bar {
@@ -170,11 +166,11 @@ body {
   margin-top: 1px;
 }
 .agenda-checkbox.checked { background: var(--green); border-color: var(--green); }
-.agenda-checkbox.checked::after { content: '✓'; color: white; font-size: 12px; font-weight: 700; }
+.agenda-checkbox.checked::after { content: '✓'; color: var(--on-accent); font-size: 12px; font-weight: 700; }
 .agenda-checkbox.partial { background: var(--amber); border-color: var(--amber); }
-.agenda-checkbox.partial::after { content: '!'; color: white; font-size: 12px; font-weight: 700; }
+.agenda-checkbox.partial::after { content: '!'; color: var(--on-accent); font-size: 12px; font-weight: 700; }
 .agenda-checkbox.missed { background: var(--red); border-color: var(--red); }
-.agenda-checkbox.missed::after { content: '×'; color: white; font-size: 12px; font-weight: 700; }
+.agenda-checkbox.missed::after { content: '×'; color: var(--on-accent); font-size: 12px; font-weight: 700; }
 
 .agenda-content { flex: 1; }
 .agenda-item-title {
@@ -320,7 +316,7 @@ body {
 }
 .upload-area:hover, .upload-area.dragover {
   border-color: var(--accent);
-  background: rgba(108, 99, 255, 0.05);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 .upload-icon { font-size: 32px; margin-bottom: 8px; }
 .upload-text { font-size: 13px; color: var(--text-muted); }
@@ -379,7 +375,7 @@ body {
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.7);
+  background: var(--bg-overlay);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -411,7 +407,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: rgba(231, 111, 81, 0.1);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
   border: 1px solid var(--red);
   border-radius: 8px;
   margin-bottom: 16px;
@@ -446,13 +442,13 @@ body {
 <div class="header">
   <div style="display:flex;align-items:center;gap:12px;">
     <a class="back-btn" onclick="window.history.back()">← Life OS</a>
-    <h1>🎙️ Meeting Assistant</h1>
+    <h1><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Meeting Assistant</h1>
   </div>
   <div class="header-actions">
     <div class="header-actions">
-      <button class="btn btn-primary" onclick="showUploadModal()">📄 Upload Agenda</button>
-      <button class="btn" onclick="showProcessModal()">🎙️ Process Audio</button>
-      <button class="btn btn-success" onclick="toggleRecording()" id="recordBtn">⏺ Record</button>
+      <button class="btn btn-primary" onclick="showUploadModal()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Upload Agenda</button>
+      <button class="btn" onclick="showProcessModal()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Process Audio</button>
+      <button class="btn btn-success" onclick="toggleRecording()" id="recordBtn"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Record</button>
     </div>
   </div>
 </div>
@@ -469,28 +465,28 @@ body {
     <span id="statusText">Ready</span>
   </div>
   <div class="status-pill" id="meetingInfoPill" style="display:none;">
-    <span>📅</span>
+    <span><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg></span>
     <span id="meetingDate"></span>
   </div>
   <div class="status-pill" id="attendeesPill" style="display:none;">
-    <span>👥</span>
+    <span><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-users"/></svg></span>
     <span id="attendeesCount"></span>
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="brief" onclick="switchTab('brief')">📋 Brief</div>
-  <div class="tab" data-tab="coverage" onclick="switchTab('coverage')">📊 Coverage</div>
-  <div class="tab" data-tab="transcript" onclick="switchTab('transcript')">📝 Transcript</div>
-  <div class="tab" data-tab="summary" onclick="switchTab('summary')">📄 Summary</div>
-  <div class="tab" data-tab="actions" onclick="switchTab('actions')">✅ Actions</div>
+  <div class="tab active" data-tab="brief" onclick="switchTab('brief')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Brief</div>
+  <div class="tab" data-tab="coverage" onclick="switchTab('coverage')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg> Coverage</div>
+  <div class="tab" data-tab="transcript" onclick="switchTab('transcript')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Transcript</div>
+  <div class="tab" data-tab="summary" onclick="switchTab('summary')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Summary</div>
+  <div class="tab" data-tab="actions" onclick="switchTab('actions')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Actions</div>
 </div>
 
 <div class="meeting-layout">
   <!-- Left: Main content area -->
   <div class="panel" id="mainPanel">
     <div id="emptyState" class="empty-state">
-      <div class="empty-state-icon">🎙️</div>
+      <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-mic"/></svg></div>
       <div class="empty-state-text">
         <strong>No meeting loaded</strong><br>
         Upload a PDF, Google Doc, or voice memo to get started
@@ -499,13 +495,13 @@ body {
 
     <!-- Brief tab -->
     <div id="tab-brief" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon">📋</span> Meeting Brief</div>
+      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg></span> Meeting Brief</div>
       <div class="brief-container" id="briefContainer" style="display:none;">
         <div class="brief-header">
           <div class="brief-title" id="briefTitle"></div>
           <div class="header-actions">
             <button class="btn btn-sm btn-primary" onclick="confirmBrief()">✓ Confirm & Start</button>
-            <button class="btn btn-sm" onclick="regenerateBrief()">🔄 Regenerate</button>
+            <button class="btn btn-sm" onclick="regenerateBrief()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Regenerate</button>
           </div>
         </div>
         <div class="brief-meta" id="briefMeta"></div>
@@ -513,14 +509,14 @@ body {
         <div id="briefQuestions"></div>
       </div>
       <div id="briefEmpty" class="empty-state">
-        <div class="empty-state-icon">📄</div>
+        <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></div>
         <div class="empty-state-text">Upload a document to generate a meeting brief</div>
       </div>
     </div>
 
     <!-- Coverage tab -->
     <div id="tab-coverage" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon">📊</span> Coverage Tracker</div>
+      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg></span> Coverage Tracker</div>
       <div id="coverageContent" style="display:none;">
         <div class="coverage-stats">
           <div class="coverage-stat covered">
@@ -542,36 +538,36 @@ body {
         <div class="agenda-list" id="coverageList"></div>
       </div>
       <div id="coverageEmpty" class="empty-state">
-        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg></div>
         <div class="empty-state-text">Start recording to track coverage</div>
       </div>
     </div>
 
     <!-- Transcript tab -->
     <div id="tab-transcript" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon">📝</span> Legal Transcript</div>
+      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></span> Legal Transcript</div>
       <div class="transcript-container" id="transcriptContainer"></div>
     </div>
 
     <!-- Summary tab -->
     <div id="tab-summary" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon">📄</span> Summary & Conclusion</div>
+      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></span> Summary & Conclusion</div>
       <div id="summaryContent"></div>
     </div>
 
     <!-- Actions tab -->
     <div id="tab-actions" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon">✅</span> Action Items</div>
+      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg></span> Action Items</div>
       <div id="actionsContent"></div>
     </div>
   </div>
 
   <!-- Right: Live coverage sidebar -->
   <div class="panel" id="livePanel">
-    <div class="panel-title"><span class="icon">🎯</span> Live Agenda Check</div>
+    <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-target"/></svg></span> Live Agenda Check</div>
     <div id="liveAgenda" class="agenda-list">
       <div class="empty-state">
-        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></div>
         <div class="empty-state-text">Agenda items will appear here during the meeting</div>
       </div>
     </div>
@@ -582,11 +578,11 @@ body {
 <div class="modal-overlay" id="processModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🎙️ Process Meeting Audio</div>
+      <div class="modal-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Process Meeting Audio</div>
       <button class="modal-close" onclick="hideProcessModal()">×</button>
     </div>
     <div class="upload-area" id="processArea" onclick="document.getElementById('audioInput').click()">
-      <div class="upload-icon">🎵</div>
+      <div class="upload-icon"><svg class="icon icon-lg" width="28" height="28"><use href="assets/lucide-sprite.svg#icon-headphones"/></svg></div>
       <div class="upload-text"><strong>Click to upload audio</strong> or drag & drop</div>
       <div class="upload-formats">WAV, MP3, M4A — recorded from your meeting</div>
     </div>
@@ -599,11 +595,11 @@ body {
 <div class="modal-overlay" id="uploadModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">📄 Upload Meeting Document</div>
+      <div class="modal-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Upload Meeting Document</div>
       <button class="modal-close" onclick="hideUploadModal()">×</button>
     </div>
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-      <div class="upload-icon">📁</div>
+      <div class="upload-icon"><svg class="icon icon-lg" width="28" height="28"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></div>
       <div class="upload-text"><strong>Click to upload</strong> or drag & drop</div>
       <div class="upload-formats">PDF, Google Doc link, or voice memo</div>
     </div>
@@ -756,9 +752,9 @@ function renderBrief(data) {
   
   document.getElementById('briefTitle').textContent = data.meeting?.title || 'Meeting';
   document.getElementById('briefMeta').innerHTML = `
-    📅 ${data.meeting?.date || new Date().toLocaleDateString()} &nbsp;|&nbsp; 
-    👥 ${data.meeting?.attendees?.length || 'No attendees'} &nbsp;|&nbsp;
-    📋 ${data.agenda.length} items
+    <svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg> ${data.meeting?.date || new Date().toLocaleDateString()} &nbsp;|&nbsp;
+    <svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-users"/></svg> ${data.meeting?.attendees?.length || 'No attendees'} &nbsp;|&nbsp;
+    <svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> ${data.agenda.length} items
   `;
   
   let agendaHTML = '<div style="margin-top:12px;"><strong style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Agenda:</strong></div><ol style="padding-left:20px;margin-top:6px;">';
@@ -824,7 +820,7 @@ function startRecording() {
   state.phase = 'recording';
   state.recordingStartTime = Date.now();
   document.getElementById('recordingIndicator').classList.add('active');
-  document.getElementById('recordBtn').textContent = '⏹ Stop';
+  document.getElementById('recordBtn').innerHTML = '<svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Stop';
   document.getElementById('recordBtn').classList.remove('btn-success');
   document.getElementById('recordBtn').classList.add('btn-danger');
   setStatus('recording', 'Recording in progress...');
@@ -843,7 +839,7 @@ function stopRecording() {
   state.phase = 'transcribing';
   clearInterval(state.recordingInterval);
   document.getElementById('recordingIndicator').classList.remove('active');
-  document.getElementById('recordBtn').textContent = '⏺ Record';
+  document.getElementById('recordBtn').innerHTML = '<svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Record';
   document.getElementById('recordBtn').classList.add('btn-success');
   document.getElementById('recordBtn').classList.remove('btn-danger');
   setStatus('processing', 'Transcribing audio...');
@@ -1036,8 +1032,8 @@ function handleAudioSelect(event) {
   const formData = new FormData();
   formData.append('audio', file);
   
-  document.getElementById('processStatus').innerHTML = '⏳ Transcribing and processing... This may take a few minutes.';
-  
+  document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Transcribing and processing... This may take a few minutes.';
+
   fetch('/api/meetings/process', {
     method: 'POST',
     body: formData
@@ -1046,20 +1042,20 @@ function handleAudioSelect(event) {
   .then(data => {
     if (data.success) {
       document.getElementById('processStatus').innerHTML = `
-        ✅ <strong>Complete!</strong><br>
-        📝 ${data.transcript_segments} transcript segments<br>
-        📋 ${data.action_items_count} action items extracted<br>
-        📊 ${data.coverage_covered}/${data.coverage_total} agenda items covered<br>
+        <svg class="icon icon-sm" width="13" height="13" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> <strong>Complete!</strong><br>
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> ${data.transcript_segments} transcript segments<br>
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> ${data.action_items_count} action items extracted<br>
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg> ${data.coverage_covered}/${data.coverage_total} agenda items covered<br>
         <br>Results loaded in all tabs below.
       `;
       loadMeetingData();
       setTimeout(hideProcessModal, 3000);
     } else {
-      document.getElementById('processStatus').innerHTML = '❌ Error: ' + (data.error || 'Processing failed');
+      document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Error: ' + (data.error || 'Processing failed');
     }
   })
   .catch(err => {
-    document.getElementById('processStatus').innerHTML = '❌ Error: ' + err.message;
+    document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Error: ' + err.message;
   });
 }
 
@@ -1084,16 +1080,16 @@ processArea.addEventListener('drop', e => {
   if (file) {
     const formData = new FormData();
     formData.append('audio', file);
-    document.getElementById('processStatus').innerHTML = '⏳ Processing...';
+    document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Processing...';
     fetch('/api/meetings/process', { method: 'POST', body: formData })
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          document.getElementById('processStatus').innerHTML = '✅ Complete! Loading results...';
+          document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Complete! Loading results...';
           loadMeetingData();
           setTimeout(hideProcessModal, 3000);
         } else {
-          document.getElementById('processStatus').innerHTML = '❌ ' + (data.error || 'Failed');
+          document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> ' + (data.error || 'Failed');
         }
       });
   }

@@ -7,7 +7,18 @@
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
-:root { --bg: #0d1117; --bg-card: #161b22; --bg-editor: #1c2128; --border: #30363d; --text: #e6edf3; --text-muted: #8b949e; --accent: #58a6ff; }
+/* Stage 3 migration (2026-07-06): aliases onto the shared design system —
+   --accent already matches shared.css's name 1:1 so it's intentionally NOT
+   redeclared here. --bg-editor has no shared equivalent so it derives off
+   --bg-tertiary. */
+:root {
+  --bg: var(--bg-primary);
+  --bg-card: var(--bg-secondary);
+  --bg-editor: var(--bg-tertiary);
+  --border: var(--border-primary);
+  --text: var(--text-primary);
+  --text-muted: var(--text-secondary);
+}
 
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
@@ -31,19 +42,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .preview-panel { display: flex; flex-direction: column; background: var(--bg); }
 .preview-header { padding: 10px 16px; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: var(--bg-card); display: flex; justify-content: space-between; align-items: center; }
 .preview-header span { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+/* #fff kept deliberate here and in .empty-preview below: this is a simulated
+   browser canvas rendering arbitrary user HTML, not themed app chrome — it
+   should stay a neutral white page surface regardless of the app's theme. */
 .preview-iframe { flex: 1; width: 100%; border: none; background: #fff; }
 
 /* Templates bar */
 .templates-bar { padding: 10px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
 .template-btn { padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; transition: all 0.15s; font-weight: 500; }
 .template-btn:hover { border-color: var(--accent); color: var(--accent); }
-.template-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.template-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* Action buttons */
 .action-bar { padding: 10px 16px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; gap: 8px; }
 .action-btn { padding: 8px 16px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; font-weight: 600; transition: all 0.15s; }
 .action-btn:hover { border-color: var(--accent); }
-.action-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.action-btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .action-btn.primary:hover { opacity: 0.9; }
 
 /* Empty state */
@@ -58,8 +72,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <div class="header">
   <a href="index.html" class="header-back">← Life OS</a>
-  <h1> Live Artifacts</h1>
-  <button class="template-btn" onclick="runCode()" style="font-size:13px;padding:8px 20px;background:var(--accent);color:#fff;border-color:var(--accent);">▶ Run</button>
+  <h1><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-palette"/></svg> Live Artifacts</h1>
+  <button class="template-btn" onclick="runCode()" style="font-size:13px;padding:8px 20px;background:var(--accent);color:var(--on-accent);border-color:var(--accent);"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-play"/></svg> Run</button>
 </div>
 
 <div class="templates-bar">
@@ -85,10 +99,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <textarea class="editor-textarea" id="editor-js" spellcheck="false" style="display:none;" placeholder="// JavaScript here" oninput="autoRun()"></textarea>
     </div>
     <div class="action-bar">
-      <button class="action-btn primary" onclick="runCode()">▶ Run</button>
-      <button class="action-btn" onclick="copyCode()"> Copy</button>
-      <button class="action-btn" onclick="resetCode()"> Reset</button>
-      <button class="action-btn" onclick="fullscreenPreview()"> Fullscreen</button>
+      <button class="action-btn primary" onclick="runCode()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-play"/></svg> Run</button>
+      <button class="action-btn" onclick="copyCode()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-copy"/></svg> Copy</button>
+      <button class="action-btn" onclick="resetCode()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Reset</button>
+      <button class="action-btn" onclick="fullscreenPreview()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-maximize"/></svg> Fullscreen</button>
     </div>
   </div>
 
@@ -100,7 +114,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div class="empty-preview" id="empty-state">
       <div>
-        <div class="icon">🎨</div>
+        <div class="icon"><svg class="icon icon-lg" width="40" height="40"><use href="assets/lucide-sprite.svg#icon-palette"/></svg></div>
         <div class="text">Write code • See it live</div>
         <div class="sub">Your output renders here in real-time</div>
       </div>
@@ -189,8 +203,9 @@ function runCode() {
   iframe.srcdoc = doc;
 
   // Update status
-  document.getElementById('status-dot').style.background = '#3fb950';
-  setTimeout(() => { document.getElementById('status-dot').style.background = '#3fb950'; }, 300);
+  const statusDotColor = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  document.getElementById('status-dot').style.background = statusDotColor;
+  setTimeout(() => { document.getElementById('status-dot').style.background = statusDotColor; }, 300);
 }
 
 function autoRun() {
@@ -202,7 +217,7 @@ function copyCode() {
   const active = document.querySelector('.editor-textarea:not([style*="display: none"])');
   if (active) {
     navigator.clipboard.writeText(active.value).then(() => {
-      document.getElementById('status-dot').style.background = '#d29922';
+      document.getElementById('status-dot').style.background = getComputedStyle(document.documentElement).getPropertyValue('--orange').trim();
     });
   }
 }

@@ -1,29 +1,31 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kanban Board — Life OS</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
 <style>
+/* Stage 3 migration (2026-07-06): local tokens now alias the shared design
+   system in shared.css instead of hardcoding their own hex — this page now
+   responds to the R13 theme switch. Names kept below so the rest of this
+   file's `var(--bg)` etc. calls didn't need a full rewrite. --accent,
+   --green, --red, --pink, --purple, --bg-elevated intentionally NOT
+   redeclared here: they fall through from shared.css's :root untouched. */
 :root {
-  --bg: #1a1a2e;
-  --bg-card: #16213e;
-  --bg-elevated: #0f3460;
-  --accent: #6c63ff;
-  --accent-light: #8b83ff;
-  --text: #e8e8f0;
-  --text-muted: #8888a8;
-  --border: #2a2a4a;
-  --green: #00d4aa;
-  --amber: #f4a261;
-  --red: #e76f51;
-  --blue: #4cc9f0;
-  --pink: #f72585;
-  --purple: #7209b7;
-  --col-backlog: #1e3a5f;
-  --col-progress: #3a1f5e;
-  --col-review: #1f4e3a;
-  --col-done: #2a2a2a;
+  --bg: var(--bg-primary);
+  --bg-card: var(--bg-secondary);
+  --accent-light: var(--accent-hover);
+  --text: var(--text-primary);
+  --text-muted: var(--text-secondary);
+  --border: var(--border-primary);
+  --amber: var(--orange);
+  --blue: var(--accent-2);
+  --col-backlog: color-mix(in srgb, var(--area-admin) 22%, var(--bg-secondary));
+  --col-progress: color-mix(in srgb, var(--accent) 22%, var(--bg-secondary));
+  --col-review: color-mix(in srgb, var(--area-knowledge) 22%, var(--bg-secondary));
+  --col-done: color-mix(in srgb, var(--status-live) 18%, var(--bg-secondary));
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -111,7 +113,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .column-header .count {
-  background: rgba(255,255,255,0.1);
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 11px;
@@ -146,7 +148,7 @@ body {
 .card:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(108,99,255,0.15);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 .card::before {
   content: '';
@@ -181,12 +183,12 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.tag-project { background: rgba(108,99,255,0.2); color: var(--accent-light); }
-.tag-fieldbridge { background: rgba(0,212,170,0.2); color: var(--green); }
-.tag-career { background: rgba(244,162,97,0.2); color: var(--amber); }
-.tag-trading { background: rgba(247,37,133,0.2); color: var(--pink); }
-.tag-personal { background: rgba(76,201,240,0.2); color: var(--blue); }
-.tag-urgent { background: rgba(231,111,81,0.2); color: var(--red); }
+.tag-project { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent-light); }
+.tag-fieldbridge { background: var(--area-fieldbridge-bg); color: var(--area-fieldbridge); }
+.tag-career { background: var(--area-career-bg); color: var(--area-career); }
+.tag-trading { background: color-mix(in srgb, var(--pink) 20%, transparent); color: var(--pink); }
+.tag-personal { background: color-mix(in srgb, var(--blue) 20%, transparent); color: var(--blue); }
+.tag-urgent { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
 
 .card-source {
   font-size: 10px;
@@ -236,7 +238,7 @@ body {
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.7);
+  background: var(--bg-overlay);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -311,11 +313,11 @@ body {
 <body>
 
 <div class="header">
-  <h1>📋 Kanban Board</h1>
+  <h1><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Kanban Board</h1>
   <div class="header-actions">
     <a href="index.html" class="btn btn-sm" style="text-decoration:none;">← Life OS</a>
-    <button class="btn btn-sm" onclick="toggleAddForm()">+ Add Task</button>
-    <button class="btn btn-sm" onclick="refreshBoard()">↻ Refresh</button>
+    <button class="btn btn-sm" onclick="toggleAddForm()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-plus"/></svg> Add Task</button>
+    <button class="btn btn-sm" onclick="refreshBoard()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
   </div>
 </div>
 
@@ -332,23 +334,23 @@ body {
   <textarea id="taskDesc" placeholder="Description (optional)..."></textarea>
   <div class="form-row">
     <select id="taskPriority">
-      <option value="medium">⚡ Medium</option>
-      <option value="high">🔴 High</option>
-      <option value="low">🟢 Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="low">Low</option>
     </select>
     <select id="taskTag">
-      <option value="project">📁 Project</option>
-      <option value="fieldbridge">🌉 FieldBridge</option>
-      <option value="career">💼 Career</option>
-      <option value="trading">📈 Trading</option>
-      <option value="personal">🏠 Personal</option>
-      <option value="urgent">🚨 Urgent</option>
+      <option value="project">Project</option>
+      <option value="fieldbridge">FieldBridge</option>
+      <option value="career">Career</option>
+      <option value="trading">Trading</option>
+      <option value="personal">Personal</option>
+      <option value="urgent">Urgent</option>
     </select>
     <select id="taskColumn">
-      <option value="backlog">📋 Backlog</option>
-      <option value="progress">⚡ In Progress</option>
-      <option value="review">👀 Review</option>
-      <option value="done">✅ Done</option>
+      <option value="backlog">Backlog</option>
+      <option value="progress">In Progress</option>
+      <option value="review">Review</option>
+      <option value="done">Done</option>
     </select>
   </div>
   <div class="form-actions">
@@ -360,28 +362,28 @@ body {
 <div class="board" id="board">
   <div class="column column-backlog">
     <div class="column-header">
-      <span>📋 Backlog</span>
+      <span><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Backlog</span>
       <span class="count" id="count-backlog">0</span>
     </div>
     <div class="column-body" id="col-backlog"></div>
   </div>
   <div class="column column-progress">
     <div class="column-header">
-      <span>⚡ In Progress</span>
+      <span><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> In Progress</span>
       <span class="count" id="count-progress">0</span>
     </div>
     <div class="column-body" id="col-progress"></div>
   </div>
   <div class="column column-review">
     <div class="column-header">
-      <span>👀 Review</span>
+      <span><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-search"/></svg> Review</span>
       <span class="count" id="count-review">0</span>
     </div>
     <div class="column-body" id="col-review"></div>
   </div>
   <div class="column column-done">
     <div class="column-header">
-      <span>✅ Done</span>
+      <span><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Done</span>
       <span class="count" id="count-done">0</span>
     </div>
     <div class="column-body" id="col-done"></div>
@@ -398,13 +400,13 @@ body {
     <p id="modalDescription"></p>
     <div class="form-row" style="margin-top:12px;">
       <select id="modalColumn">
-        <option value="backlog">📋 Backlog</option>
-        <option value="progress">⚡ In Progress</option>
-        <option value="review">👀 Review</option>
-        <option value="done">✅ Done</option>
+        <option value="backlog">Backlog</option>
+        <option value="progress">In Progress</option>
+        <option value="review">Review</option>
+        <option value="done">Done</option>
       </select>
       <button class="btn btn-sm btn-primary" onclick="moveCard()">Move</button>
-      <button class="btn btn-sm" onclick="deleteCard()">🗑 Delete</button>
+      <button class="btn btn-sm" onclick="deleteCard()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-trash-2"/></svg> Delete</button>
     </div>
   </div>
 </div>
@@ -490,7 +492,7 @@ function createCard(task) {
     <div class="card-title">${escapeHtml(cleanTitle(task.title))}</div>
     <div class="card-meta">
       <span class="card-tag tag-${tagClass}">${tagLabel}</span>
-      ${task.source ? `<span class="card-source">📄 ${escapeHtml(task.source)}</span>` : ''}
+      ${task.source ? `<span class="card-source"><svg class="icon" width="10" height="10"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> ${escapeHtml(task.source)}</span>` : ''}
     </div>
   `;
   return div;
