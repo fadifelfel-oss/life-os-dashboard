@@ -167,7 +167,7 @@ One table = the whole robot workforce. The Loops page (task 5.3) renders this li
 
 | Job | Runs where | Schedule | What it does | Status |
 |-----|-----------|----------|--------------|--------|
-| `nightly-second-brain-sync` | Claude Cowork (scheduled task) | Daily 21:00 | Vault ingest + project sync + mini-lint + digest | ✅ Live (created 2026-07-04; needs one "Run now" to pre-approve tools) |
+| `nightly-second-brain-sync` | Claude Cowork (scheduled task) | Daily 21:00 | 5-channel capture sweep (Notion CRM → clips → sessions → Fireflies → Gmail sent-outreach) w/ per-channel log.md SYNC watermarks + dedup guards (BUILD SPEC v1 Part B, rewired 2026-07-06) + mini-lint + digest | ✅ Live — first full-channel run 2026-07-07 21:00 |
 | `fieldbridge-kanban-nightly-cleanup` | Claude Cowork (scheduled task) | Daily 21:00 | Reconciles FieldBridge Notion Kanban vs CRM/Home/session-logs | ✅ Live |
 | `sync-to-git-nightly.bat` | Windows Task Scheduler (Fadi's PC) | Daily 22:00 | Pushes FieldBridge HQ project folder → fieldbridgehq-skills repo | ✅ Live |
 | `auto-pull.sh` | VPS cron | Every minute | Pulls life-os-dashboard repo; restarts server.py if changed | ✅ Live — the deploy pipe |
@@ -197,7 +197,7 @@ One table = the whole robot workforce. The Loops page (task 5.3) renders this li
 | R10 | Token usage by month | Add monthly aggregation view when tokens merges into models.html | SONNET Phase 1 (task 1.2) |
 | R11 | Skills page incomplete → wants a SKILLS HUB: all skills across Cowork/FieldBridge/Hermes, what they do, usage counts, test scores, feedback/improvement loop status | NEW SPEC: vault becomes source of truth (a skills-registry page the dashboard renders; FieldBridge test scores from SKILLS-GAP-REGISTER; usage where measurable). Added as task 5.4 | FABLE spec + SONNET build, Phase 5 |
 | R12 | Meetings page — well designed? part of Hub? | Not yet verified against live data post-repoint. Verdict next session; likely folds into Hub Zone 1 (calendar + vault meeting notes via OPERATION 6) rather than standalone | FABLE next session |
-| R13 | "You promised design options/themes" | Correct — not yet delivered. Committed: theme-preview page (3 selectable directions: Blueprint Dark, Graphite & Gold, Site-Office Light) as the FIRST deliverable of Phase 2, before any rollout | FABLE, Phase 2 kickoff |
+| R13 | "You promised design options/themes" | ✅ DELIVERED 2026-07-05: theme-preview.html live. **DECISION (Fadi, 2026-07-05): keep ALL THREE as a switchable theme system** — topbar switcher (replaces the 🌙 toggle), persisted in localStorage, Blueprint Dark = default. Area palette identical across themes. Phase 2 scope updated: all page-level hardcoded colors → CSS variables; QA each component on all 3 backgrounds | FABLE + SONNET, Phase 2 |
 | R14 | Dashboard capture box says "Access from Tasks tab" (deleted page) + saves to browser-only storage | Ghost reference; the box is replaced by the Hub in Phase 3 — remove the broken hint text in Phase 1 | SONNET Phase 1 |
 | R15 | Node-count mismatch (tile 196 vs graph 149) | Two count sources; unify via /api/today in Phase 3 | SONNET Phase 3 |
 | R16 | Chat "No saved conversations" | Sessions store moved to DATA_DIR and history copied; new chats save fine (verified — Fadi's test chat appears). Old chats: localStorage per-browser, may never have been server-side. Watch, don't chase | — |
