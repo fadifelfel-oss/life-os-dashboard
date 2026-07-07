@@ -112,39 +112,63 @@ const Notify = {
 };
 
 // ============================================================
-// THEME MANAGEMENT
+// THEME MANAGEMENT (R13 — three switchable themes)
 // ============================================================
 const Theme = {
-  current: Store.get('theme', 'dark'),
-  
+  LIST: [
+    { id: 'blueprint', label: 'Blueprint Dark', swatchVar: '--swatch-blueprint' },
+    { id: 'graphite',  label: 'Graphite & Gold', swatchVar: '--swatch-graphite' },
+    { id: 'light',     label: 'Site-Office Light', swatchVar: '--swatch-light' },
+  ],
+
+  current: Store.get('theme', 'blueprint'),
+
   init() {
-    this.apply(this.current);
-    // Listen for system preference changes
-    if (window.matchMedia) {
-      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
-        if (!Store.get('theme')) this.apply(e.matches ? 'light' : 'dark');
-      });
-    }
+    // The anti-flash inline script in <head> already set data-theme before
+    // first paint; this just syncs state + wires the dropdown UI.
+    this.apply(this.current, /*skipStore*/ true);
+    document.addEventListener('click', (e) => {
+      const switcher = document.querySelector('.theme-switcher');
+      if (switcher && !switcher.contains(e.target)) this.closeDropdown();
+    });
   },
-  
-  apply(theme) {
+
+  apply(theme, skipStore) {
+    if (!this.LIST.some(t => t.id === theme)) theme = 'blueprint';
     this.current = theme;
-    if (theme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-    Store.set('theme', theme);
-    this.updateToggle();
+    document.documentElement.setAttribute('data-theme', theme);
+    if (!skipStore) Store.set('theme', theme);
+    this.renderDropdown();
   },
-  
+
   toggle() {
-    this.apply(this.current === 'dark' ? 'light' : 'dark');
+    // Kept for the "g then l" shortcut / any legacy callers: cycles the 3 themes.
+    const idx = this.LIST.findIndex(t => t.id === this.current);
+    this.apply(this.LIST[(idx + 1) % this.LIST.length].id);
   },
-  
-  updateToggle() {
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.textContent = this.current === 'dark' ? '☀️' : '🌙';
+
+  toggleDropdown() {
+    const dd = document.getElementById('theme-switcher-dropdown');
+    if (!dd) { this.toggle(); return; } // page has no dropdown markup — fall back to cycling
+    dd.classList.toggle('open');
+    if (dd.classList.contains('open')) this.renderDropdown();
+  },
+
+  closeDropdown() {
+    const dd = document.getElementById('theme-switcher-dropdown');
+    if (dd) dd.classList.remove('open');
+  },
+
+  renderDropdown() {
+    const dd = document.getElementById('theme-switcher-dropdown');
+    if (!dd) return;
+    dd.innerHTML = this.LIST.map(t => `
+      <div class="theme-option ${t.id === this.current ? 'active' : ''}" onclick="Theme.apply('${t.id}'); Theme.closeDropdown();">
+        <span class="theme-swatch" style="background:var(${t.swatchVar})"></span>
+        <span>${t.label}</span>
+        ${t.id === this.current ? '<span class="theme-check">&#10003;</span>' : ''}
+      </div>
+    `).join('');
   },
 };
 

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fadi Life OS v2.0</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <link rel="stylesheet" href="command-bar.css">
 <style>
@@ -307,7 +308,10 @@
       <button class="i18n-btn" id="i18nToggle" onclick="I18n.toggle()" aria-label="تبديل اللغة / Toggle Language">
         <span id="i18nLabel">عربي</span>
       </button>
-      <button class="btn btn-ghost btn-icon" id="theme-toggle" onclick="Theme.toggle()" title="Toggle light / dark theme" aria-label="Toggle theme">🌙</button>
+      <div class="theme-switcher" id="theme-toggle">
+        <button class="btn btn-ghost btn-icon" onclick="Theme.toggleDropdown()" title="Switch theme (Blueprint / Graphite / Light)" aria-label="Switch theme">🌓</button>
+        <div class="theme-switcher-dropdown" id="theme-switcher-dropdown"></div>
+      </div>
       <button class="btn btn-ghost btn-icon" onclick="CommandBar.toggle()" title="Command palette (Ctrl+K)" aria-label="Command bar (Ctrl+K)">⌘K</button>
       <button class="btn btn-ghost btn-icon" onclick="location.reload()" title="Refresh this page" aria-label="Refresh">↻</button>
   </header>

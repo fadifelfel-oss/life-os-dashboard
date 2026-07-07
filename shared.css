@@ -5,28 +5,54 @@
    ============================================================ */
 
 /* === CSS CUSTOM PROPERTIES (Design Tokens) === */
+/* THEME SYSTEM (R13, 2026-07-06): three switchable themes, folded in from
+   theme-preview.html. document.documentElement always carries an explicit
+   data-theme="blueprint|graphite|light" attribute (set inline pre-paint by
+   the anti-flash snippet in every page's <head>, then by Theme in shared.js).
+   :root below = Blueprint Dark values (the default / ultimate fallback).
+   Derived tokens (border-secondary, text-tertiary, accent-hover/bg/border,
+   on-accent, text-link) are computed ONCE here via color-mix() from the four
+   base colors (bg-primary, border-primary, text-primary/secondary, accent,
+   accent-2) — var() substitution happens per-element at compute time, so a
+   [data-theme] block only needs to override those ~8 base values and every
+   derived token recomputes automatically. Never hand-restate a derived token
+   inside a theme block — that's how themes drift out of sync. */
 :root {
-  /* Colors — Dark Theme (default) */
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #1c2128;
-  --bg-elevated: #21262d;
+  /* Colors — Blueprint Dark (default theme) */
+  --bg-primary: #0b1220;
+  --bg-secondary: #111a2c;
+  --bg-tertiary: #17233a;
+  --bg-elevated: #1c2a44;
   --bg-overlay: rgba(0,0,0,0.7);
-  
-  --border-primary: #30363d;
-  --border-secondary: #21262d;
-  --border-focus: #58a6ff;
-  
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-tertiary: #6e7681;
-  --text-link: #58a6ff;
-  
-  --accent: #58a6ff;
-  --accent-hover: #388bfd;
-  --accent-bg: rgba(88,166,255,0.08);
-  --accent-border: rgba(88,166,255,0.25);
-  
+
+  --border-primary: #24334d;
+  --border-secondary: color-mix(in srgb, var(--border-primary) 65%, var(--bg-primary));
+  --border-focus: var(--accent);
+
+  --text-primary: #e8eef7;
+  --text-secondary: #94a5bd;
+  --text-tertiary: color-mix(in srgb, var(--text-secondary) 65%, var(--bg-primary));
+  --text-link: var(--accent-2);
+
+  --accent: #f5b942;        /* signature brand accent — amber/gold (promoted from opportunity-gold) */
+  --accent-2: #3d7bd9;      /* secondary accent — steel blue (links, informational) */
+  --accent-hover: color-mix(in srgb, var(--accent) 85%, black);
+  --accent-bg: color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 25%, transparent);
+  --on-accent: var(--bg-primary); /* text/icon color placed on top of an --accent-filled surface */
+
+  /* Fixed reference swatches for the theme-switcher UI only (never swapped
+     per-theme — these represent each theme's own signature color so the
+     picker can preview options that aren't currently active). */
+  --swatch-blueprint: #f5b942;
+  --swatch-graphite: #d4af37;
+  --swatch-light: #c47b1e;
+
+  /* Display typeface — Space Grotesk (blueprint) / Georgia (graphite) / Segoe UI (light).
+     Self-hosting the actual webfont files is Phase 2.1 (Fable); this variable
+     is wired everywhere now so that work is a drop-in font-face swap later. */
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+
   --green: #3fb950;
   --green-bg: rgba(63,185,80,0.08);
   --green-border: rgba(63,185,80,0.25);
@@ -89,8 +115,7 @@
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   --font-size-xs: 10px;
   --font-size-sm: 11px;
   --font-size-base: 14px;
@@ -125,22 +150,57 @@
   --content-max-width: 1200px;
 }
 
-/* === LIGHT THEME === */
+/* === THEME: BLUEPRINT DARK (explicit block — same values as :root's default;
+   kept explicit so the switcher always sets a real data-theme attribute and
+   this theme has an equally-named block alongside graphite/light) === */
+[data-theme="blueprint"] {
+  --bg-primary: #0b1220;
+  --bg-secondary: #111a2c;
+  --bg-tertiary: #17233a;
+  --bg-elevated: #1c2a44;
+  --border-primary: #24334d;
+  --text-primary: #e8eef7;
+  --text-secondary: #94a5bd;
+  --accent: #f5b942;
+  --accent-2: #3d7bd9;
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+/* === THEME: GRAPHITE & GOLD — darker, serif display, "executive office" read === */
+[data-theme="graphite"] {
+  --bg-primary: #0e0e11;
+  --bg-secondary: #17171c;
+  --bg-tertiary: #1f1f26;
+  --bg-elevated: #242430;
+  --border-primary: #2e2e38;
+  --text-primary: #f0efe9;
+  --text-secondary: #9c9b93;
+  --accent: #d4af37;
+  --accent-2: #8a7cff;
+  --font-display: Georgia, 'Times New Roman', serif;
+  /* area-*/status-*/semantic *-bg tokens fall through from :root — both
+     graphite and blueprint are dark themes, so the dark-optimized values
+     already read correctly here. Only light needs its own WCAG-adjusted set. */
+}
+
+/* === THEME: SITE-OFFICE LIGHT — warm paper tones, daylight/eyestrain use === */
 [data-theme="light"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f6f8fa;
-  --bg-tertiary: #eaeef2;
+  --bg-primary: #f4f2ec;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eae7de;
   --bg-elevated: #ffffff;
   --bg-overlay: rgba(0,0,0,0.5);
-  
-  --border-primary: #d0d7de;
-  --border-secondary: #d8dee4;
-  
-  --text-primary: #1f2328;
-  --text-secondary: #656d76;
-  --text-tertiary: #8b949e;
-  
-  --accent-bg: rgba(88,166,255,0.06);
+
+  --border-primary: #d5d0c3;
+  --text-primary: #1e2430;
+  --text-secondary: #5b6474;
+  --accent: #c47b1e;
+  --accent-2: #1e5fa8;
+  --font-display: 'Segoe UI', sans-serif;
+  /* border-secondary, text-tertiary, accent-hover/bg/border, on-accent,
+     text-link recompute automatically from the eight values above via the
+     color-mix() formulas declared once in :root. */
+
   --green-bg: rgba(63,185,80,0.06);
   --red-bg: rgba(248,81,73,0.06);
   --purple-bg: rgba(188,140,255,0.06);
@@ -298,10 +358,10 @@ a:hover { text-decoration: underline; }
 .command-bar {
   width: 560px;
   max-width: 90vw;
-  background: #1a1d24;
-  border: 1px solid #30363d;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
   border-radius: 16px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
 .command-bar-input-row {
@@ -309,7 +369,7 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border-primary);
 }
 .command-bar-input-row .icon { font-size: 18px; color: var(--accent); flex-shrink: 0; }
 .command-bar-input {
@@ -363,7 +423,7 @@ a:hover { text-decoration: underline; }
 .command-bar-empty { padding: 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
 .command-bar-hint {
   padding: 8px 16px;
-  border-top: 1px solid #30363d;
+  border-top: 1px solid var(--border-primary);
   display: flex;
   gap: 16px;
   font-size: 11px;
@@ -386,7 +446,7 @@ a:hover { text-decoration: underline; }
   height: 56px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 24px;
   border: none;
   cursor: pointer;
@@ -451,7 +511,7 @@ a:hover { text-decoration: underline; }
 }
 .capture-modal-actions .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   padding: 8px 20px;
   border-radius: var(--radius-md);
@@ -591,14 +651,55 @@ a:hover { text-decoration: underline; }
 .ctx-option.active { color: var(--accent); font-weight: 600; }
 .ctx-option .ctx-emoji { font-size: 16px; }
 
+/* === THEME SWITCHER (R13) — same dropdown pattern as ctx-switcher === */
+.theme-switcher { position: relative; display: inline-block; }
+.theme-switcher-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: 100;
+  padding: var(--space-2);
+}
+.theme-switcher-dropdown.open { display: block; }
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+.theme-option:hover { background: var(--bg-tertiary); }
+.theme-option.active { color: var(--accent); font-weight: 600; }
+.theme-option .theme-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid var(--border-primary);
+}
+.theme-option .theme-check { margin-left: auto; color: var(--accent); font-size: 12px; }
+[dir="rtl"] .theme-switcher-dropdown { right: auto; left: 0; }
+[dir="rtl"] .theme-option .theme-check { margin-left: 0; margin-right: auto; }
+
 /* === VOICE MEMO BUTTON === */
 .voice-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, rgba(247,120,186,0.15), rgba(188,140,255,0.15));
-  border: 1px solid rgba(247,120,186,0.3);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pink) 15%, transparent), color-mix(in srgb, var(--purple) 15%, transparent));
+  border: 1px solid color-mix(in srgb, var(--pink) 30%, transparent);
   border-radius: var(--radius-full);
   color: var(--pink);
   font-size: var(--font-size-sm);
@@ -607,19 +708,19 @@ a:hover { text-decoration: underline; }
   transition: all var(--transition-fast);
 }
 .voice-btn:hover {
-  background: linear-gradient(135deg, rgba(247,120,186,0.25), rgba(188,140,255,0.25));
-  border-color: rgba(247,120,186,0.5);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pink) 25%, transparent), color-mix(in srgb, var(--purple) 25%, transparent));
+  border-color: color-mix(in srgb, var(--pink) 50%, transparent);
   transform: scale(1.02);
 }
 .voice-btn.recording {
-  background: rgba(248,81,73,0.2);
+  background: color-mix(in srgb, var(--red) 20%, transparent);
   border-color: var(--red);
   color: var(--red);
   animation: pulse-rec 1.5s infinite;
 }
 @keyframes pulse-rec {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(248,81,73,0); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 40%, transparent); }
+  50% { box-shadow: 0 0 0 8px transparent; }
 }
 .voice-toast {
   position: fixed;
@@ -858,7 +959,7 @@ body.dashboard-mode #dashboardContainer {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
