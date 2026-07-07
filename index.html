@@ -145,27 +145,27 @@
 <!-- MOBILE BOTTOM NAV (5 items per IA §3: Today · Areas · Brain · Chat · Kanban) -->
 <nav class="mobile-bottom-nav" role="navigation" aria-label="Mobile navigation">
   <button class="mobile-nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-    <span class="mobile-nav-icon">⚡</span><span class="mobile-nav-label" data-i18n="today">Today</span>
+    <svg class="icon mobile-nav-icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-zap"/></svg><span class="mobile-nav-label" data-i18n="today">Today</span>
   </button>
   <button class="mobile-nav-item" data-page="area-career" onclick="navigateTo('area-career')">
-    <span class="mobile-nav-icon">🧭</span><span class="mobile-nav-label" data-i18n="areas">Areas</span>
+    <svg class="icon mobile-nav-icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-compass"/></svg><span class="mobile-nav-label" data-i18n="areas">Areas</span>
   </button>
   <button class="mobile-nav-item" data-page="brain" onclick="navigateTo('brain')">
-    <span class="mobile-nav-icon">🧠</span><span class="mobile-nav-label" data-i18n="brain">Brain</span>
+    <svg class="icon mobile-nav-icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-brain"/></svg><span class="mobile-nav-label" data-i18n="brain">Brain</span>
   </button>
   <button class="mobile-nav-item" data-page="sessions" onclick="navigateTo('sessions')">
-    <span class="mobile-nav-icon">💬</span><span class="mobile-nav-label" data-i18n="chat">Chat</span>
+    <svg class="icon mobile-nav-icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg><span class="mobile-nav-label" data-i18n="chat">Chat</span>
   </button>
   <button class="mobile-nav-item" data-page="kanban" onclick="navigateTo('kanban')">
-    <span class="mobile-nav-icon">📝</span><span class="mobile-nav-label" data-i18n="kanban">Kanban</span>
+    <svg class="icon mobile-nav-icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg><span class="mobile-nav-label" data-i18n="kanban">Kanban</span>
   </button>
 </nav>
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
   <div class="sidebar-header">
-    <span class="sidebar-logo">🦉 Life OS</span>
-    <button class="btn btn-ghost btn-icon sidebar-close-mobile" onclick="toggleSidebar()" style="display:none;">✕</button>
+    <span class="sidebar-logo"><svg class="logo" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--area-fieldbridge)" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8 L4 16 Q4 21 12 21 Q20 21 20 16 L20 8 L16.5 4.5 L14 8 L10 8 L7.5 4.5 Z"/><circle cx="9" cy="12.5" r="1.9"/><circle cx="15" cy="12.5" r="1.9"/><path d="M12 15.5 L12 17"/></svg> Life OS</span>
+    <button class="btn btn-ghost btn-icon sidebar-close-mobile" onclick="toggleSidebar()" style="display:none;"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button>
   </div>
   
   <nav class="sidebar-nav">
@@ -173,109 +173,109 @@
     <div class="nav-section">
       <div class="nav-section-title">Today</div>
       <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-        <span class="nav-icon">⚡</span><span data-i18n="today">Today</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-zap"/></svg><span data-i18n="today">Today</span>
       </button>
       <button class="nav-item" data-page="kanban" onclick="navigateTo('kanban')">
-        <span class="nav-icon">📝</span><span data-i18n="kanban">Kanban</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg><span data-i18n="kanban">Kanban</span>
       </button>
     </div>
 
-    <!-- 🧭 LIFE AREAS (placeholder — Phase 6 builds these) -->
+    <!-- LIFE AREAS (placeholder — Phase 6 builds these) -->
     <div class="nav-section">
       <div class="nav-section-title">Life Areas · coming soon</div>
       <button class="nav-item" data-page="area-career" onclick="navigateTo('area-career')">
-        <span class="nav-icon">💼</span><span data-i18n="career">Career</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-career)"><use href="assets/lucide-sprite.svg#icon-briefcase"/></svg><span data-i18n="career">Career</span>
       </button>
       <button class="nav-item" data-page="area-fieldbridge" onclick="navigateTo('area-fieldbridge')">
-        <span class="nav-icon">🌉</span><span data-i18n="fieldbridge">FieldBridge</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-building-2"/></svg><span data-i18n="fieldbridge">FieldBridge</span>
       </button>
       <button class="nav-item" data-page="area-construction" onclick="navigateTo('area-construction')">
-        <span class="nav-icon">🏗️</span><span data-i18n="construction">Construction</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-construction)"><use href="assets/lucide-sprite.svg#icon-hard-hat"/></svg><span data-i18n="construction">Construction</span>
       </button>
       <button class="nav-item" data-page="area-trading" onclick="navigateTo('area-trading')">
-        <span class="nav-icon">📈</span><span data-i18n="trading">Trading</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-trading)"><use href="assets/lucide-sprite.svg#icon-candlestick-chart"/></svg><span data-i18n="trading">Trading</span>
       </button>
       <button class="nav-item" data-page="area-health" onclick="navigateTo('area-health')">
-        <span class="nav-icon">🩺</span><span data-i18n="health">Health</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-health)"><use href="assets/lucide-sprite.svg#icon-heart-pulse"/></svg><span data-i18n="health">Health</span>
       </button>
       <button class="nav-item" data-page="area-family" onclick="navigateTo('area-family')">
-        <span class="nav-icon">👨‍👩‍👧</span><span data-i18n="family">Family</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-family)"><use href="assets/lucide-sprite.svg#icon-heart"/></svg><span data-i18n="family">Family</span>
       </button>
       <button class="nav-item" data-page="area-knowledge" onclick="navigateTo('area-knowledge')">
-        <span class="nav-icon">📚</span><span data-i18n="knowledge">Knowledge</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-knowledge)"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg><span data-i18n="knowledge">Knowledge</span>
       </button>
       <button class="nav-item" data-page="area-admin" onclick="navigateTo('area-admin')">
-        <span class="nav-icon">🗂️</span><span data-i18n="admin">Admin</span>
+        <svg class="icon nav-icon" width="16" height="16" style="color:var(--area-admin)"><use href="assets/lucide-sprite.svg#icon-inbox"/></svg><span data-i18n="admin">Admin</span>
       </button>
     </div>
 
-    <!-- 🧠 BRAIN -->
+    <!-- BRAIN -->
     <div class="nav-section">
       <div class="nav-section-title">Brain</div>
       <button class="nav-item" data-page="brain" onclick="navigateTo('brain')">
-        <span class="nav-icon">🧠</span><span data-i18n="brain">3D Brain</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-brain"/></svg><span data-i18n="brain">3D Brain</span>
       </button>
       <button class="nav-item" data-page="files" onclick="navigateTo('files')">
-        <span class="nav-icon">📁</span><span data-i18n="files">Files &amp; Reader</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-folder"/></svg><span data-i18n="files">Files &amp; Reader</span>
       </button>
     </div>
 
-    <!-- 🤖 AGENTS -->
+    <!-- AGENTS -->
     <div class="nav-section">
       <div class="nav-section-title">Agents</div>
       <button class="nav-item" data-page="sessions" onclick="navigateTo('sessions')">
-        <span class="nav-icon">💬</span><span data-i18n="chat">Chat</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg><span data-i18n="chat">Chat</span>
       </button>
       <button class="nav-item" data-page="live" onclick="navigateTo('live')">
-        <span class="nav-icon">⚡</span><span data-i18n="playbook">Playbook</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-zap"/></svg><span data-i18n="playbook">Playbook</span>
       </button>
       <button class="nav-item" data-page="loops" onclick="navigateTo('loops')">
-        <span class="nav-icon">🔁</span><span data-i18n="loops">Loops</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-repeat"/></svg><span data-i18n="loops">Loops</span>
       </button>
       <button class="nav-item" data-page="skills" onclick="navigateTo('skills')">
-        <span class="nav-icon">🧩</span><span data-i18n="skills">Skills</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-puzzle"/></svg><span data-i18n="skills">Skills</span>
       </button>
       <button class="nav-item" data-page="models" onclick="navigateTo('models')">
-        <span class="nav-icon">🤖</span><span data-i18n="models">Models &amp; Usage</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-bot"/></svg><span data-i18n="models">Models &amp; Usage</span>
       </button>
     </div>
 
-    <!-- ⚙️ SYSTEM -->
+    <!-- SYSTEM -->
     <div class="nav-section">
       <div class="nav-section-title">System</div>
       <button class="nav-item" data-page="keys" onclick="navigateTo('keys')">
-        <span class="nav-icon">🔑</span><span data-i18n="keys">API Keys</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-key-round"/></svg><span data-i18n="keys">API Keys</span>
       </button>
       <button class="nav-item" data-page="mcp" onclick="navigateTo('mcp')">
-        <span class="nav-icon">🔌</span><span data-i18n="mcp">MCP Servers</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-plug"/></svg><span data-i18n="mcp">MCP Servers</span>
       </button>
       <button class="nav-item" data-page="meetings" onclick="navigateTo('meetings')">
-        <span class="nav-icon">🎙️</span><span data-i18n="meetings">Meetings</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-mic"/></svg><span data-i18n="meetings">Meetings</span>
       </button>
       <button class="nav-item" data-page="voice" onclick="navigateTo('voice')">
-        <span class="nav-icon">🎧</span><span data-i18n="voice">Voice</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-headphones"/></svg><span data-i18n="voice">Voice</span>
       </button>
       <button class="nav-item" data-page="browser" onclick="navigateTo('browser')">
-        <span class="nav-icon">🌐</span><span data-i18n="browser">Browser</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-globe"/></svg><span data-i18n="browser">Browser</span>
       </button>
       <button class="nav-item" data-page="imagegen" onclick="navigateTo('imagegen')">
-        <span class="nav-icon">🖼️</span><span data-i18n="imagegen">Image Gen</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-image"/></svg><span data-i18n="imagegen">Image Gen</span>
       </button>
       <button class="nav-item" data-page="artifacts" onclick="navigateTo('artifacts')">
-        <span class="nav-icon">🎨</span><span data-i18n="artifacts">Artifacts</span>
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-palette"/></svg><span data-i18n="artifacts">Artifacts</span>
       </button>
       <button class="nav-item" onclick="DataManager.backup()">
-        <span class="nav-icon">💾</span> Backup Data
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-save"/></svg> Backup Data
       </button>
       <button class="nav-item" onclick="DataManager.restore()">
-        <span class="nav-icon">📥</span> Restore Data
+        <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-inbox"/></svg> Restore Data
       </button>
     </div>
   </nav>
-  
+
   <div class="sidebar-footer">
     <button class="nav-item" style="flex:1;" data-page="sessions" onclick="navigateTo('sessions')">
-      <span class="nav-icon">💬</span> Chat
+      <svg class="icon nav-icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg> Chat
     </button>
   </div>
 </aside>
@@ -288,19 +288,19 @@
     <div class="topbar-actions">
       <div class="ctx-switcher" id="ctxSwitcher">
         <button class="ctx-switcher-btn" onclick="ContextSwitcher.toggle()">
-          <span id="ctxCurrentIcon">🏗️</span>
+          <span id="ctxCurrentIcon"><svg class="icon" width="14" height="14" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-hard-hat"/></svg></span>
           <span id="ctxCurrentLabel">All Projects</span>
           <span class="ctx-arrow">▾</span>
         </button>
         <div class="ctx-switcher-dropdown" id="ctxDropdown">
           <div class="ctx-option active" data-ctx="all" onclick="ContextSwitcher.set('all')">
-            <span class="ctx-emoji">🏗️</span><span data-i18n="allProjects">All Projects</span>
+            <svg class="icon ctx-emoji" width="14" height="14" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-hard-hat"/></svg><span data-i18n="allProjects">All Projects</span>
           </div>
           <div class="ctx-option" data-ctx="fieldbridge" onclick="ContextSwitcher.set('fieldbridge')">
-            <span class="ctx-emoji">🌉</span><span data-i18n="fieldbridge">FieldBridge HQ</span>
+            <svg class="icon ctx-emoji" width="14" height="14" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-building-2"/></svg><span data-i18n="fieldbridge">FieldBridge HQ</span>
           </div>
           <div class="ctx-option" data-ctx="personal" onclick="ContextSwitcher.set('personal')">
-            <span class="ctx-emoji">🏠</span><span data-i18n="personal">Personal</span>
+            <svg class="icon ctx-emoji" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-home"/></svg><span data-i18n="personal">Personal</span>
           </div>
         </div>
       </div>
@@ -309,11 +309,11 @@
         <span id="i18nLabel">عربي</span>
       </button>
       <div class="theme-switcher" id="theme-toggle">
-        <button class="btn btn-ghost btn-icon" onclick="Theme.toggleDropdown()" title="Switch theme (Blueprint / Graphite / Light)" aria-label="Switch theme">🌓</button>
+        <button class="btn btn-ghost btn-icon" onclick="Theme.toggleDropdown()" title="Switch theme (Blueprint / Graphite / Light)" aria-label="Switch theme"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-sun-moon"/></svg></button>
         <div class="theme-switcher-dropdown" id="theme-switcher-dropdown"></div>
       </div>
-      <button class="btn btn-ghost btn-icon" onclick="CommandBar.toggle()" title="Command palette (Ctrl+K)" aria-label="Command bar (Ctrl+K)">⌘K</button>
-      <button class="btn btn-ghost btn-icon" onclick="location.reload()" title="Refresh this page" aria-label="Refresh">↻</button>
+      <button class="btn btn-ghost btn-icon" onclick="CommandBar.toggle()" title="Command palette (Ctrl+K)" aria-label="Command bar (Ctrl+K)"><svg class="icon" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-command"/></svg>K</button>
+      <button class="btn btn-ghost btn-icon" onclick="location.reload()" title="Refresh this page" aria-label="Refresh"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg></button>
   </header>
   
   <!-- CONTENT AREA -->

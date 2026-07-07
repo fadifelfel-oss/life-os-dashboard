@@ -91,10 +91,15 @@ const Notify = {
   
   show(message, type = 'info', duration = 4000) {
     this.init();
-    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const icons = {
+      success: '<svg class="icon" width="15" height="15" style="color:var(--status-live)"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg>',
+      error: '<svg class="icon" width="15" height="15" style="color:var(--status-failed)"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg>',
+      info: '<svg class="icon" width="15" height="15" style="color:var(--accent-2)"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg>',
+      warning: '<svg class="icon" width="15" height="15" style="color:var(--status-stale)"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg>',
+    };
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+    toast.innerHTML = `<span>${icons[type] || icons.info}</span><span>${message.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}✅❌ℹ️⚠]+\s*/u, '')}</span>`;
     this.container.appendChild(toast);
     
     setTimeout(() => {
@@ -615,7 +620,7 @@ const CommandBar = {
     overlay.innerHTML = `
       <div class="command-bar" role="dialog" aria-label="Command bar">
         <div class="command-bar-input-row">
-          <span class="icon">⌘</span>
+          <svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-search"/></svg>
           <input type="text" class="command-bar-input" id="commandBarInput" placeholder="Type an action..." autocomplete="off" spellcheck="false">
         </div>
         <div class="command-bar-results" id="commandBarResults"></div>
@@ -686,7 +691,7 @@ const CommandBar = {
     }
     container.innerHTML = filtered.map((a, i) => `
       <div class="command-bar-item ${i === this.selectedIndex ? 'selected' : ''}" data-action="${a.id}" onclick="CommandBar.executeAction('${a.id}')">
-        <span class="item-icon">${a.icon}</span>
+        <span class="item-icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-${a.icon}"/></svg></span>
         <div class="item-text">
           <div class="item-title">${a.title}</div>
           ${a.desc ? `<div class="item-desc">${a.desc}</div>` : ''}
@@ -704,17 +709,17 @@ const CommandBar = {
 
 function getDefaultActions() {
   return [
-    { id: 'nav-dashboard', icon: '⚡', title: 'Go to Dashboard', desc: 'Main overview and KPIs', keywords: ['dashboard', 'home', 'overview'], execute: () => { window.location.href = 'index.html'; } },
-    { id: 'nav-chat', icon: '💬', title: 'New Chat', desc: 'Start a conversation with Hermes', keywords: ['chat', 'message', 'talk', 'hermes'], execute: () => { window.location.href = 'chat.html'; } },
-    { id: 'nav-files', icon: '📁', title: 'File Browser', desc: 'Browse vault files and folders', keywords: ['files', 'browse', 'vault', 'folder'], execute: () => { window.location.href = 'files.html'; } },
-    { id: 'nav-graph3d', icon: '🧠', title: '3D Knowledge Brain', desc: '3D force graph of vault', keywords: ['3d', 'brain', 'graph', 'force'], execute: () => { window.location.href = 'graph3d.html'; } },
-    { id: 'nav-skills', icon: '🔧', title: 'Skills Library', desc: 'Browse installed skills', keywords: ['skills', 'plugins', 'tools'], execute: () => { window.location.href = 'skills.html'; } },
-    { id: 'nav-keys', icon: '🔑', title: 'API Keys', desc: 'Manage provider API keys', keywords: ['keys', 'api', 'providers', 'connect'], execute: () => { window.location.href = 'keys.html'; } },
-    { id: 'nav-playbook', icon: '⚡', title: 'Playbook (Use Cases & Prompts)', desc: 'Curated use case & prompt library', keywords: ['use cases', 'prompts', 'library', 'playbook'], execute: () => { window.location.href = 'use-cases.html'; } },
-    { id: 'nav-models', icon: '🤖', title: 'Models & Usage', desc: 'AI model catalog and token usage', keywords: ['models', 'ai', 'llm', 'tokens', 'usage'], execute: () => { window.location.href = 'models.html'; } },
-    { id: 'nav-loops', icon: '🔁', title: 'Loops (Automations)', desc: 'Automation registry — every scheduled job', keywords: ['loops', 'cron', 'scheduled', 'jobs', 'automation'], execute: () => { window.location.href = 'loops.html'; } },
-    { id: 'action-search', icon: '🔍', title: 'Search Vault', desc: 'Search all notes and files', keywords: ['search', 'find', 'lookup'], execute: () => { const q = prompt('Search vault for:'); if (q) window.location.href = 'files.html?search=' + encodeURIComponent(q); } },
-    { id: 'action-ship', icon: '🚀', title: 'What did I ship today?', desc: "Show today's accomplishments", keywords: ['ship', 'today', 'progress', 'recap'], execute: () => { ShipToday.render(); const card = document.getElementById('shipTodayCard'); if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transition = 'box-shadow 0.5s'; card.style.boxShadow = '0 0 0 3px var(--accent)'; setTimeout(() => card.style.boxShadow = '', 2000); } else { Notify.info('📦 Ship Today card is on the Dashboard.'); } } },
+    { id: 'nav-dashboard', icon: 'zap', title: 'Go to Dashboard', desc: 'Main overview and KPIs', keywords: ['dashboard', 'home', 'overview'], execute: () => { window.location.href = 'index.html'; } },
+    { id: 'nav-chat', icon: 'message-square', title: 'New Chat', desc: 'Start a conversation with Hermes', keywords: ['chat', 'message', 'talk', 'hermes'], execute: () => { window.location.href = 'chat.html'; } },
+    { id: 'nav-files', icon: 'folder', title: 'File Browser', desc: 'Browse vault files and folders', keywords: ['files', 'browse', 'vault', 'folder'], execute: () => { window.location.href = 'files.html'; } },
+    { id: 'nav-graph3d', icon: 'brain', title: '3D Knowledge Brain', desc: '3D force graph of vault', keywords: ['3d', 'brain', 'graph', 'force'], execute: () => { window.location.href = 'graph3d.html'; } },
+    { id: 'nav-skills', icon: 'puzzle', title: 'Skills Library', desc: 'Browse installed skills', keywords: ['skills', 'plugins', 'tools'], execute: () => { window.location.href = 'skills.html'; } },
+    { id: 'nav-keys', icon: 'key-round', title: 'API Keys', desc: 'Manage provider API keys', keywords: ['keys', 'api', 'providers', 'connect'], execute: () => { window.location.href = 'keys.html'; } },
+    { id: 'nav-playbook', icon: 'zap', title: 'Playbook (Use Cases & Prompts)', desc: 'Curated use case & prompt library', keywords: ['use cases', 'prompts', 'library', 'playbook'], execute: () => { window.location.href = 'use-cases.html'; } },
+    { id: 'nav-models', icon: 'bot', title: 'Models & Usage', desc: 'AI model catalog and token usage', keywords: ['models', 'ai', 'llm', 'tokens', 'usage'], execute: () => { window.location.href = 'models.html'; } },
+    { id: 'nav-loops', icon: 'repeat', title: 'Loops (Automations)', desc: 'Automation registry — every scheduled job', keywords: ['loops', 'cron', 'scheduled', 'jobs', 'automation'], execute: () => { window.location.href = 'loops.html'; } },
+    { id: 'action-search', icon: 'search', title: 'Search Vault', desc: 'Search all notes and files', keywords: ['search', 'find', 'lookup'], execute: () => { const q = prompt('Search vault for:'); if (q) window.location.href = 'files.html?search=' + encodeURIComponent(q); } },
+    { id: 'action-ship', icon: 'rocket', title: 'What did I ship today?', desc: "Show today's accomplishments", keywords: ['ship', 'today', 'progress', 'recap'], execute: () => { ShipToday.render(); const card = document.getElementById('shipTodayCard'); if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transition = 'box-shadow 0.5s'; card.style.boxShadow = '0 0 0 3px var(--accent)'; setTimeout(() => card.style.boxShadow = '', 2000); } else { Notify.info('Ship Today card is on the Dashboard.'); } } },
   ];
 }
 
@@ -779,11 +784,15 @@ const ContextSwitcher = {
   },
 
   updateUI() {
-    const icons = { all: '🏗️', fieldbridge: '🌉', personal: '🏠' };
+    const icons = {
+      all: '<svg class="icon" width="14" height="14" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-hard-hat"/></svg>',
+      fieldbridge: '<svg class="icon" width="14" height="14" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-building-2"/></svg>',
+      personal: '<svg class="icon" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-home"/></svg>',
+    };
     const labels = { all: 'All Projects', fieldbridge: 'FieldBridge HQ', personal: 'Personal' };
     const iconEl = document.getElementById('ctxCurrentIcon');
     const labelEl = document.getElementById('ctxCurrentLabel');
-    if (iconEl) iconEl.textContent = icons[this.current] || '🏗️';
+    if (iconEl) iconEl.innerHTML = icons[this.current] || icons.all;
     if (labelEl) labelEl.textContent = labels[this.current] || 'All Projects';
 
     document.querySelectorAll('.ctx-option').forEach(opt => {
@@ -1102,7 +1111,7 @@ const QuickCapture = {
     fab.className = 'fab-capture';
     fab.id = 'fabCapture';
     fab.title = 'Quick Capture (Ctrl+N)';
-    fab.textContent = '✚';
+    fab.innerHTML = '<svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-plus"/></svg>';
     fab.onclick = () => this.openModal();
     document.body.appendChild(fab);
   },
@@ -1115,7 +1124,7 @@ const QuickCapture = {
       overlay.id = 'captureModal';
       overlay.innerHTML = `
         <div class="capture-modal">
-          <h3>⚡ Quick Capture</h3>
+          <h3><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Quick Capture</h3>
           <textarea id="captureInput" placeholder="Idea, task, note, reminder... anything that just came to mind." autofocus></textarea>
           <div class="capture-modal-actions">
             <button class="btn-ghost" onclick="QuickCapture.closeModal()">Cancel</button>
@@ -1188,7 +1197,7 @@ const ShortcutsOverlay = {
       overlay.onclick = (e) => { if (e.target === overlay) this.close(); };
       overlay.innerHTML = `
         <div class="shortcuts-panel">
-          <h3>⌨️ Keyboard Shortcuts</h3>
+          <h3><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-command"/></svg> Keyboard Shortcuts</h3>
           <div class="shortcuts-row"><span class="shortcut-label">Command bar</span><kbd>Ctrl</kbd>+<kbd>K</kbd></div>
           <div class="shortcuts-row"><span class="shortcut-label">Quick capture</span><kbd>Ctrl</kbd>+<kbd>N</kbd></div>
           <div class="shortcuts-row"><span class="shortcut-label">Show shortcuts</span><kbd>?</kbd></div>

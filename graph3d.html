@@ -150,17 +150,17 @@ body { margin: 0; overflow: hidden; background: var(--bg-primary); font-family: 
 </div>
 
 <div class="graph-header">
-  <div class="graph-title">🧠 Knowledge Brain — 3D Graph</div>
+  <div class="graph-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> Knowledge Brain — 3D Graph</div>
   <div class="graph-controls">
     <a href="index.html" class="toggle-btn" style="text-decoration:none;">← Life OS</a>
-    <button class="toggle-btn" onclick="resetView()">⟲ Reset</button>
-    <button class="toggle-btn" id="btn-rotate" onclick="toggleAutoRotate()">🔄 Auto-Rotate</button>
+    <button class="toggle-btn" onclick="resetView()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Reset</button>
+    <button class="toggle-btn" id="btn-rotate" onclick="toggleAutoRotate()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-repeat"/></svg> Auto-Rotate</button>
   </div>
 </div>
 
 <div class="graph-sidebar">
   <div class="sidebar-panel">
-    <h3>🎛️ Display</h3>
+    <h3><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-settings"/></svg> Display</h3>
     <div class="slider-row">
       <label>Node size <span id="nodeSizeVal">1.5x</span></label>
       <input type="range" min="0.5" max="3" step="0.1" value="1.5" id="nodeSize" oninput="setNodeSize(this.value)">
@@ -177,9 +177,9 @@ body { margin: 0; overflow: hidden; background: var(--bg-primary); font-family: 
   </div>
 
   <div class="sidebar-panel">
-    <h3>🔍 Discovery</h3>
-    <button class="toggle-btn" style="width:100%;margin-bottom:4px;" id="btn-opps" onclick="toggleOpportunities()">💡 Cross-Domain Opportunities</button>
-    <button class="toggle-btn" style="width:100%;" id="btn-hubs" onclick="toggleHubs()">🎯 Hub Finder</button>
+    <h3><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-search"/></svg> Discovery</h3>
+    <button class="toggle-btn" style="width:100%;margin-bottom:4px;" id="btn-opps" onclick="toggleOpportunities()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lightbulb"/></svg> Cross-Domain Opportunities</button>
+    <button class="toggle-btn" style="width:100%;" id="btn-hubs" onclick="toggleHubs()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-radar"/></svg> Hub Finder</button>
   </div>
 
   <div class="sidebar-panel">
