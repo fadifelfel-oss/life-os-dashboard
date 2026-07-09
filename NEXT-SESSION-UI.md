@@ -53,13 +53,18 @@ eyeballed live (he does that when back).
   patterns). Fixed the two real gaps: graph3d `--warning` fallback and loops.html
   status dots (`--green/--blue/--yellow` → `--status-*`/`--accent-2`).
 
+**Added in a follow-up commit same session (after the first deploy):**
+- graph3d.html: **Systems (ARMS) panel** built — right sidebar, fetches `/api/arms`
+  and renders Applications/Routines/Skills with status dots + kind chips, themed,
+  graceful if the endpoint 404s. (`loadArms()` / `renderArmsGroup()`.)
+- chat.html: rendered-markdown now **follows the theme** — a MutationObserver on
+  `data-theme` swaps the github-markdown CDN css between light/dark.
+
 **Still NOT done (the remaining ~5-10%, deliberately deferred — too risky blind):**
 - Card-anatomy structural standardization (eyebrow/value/delta/footer) across the
   ~15 pages — this restructures each page's card markup and needs live visual
   testing; not safe to do without eyes on it.
 - Stage 5 Hub rebuild (dashboard.html).
-- The graph3d ARMS/Systems panel consumer (gated on live-verifying `/api/arms`).
-- github-markdown light-theme variant for chat.
 
 ### Git — TWO commits this session (I never run git — hard rule). Run `git status` first.
 ```

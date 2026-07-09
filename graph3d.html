@@ -141,6 +141,19 @@ body { margin: 0; overflow: hidden; background: var(--bg-primary); font-family: 
 .node-detail-actions button, .node-detail-actions a { flex: 1; text-align: center; text-decoration: none; }
 .close-btn-detail { float: right; background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
 .not-okf-badge { color: var(--status-stale); }
+
+/* Systems (ARMS) panel */
+.arms-body { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.arms-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.arms-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
+.arms-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arms-name:hover { color: var(--text-primary); }
+.arms-chip { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 8px; border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space: nowrap; }
+.arms-chip.gap { border-style: dashed; }
+.arms-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--status-live); }
+.arms-dot.stale { background: var(--status-stale); }
+.arms-dot.gap { background: transparent; border: 1px dashed var(--status-orphan); }
+.arms-sub { font-size: 9px; color: var(--text-tertiary); margin: 6px 0 2px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -216,6 +229,12 @@ body { margin: 0; overflow: hidden; background: var(--bg-primary); font-family: 
     <div class="lint-summary" id="lintSummary"></div>
     <div id="lintAnalyzeWrap"></div>
     <div class="lint-analysis" id="lintAnalysis"></div>
+  </div>
+
+  <div class="sidebar-panel">
+    <h3><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-settings"/></svg> Systems (ARMS)</h3>
+    <div id="armsStatus" class="query-loading" style="display:none;">Loading systems…</div>
+    <div class="arms-body" id="armsBody"></div>
   </div>
 </div>
 
@@ -358,6 +377,7 @@ async function init() {
   buildGraph(nodes, links);
   updateStats();
   buildDomainFilters();
+  loadArms();
 
   // Hide loading
   setTimeout(() => {
@@ -1023,6 +1043,84 @@ async function analyzeLint() {
   } catch (e) {
     document.getElementById('lintAnalysis').textContent = '⚠️ Analysis failed: ' + e.message;
   }
+}
+
+// ============================================================
+// SYSTEMS (ARMS) — Applications / Routines / Skills registry
+// Reads /api/arms (parsed from _system/registry/*.md). Degrades gracefully
+// if the endpoint isn't deployed yet.
+// ============================================================
+
+async function loadArms() {
+  const body = document.getElementById('armsBody');
+  const status = document.getElementById('armsStatus');
+  if (!body) return;
+  status.style.display = 'block';
+  try {
+    const res = await fetch('/api/arms');
+    if (!res.ok) throw new Error('unavailable');
+    const json = await res.json();
+    status.style.display = 'none';
+    const d = (json && json.data) || {};
+    body.innerHTML = '';
+    body.appendChild(renderArmsGroup('Applications', d.applications || [], a => ({
+      name: a.Name,
+      chip: a.Kind,
+      gap: (a.Kind || '').toLowerCase() === 'gap',
+    })));
+    body.appendChild(renderArmsGroup('Routines', d.routines || [], a => ({
+      name: a.Name,
+      chip: (a.Status || '').split('—')[0].split('-')[0].trim().slice(0, 12) || 'live',
+      stale: /backlog|hold/i.test(a.Status || ''),
+    })));
+    body.appendChild(renderArmsGroup('Skills', d.skills || [], a => ({
+      name: a.Skill,
+      chip: a.Status || '',
+      stale: /(stale|consolidat|explorat)/i.test(a.Status || ''),
+      section: a._section,
+    }), true));
+  } catch (e) {
+    status.style.display = 'none';
+    body.innerHTML = '<div style="font-size:11px;color:var(--text-tertiary);">Systems registry not available yet — deploy /api/arms.</div>';
+  }
+}
+
+function renderArmsGroup(title, items, mapper, groupBySection) {
+  const wrap = document.createElement('div');
+  const head = document.createElement('div');
+  head.className = 'arms-group-title';
+  head.innerHTML = `<span>${title}</span><span>${items.length}</span>`;
+  wrap.appendChild(head);
+  let lastSection = null;
+  items.forEach(it => {
+    const m = mapper(it);
+    if (!m.name) return;
+    if (groupBySection && m.section && m.section !== lastSection) {
+      lastSection = m.section;
+      const sub = document.createElement('div');
+      sub.className = 'arms-sub';
+      sub.textContent = m.section.split('(')[0].trim();
+      wrap.appendChild(sub);
+    }
+    const row = document.createElement('div');
+    row.className = 'arms-item';
+    const dot = document.createElement('span');
+    dot.className = 'arms-dot' + (m.gap ? ' gap' : (m.stale ? ' stale' : ''));
+    const name = document.createElement('span');
+    name.className = 'arms-name';
+    name.textContent = m.name;
+    name.title = m.name;
+    row.appendChild(dot);
+    row.appendChild(name);
+    if (m.chip) {
+      const c = document.createElement('span');
+      c.className = 'arms-chip' + (m.gap ? ' gap' : '');
+      c.textContent = m.chip;
+      row.appendChild(c);
+    }
+    wrap.appendChild(row);
+  });
+  return wrap;
 }
 
 // ============================================================
