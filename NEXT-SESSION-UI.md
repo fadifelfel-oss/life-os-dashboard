@@ -1,4 +1,19 @@
-# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-08)
+# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-09)
+
+## HANDOFF FOR FABLE (design/simplification pass) — state as of 2026-07-09
+Fadi is taking the system to Fable next for a "simplest version of this" rethink. Current shipped/built state:
+- **Connectors LIVE** (via /keys.html): Fireflies, Notion (read-only integration "Life OS Dashboard"), Gmail (fadi@fieldbridgehq.com). Keys page got a real **Save** button per card. Notion CRM DB share status = Fadi to confirm.
+- **3D Brain**: node-click fixed, theme-matched colors, Force/Rings/Sphere/Grid layouts, Systems (ARMS) panel reading /api/arms.
+- **Chat**: full theme migration, theme-aware markdown, owl/welcome block removed.
+- **Today/Hub** (dashboard.html): rebuilt data-driven off /api/today.
+- **Loops**: live-wired to /api/arms routines.
+- **CRM** (crm.html, new): read-only pipeline board from /api/wiki/crm (Cowork's synced mirror). "Sync from Notion" button REMOVED (server is read-only per Decision Gate 1) → plain Refresh.
+- **Projects** (projects.html + /api/projects, new): read-only registry from 010 Projects/ hub notes. Only FieldBridge HQ exists so far — source needs populating (Cowork OPERATION 7 hub notes for Obsidian OS, Hermes, Life OS Dashboard).
+- **Global nav** (shared.js/shared.css): overlay drawer (menu FAB, bottom-left) on every standalone page; index.html keeps its sidebar (now also has Work: CRM/Projects). THIS is the last/highest-risk commit — touches every page; verify live.
+- **Architecture locked** (see memory two-agent-architecture): Cowork & Hermes = separate single-writer lanes, cross read-only; Notion=system-of-record, UI reads live read-only; VPS NOTION_API_KEY is read-only.
+- **NOT verified live end-to-end** — everything past connectors was verified by syntax/parse checks only; Fadi to walk the site. **Bash mount of C:\Dev\life-os-dashboard is unreliable after file-tool edits** (stale snapshots) — verify with Read/Grep, not bash.
+- **Deliberately deferred** (Fadi said do eventually): card-anatomy standardization, per-life-area pages, Virtual PM persona, Hermes read/write Notion lane, back-button standardization, retiring dead pages (graph.html/hermes-map.html/tasks.html), Skills Hub wiring (skills.html → /api/arms skills — easy, data exists).
+
 
 ## 2026-07-08 session — 3D Brain (Stage 4 front-end) + /api/arms (Stage 4 backend) + chat.html full theme migration + color audit
 

@@ -45,14 +45,13 @@
   <a href="index.html" class="header-back">← Life OS</a>
   <div class="header-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-users"/></svg> CRM — FieldBridge Pipeline</div>
   <div class="header-actions">
-    <button class="btn btn-sm btn-primary" id="syncBtn" onclick="syncFromNotion()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Sync from Notion</button>
-    <span class="crm-sync-note" id="syncNote"></span>
+    <button class="btn btn-sm" onclick="loadCrm()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
   </div>
 </div>
 
 <div class="crm-banner">
   <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
-  Read-only view of the FieldBridge CRM. Notion is the system of record — edits happen in Notion/Cowork, not here.
+  Read-only view of the FieldBridge CRM. Notion is the system of record; Cowork's nightly sync pulls Notion → vault and this dashboard reads that mirror. Edits happen in Notion/Cowork, never here.
 </div>
 
 <div id="crmBody"><div class="crm-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
@@ -73,7 +72,12 @@ async function loadCrm(){
   try {
     const res = await fetch('/api/wiki/crm');
     const json = await res.json();
-    const rows = (json && json.data) || [];
+    // Skip non-client files that live in CRM/ (index.md, readme) so only real clients show.
+    const rows = ((json && json.data) || []).filter(r => {
+      const base = String(r.path || '').split('/').pop().toLowerCase();
+      const name = String(r.company || '').toLowerCase();
+      return base !== 'index.md' && name !== 'index' && name !== 'readme';
+    });
     if (!rows.length) {
       body.innerHTML = '<div class="crm-empty">No clients synced yet.<br><br>Click <strong>Sync from Notion</strong> above to pull your Client Pipeline.<br><span style="font-size:12px;">(Make sure the CRM database is shared with the "Life OS Dashboard" Notion integration.)</span></div>';
       return;
@@ -101,27 +105,6 @@ async function loadCrm(){
       </div>`).join('') + '</div>';
   } catch (e) {
     body.innerHTML = `<div class="crm-empty">Couldn't load the CRM (${escH(e.message)}). The server may need a restart.</div>`;
-  }
-}
-
-async function syncFromNotion(){
-  const btn = document.getElementById('syncBtn');
-  const note = document.getElementById('syncNote');
-  btn.disabled = true;
-  note.textContent = 'Syncing from Notion…';
-  try {
-    const res = await fetch('/api/wiki/ingest-crm', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
-    const json = await res.json();
-    if (json.error) { note.textContent = '⚠ ' + json.error; }
-    else {
-      const d = json.data || {};
-      note.textContent = `Synced ${d.fetched != null ? d.fetched : '?'} · wrote ${d.created != null ? d.created : '?'}`;
-      await loadCrm();
-    }
-  } catch (e) {
-    note.textContent = '⚠ Sync failed: ' + e.message;
-  } finally {
-    btn.disabled = false;
   }
 }
 
