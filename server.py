@@ -343,6 +343,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_prompts_library()
         elif path == "/api/arms":
             self._serve_arms()
+        elif path == "/api/projects":
+            self._serve_projects()
         elif path == "/api/wiki/crm":
             self._serve_crm_snapshot()
         elif path == "/api/upload":
@@ -398,6 +400,44 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                 out[arm] = []
         counts = {k: len(v) for k, v in out.items()}
         self._json_response({"data": out, "counts": counts})
+
+    def _serve_projects(self):
+        """GET /api/projects — read `010 Projects/` hub notes (OPERATION 7) as
+        JSON for the read-only Projects registry view. Cowork owns/writes these
+        (one hub note per Cowork project); the dashboard only reads. Defensive:
+        missing folder or malformed note yields an empty/partial row, never 500."""
+        try:
+            out_dir = VAULT_DIR / "010 Projects"
+            rows = []
+            if out_dir.exists():
+                for f in sorted(out_dir.rglob("*.md")):
+                    try:
+                        meta, _ = self._parse_frontmatter(f.read_text(encoding='utf-8'))
+                    except Exception:
+                        continue
+                    tags = meta.get('tags', []) or []
+                    if isinstance(tags, str):
+                        tags = [t.strip() for t in tags.strip('[]').split(',')]
+
+                    def tag_after(prefix):
+                        for t in tags:
+                            s = str(t).strip()
+                            if s.startswith(prefix):
+                                return s[len(prefix):]
+                        return ''
+
+                    rows.append({
+                        "name": meta.get('project') or meta.get('title') or f.stem,
+                        "status": meta.get('status') or tag_after('status/'),
+                        "priority": tag_after('priority/'),
+                        "area": tag_after('area/'),
+                        "folder": meta.get('folder', ''),
+                        "last_synced": meta.get('last_synced') or '',
+                        "path": str(f.relative_to(VAULT_DIR)),
+                    })
+            self._json_response({"data": rows})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve projects: {str(e)}")
 
     def _get_env_var(self, var_name):
         """Generic reader for any NAME=value line in ~/.hermes/.env — shared

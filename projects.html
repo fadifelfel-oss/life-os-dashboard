@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projects — Life OS</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
+<style>
+.pr-banner {
+  font-size: 13px; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--accent); border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
+  display: flex; align-items: center; gap: 8px;
+}
+.pr-board { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-3); }
+.pr-col { flex: 0 0 300px; display: flex; flex-direction: column; }
+.pr-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-tertiary); padding: 0 4px var(--space-2);
+  border-bottom: 2px solid var(--accent); margin-bottom: var(--space-2);
+}
+.pr-col-count { color: var(--text-muted); }
+.pr-col-body { display: flex; flex-direction: column; gap: 8px; }
+.pr-card {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-3);
+  cursor: pointer; transition: border-color .15s, transform .1s; text-decoration: none; display: block;
+}
+.pr-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.pr-card-name { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.pr-card-folder { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono, monospace); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.pr-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space: nowrap; }
+.pr-tag.prio-high { color: var(--red); border-color: var(--red); }
+.pr-tag.prio-medium { color: var(--orange); border-color: var(--orange); }
+.pr-synced { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.pr-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; }
+.pr-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <div class="header-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Projects</div>
+  <div class="header-actions">
+    <button class="btn btn-sm" onclick="loadProjects()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
+  </div>
+</div>
+
+<div class="pr-banner">
+  <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
+  Read-only registry of your Cowork projects. Each project's own folder is its system of record; Cowork maintains one hub note per project in the vault and this dashboard reads it. New projects appear here automatically once they have a hub note.
+</div>
+
+<div id="prBody"><div class="pr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading projects…</div></div>
+
+</div><!-- /container -->
+
+<script>
+function escH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+// Column order for common status values; unknowns sort to the end alphabetically.
+const STATUS_ORDER = { active: 0, 'in-progress': 1, planning: 2, paused: 3, 'on-hold': 3, backlog: 4, done: 5, archived: 6 };
+function statusRank(s){ const k = String(s || '').toLowerCase(); return (k in STATUS_ORDER) ? STATUS_ORDER[k] : 50; }
+
+async function loadProjects(){
+  const body = document.getElementById('prBody');
+  body.innerHTML = '<div class="pr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading projects…</div>';
+  try {
+    const res = await fetch('/api/projects');
+    const json = await res.json();
+    const rows = (json && json.data) || [];
+    if (!rows.length) {
+      body.innerHTML = '<div class="pr-empty">No projects registered yet.<br><br>Add a hub note in the vault under <strong>010 Projects/</strong> (one per Cowork project) and it appears here automatically.</div>';
+      return;
+    }
+    const groups = {};
+    rows.forEach(r => { const st = r.status || 'No status'; (groups[st] = groups[st] || []).push(r); });
+    const statuses = Object.keys(groups).sort((a,b) => statusRank(a) - statusRank(b) || a.localeCompare(b));
+    body.innerHTML = '<div class="pr-board">' + statuses.map(st => `
+      <div class="pr-col">
+        <div class="pr-col-head"><span>${escH(st)}</span><span class="pr-col-count">${groups[st].length}</span></div>
+        <div class="pr-col-body">
+          ${groups[st].map(r => {
+            const prio = String(r.priority || '').toLowerCase();
+            return `<a class="pr-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
+              <div class="pr-card-name">${escH(r.name)}</div>
+              ${r.folder ? `<div class="pr-card-folder">${escH(r.folder)}</div>` : ''}
+              <div class="pr-card-meta">
+                ${r.area ? `<span class="pr-tag">${escH(r.area)}</span>` : ''}
+                ${r.priority ? `<span class="pr-tag prio-${escH(prio)}">${escH(r.priority)}</span>` : ''}
+                ${r.last_synced ? `<span class="pr-synced">synced ${escH(r.last_synced)}</span>` : ''}
+              </div>
+            </a>`;
+          }).join('')}
+        </div>
+      </div>`).join('') + '</div>';
+  } catch (e) {
+    body.innerHTML = `<div class="pr-empty">Couldn't load projects (${escH(e.message)}). The server may need a restart to pick up /api/projects.</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadProjects);
+</script>
+</body>
+</html>
