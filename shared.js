@@ -355,6 +355,8 @@ function navigateTo(page) {
   // Map page to file and navigate directly
   const moduleFiles = {
     'dashboard': 'dashboard.html',
+    'crm': 'crm.html',
+    'projects': 'projects.html',
     'models': 'models.html',
     'mcp': 'mcp.html',
     'keys': 'keys.html',
@@ -410,6 +412,8 @@ function loadModule(page) {
   // Map page to file
   const moduleFiles = {
     'dashboard': 'dashboard.html',
+    'crm': 'crm.html',
+    'projects': 'projects.html',
     'models': 'models.html',
     'mcp': 'mcp.html',
     'keys': 'keys.html',
@@ -524,6 +528,60 @@ function toggleSidebar() {
   sidebar?.classList.toggle('open');
   overlay?.classList.toggle('open');
 }
+
+// ============================================================
+// GLOBAL NAV — one consistent nav on EVERY standalone page.
+// index.html already has the full .sidebar, so this is skipped there.
+// Overlay drawer + floating button: never shifts a page's layout, and the
+// whole thing is guarded so a nav error can't break the host page.
+// ============================================================
+function toggleGlobalNav(open) {
+  const d = document.getElementById('global-nav-drawer');
+  const o = document.getElementById('global-nav-overlay');
+  if (!d || !o) return;
+  d.classList.toggle('open', open);
+  o.classList.toggle('open', open);
+}
+function renderGlobalNav() {
+  try {
+    if (document.querySelector('.sidebar')) return;       // index.html: full sidebar already
+    if (document.getElementById('global-nav-drawer')) return;
+    const groups = [
+      { title: 'Today',  items: [['index.html','zap','Today'], ['kanban.html','clipboard-list','Kanban']] },
+      { title: 'Work',   items: [['crm.html','users','CRM'], ['projects.html','clipboard-list','Projects']] },
+      { title: 'Brain',  items: [['graph3d.html','brain','3D Brain'], ['files.html','folder','Files']] },
+      { title: 'Agents', items: [['chat.html','message-square','Chat'], ['use-cases.html','zap','Playbook'], ['loops.html','repeat','Loops'], ['skills.html','puzzle','Skills'], ['models.html','bot','Models']] },
+      { title: 'System', items: [['keys.html','key-round','Keys'], ['mcp.html','settings','MCP'], ['meetings.html','calendar','Meetings'], ['imagegen.html','image','Image'], ['browser.html','globe','Browser'], ['artifacts.html','maximize','Artifacts']] },
+    ];
+    const here = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    const ic = n => `<svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-${n}"/></svg>`;
+    const overlay = document.createElement('div');
+    overlay.id = 'global-nav-overlay';
+    overlay.className = 'gnav-overlay';
+    overlay.addEventListener('click', () => toggleGlobalNav(false));
+    const drawer = document.createElement('nav');
+    drawer.id = 'global-nav-drawer';
+    drawer.className = 'gnav-drawer';
+    drawer.setAttribute('aria-label', 'Main navigation');
+    drawer.innerHTML =
+      `<div class="gnav-head"><span class="gnav-logo">${ic('brain')} Life OS</span>` +
+      `<button class="gnav-x" aria-label="Close menu" onclick="toggleGlobalNav(false)">${ic('x')}</button></div>` +
+      groups.map(g => `<div class="gnav-group"><div class="gnav-group-title">${g.title}</div>` +
+        g.items.map(([href, icon, label]) =>
+          `<a class="gnav-item${href.toLowerCase() === here ? ' active' : ''}" href="${href}">${ic(icon)}<span>${label}</span></a>`
+        ).join('') + `</div>`).join('');
+    const fab = document.createElement('button');
+    fab.id = 'global-nav-fab';
+    fab.className = 'gnav-fab';
+    fab.setAttribute('aria-label', 'Open menu');
+    fab.innerHTML = ic('compass');
+    fab.addEventListener('click', () => toggleGlobalNav(true));
+    document.body.appendChild(overlay);
+    document.body.appendChild(drawer);
+    document.body.appendChild(fab);
+  } catch (e) { /* nav injection must never break the host page */ }
+}
+document.addEventListener('DOMContentLoaded', renderGlobalNav);
 
 // Close sidebar on mobile when clicking outside or on nav item
 document.addEventListener('DOMContentLoaded', () => {
