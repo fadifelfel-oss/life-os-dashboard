@@ -1050,25 +1050,7 @@ pre:hover .copy-btn {
 
     <!-- MESSAGES -->
     <div class="chat-messages" id="messages">
-      <div class="message-row assistant">
-        <div class="message-avatar assistant">🦉</div>
-        <div class="message-content">
-          <div class="message-header">
-            <span class="message-name">Hermes</span>
-            <span class="message-time">2:34 PM</span>
-          </div>
-          <div class="message-body">
-            <p>Hey Fadi 👋 I'm your autonomous agent. I can help you with:</p>
-            <ul>
-              <li><strong>Your vault</strong> — search, browse, and manage notes</li>
-              <li><strong>Tasks & priorities</strong> — today's action items and deadlines</li>
-              <li><strong>FieldBridge</strong> — client meetings, proposals, project tracking</li>
-              <li><strong>Research</strong> — web searches, summaries, analysis</li>
-            </ul>
-            <p>What can I help you with?</p>
-          </div>
-        </div>
-      </div>
+      <div class="chat-hint" style="max-width:760px;margin:56px auto 0;text-align:center;color:var(--chat-text-muted);font-size:14px;">Ask Hermes anything — your vault, tasks, or FieldBridge.</div>
     </div>
 
     <!-- HEALTH COACH BOARD -->
@@ -1514,22 +1496,7 @@ function startNewChat() {
 
 function addWelcomeMessage() {
   document.getElementById('messages').innerHTML = `
-    <div class="message-row assistant">
-      <div class="message-avatar assistant">🦉</div>
-      <div class="message-content">
-        <div class="message-header"><span class="message-name">Hermes</span><span class="message-time"></span></div>
-        <div class="message-body">
-          <p>Hey Fadi 👋 I'm your autonomous agent. I can help you with:</p>
-          <ul>
-            <li><strong>Your vault</strong> — search, browse, and manage notes</li>
-            <li><strong>Tasks &amp; priorities</strong> — today's action items and deadlines</li>
-            <li><strong>FieldBridge</strong> — client meetings, proposals, project tracking</li>
-            <li><strong>Research</strong> — web searches, summaries, analysis</li>
-          </ul>
-          <p>What can I help you with?</p>
-        </div>
-      </div>
-    </div>`;
+    <div class="chat-hint" style="max-width:760px;margin:56px auto 0;text-align:center;color:var(--chat-text-muted);font-size:14px;">Ask Hermes anything — your vault, tasks, or FieldBridge.</div>`;
 }
 
 function resetArtifactsPanel() {

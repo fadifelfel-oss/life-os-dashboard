@@ -60,11 +60,22 @@ eyeballed live (he does that when back).
 - chat.html: rendered-markdown now **follows the theme** — a MutationObserver on
   `data-theme` swaps the github-markdown CDN css between light/dark.
 
-**Still NOT done (the remaining ~5-10%, deliberately deferred — too risky blind):**
+**Also done later this session:**
+- dashboard.html **Today/Hub rebuilt** — data-driven off `/api/today` (Power 3, Due
+  Today, high signals, nightly digest w/ stale banner, in-progress, open wagers),
+  quick-capture/voice/hermes-pilot kept, nav fixed. Dropped the old hardcoded
+  job-KPI hero + fake priorities/alerts. Did NOT hardcode a tripwire card (belongs
+  in FieldBridge folder; would rot after the date). Used Radar signals (real data)
+  instead of the spec's calendar peek (no calendar source wired).
+- loops.html **wired live** — reads the `routines` arm of `/api/arms`
+  (`_system/registry/routines.md`) instead of the hardcoded array (kept as
+  fallback). Status text → dot class via `statusMeta()`.
+
+**Still NOT done (deliberately deferred — too risky blind):**
 - Card-anatomy structural standardization (eyebrow/value/delta/footer) across the
-  ~15 pages — this restructures each page's card markup and needs live visual
-  testing; not safe to do without eyes on it.
-- Stage 5 Hub rebuild (dashboard.html).
+  ~15 pages — restructures each page's card markup; needs live visual testing.
+- Skills Hub (R11), per-life-area pages, nav restructure into 5 groups, Virtual PM
+  persona — these are new Phase-5/6 builds, not fixes.
 
 ### Git — TWO commits this session (I never run git — hard rule). Run `git status` first.
 ```

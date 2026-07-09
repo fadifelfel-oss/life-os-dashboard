@@ -123,19 +123,53 @@ const LOOPS = [
     status: 'hold', statusLabel: 'Backlogged', note: 'Low priority' },
 ];
 
-function renderLoops() {
+function escapeH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+// Map a free-text status ("live — rewired…", "backlogged", "kill", "new…") to a dot class + short label.
+function statusMeta(s){
+  const t = (s || '').toLowerCase();
+  if (/kill|retire|dead/.test(t)) return { cls:'kill', label:'Kill' };
+  if (/backlog|hold|paus/.test(t)) return { cls:'hold', label:'Backlogged' };
+  if (/\bnew\b|planned|pending/.test(t)) return { cls:'new', label:'New' };
+  return { cls:'live', label:'Live' };
+}
+function isCodeName(n){ return !/\s/.test(n) && (/\.(sh|bat|py|js)$/.test(n) || n.includes('-')); }
+
+function loopRow(name, runner, sched, does, statusText){
+  const m = statusMeta(statusText);
+  const nameHtml = isCodeName(name) ? `<code>${escapeH(name)}</code>` : escapeH(name);
+  const parts = String(statusText || '').split(/[—-]/);
+  const detail = parts.length > 1 ? parts.slice(1).join('-').trim() : '';
+  const note = detail ? `<span class="loop-status-note">${escapeH(detail)}</span>` : '';
+  return `<tr>
+    <td class="loop-name">${nameHtml}</td>
+    <td class="loop-runner">${escapeH(runner)}</td>
+    <td class="loop-sched">${escapeH(sched)}</td>
+    <td>${escapeH(does)}</td>
+    <td><span class="loop-status"><span class="loop-dot dot-${m.cls}"></span>${m.label}</span>${note}</td>
+  </tr>`;
+}
+
+// Static §6 snapshot — used only if /api/arms (the live vault registry) is unreachable.
+function renderFallback(){
+  document.getElementById('loopsBody').innerHTML = LOOPS.map(l =>
+    loopRow(l.name, l.runner, l.schedule, l.does, l.statusLabel + (l.note ? ' — ' + l.note : ''))
+  ).join('');
+}
+
+// Live: read the routines arm of /api/arms (parsed from _system/registry/routines.md).
+async function renderLoops(){
   const body = document.getElementById('loopsBody');
-  body.innerHTML = LOOPS.map(l => {
-    const nameHtml = l.code ? `<code>${l.name}</code>` : l.name;
-    const note = l.note ? `<span class="loop-status-note">${l.note}</span>` : '';
-    return `<tr>
-      <td class="loop-name">${nameHtml}</td>
-      <td class="loop-runner">${l.runner}</td>
-      <td class="loop-sched">${l.schedule}</td>
-      <td>${l.does}</td>
-      <td><span class="loop-status"><span class="loop-dot dot-${l.status}"></span>${l.statusLabel}</span>${note}</td>
-    </tr>`;
-  }).join('');
+  try {
+    const res = await fetch('/api/arms');
+    if (!res.ok) throw new Error('arms');
+    const j = await res.json();
+    const routines = (j.data && j.data.routines) || [];
+    if (!routines.length) throw new Error('empty');
+    body.innerHTML = routines.map(r => loopRow(r.Name, r.Runner, r.Schedule, r['What it does'], r.Status)).join('');
+  } catch (e) {
+    renderFallback();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', renderLoops);
