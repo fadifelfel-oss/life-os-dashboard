@@ -210,6 +210,7 @@ function renderProviders() {
                  placeholder="Enter ${p.envVar || 'API key'}" value="${keyVal}"
                  oninput="updateCardStatus('${p.id}')">
           <button class="btn btn-ghost btn-sm" onclick="toggleKey('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-eye"/></svg></button>
+          <button class="btn btn-primary btn-sm" onclick="saveKey('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-save"/></svg> Save</button>
           <button class="btn btn-success btn-sm" onclick="testProvider('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Test</button>
           <button class="btn btn-danger btn-sm" onclick="removeKey('${p.id}')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-trash-2"/></svg></button>
         </div>
@@ -278,6 +279,31 @@ async function testProvider(id) {
   } catch(e) {
     result.className = 'test-result show err';
     result.textContent = '❌ ' + e.message;
+  }
+}
+
+async function saveKey(id) {
+  const result = document.getElementById('test-' + id);
+  const key = document.getElementById('key-' + id).value.trim();
+  if (!key) { result.className = 'test-result show err'; result.textContent = '❌ Enter a key first'; return; }
+  result.className = 'test-result show'; result.textContent = '⏳ Saving…';
+  try {
+    const resp = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', provider: id, key: key })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      const card = document.getElementById('card-' + id);
+      if (card) card.classList.add('connected');
+      result.className = 'test-result show ok'; result.textContent = data.message + ' — testing…';
+      await testProvider(id);   // save then immediately verify
+    } else {
+      result.className = 'test-result show err'; result.textContent = data.message;
+    }
+  } catch (e) {
+    result.className = 'test-result show err'; result.textContent = '❌ ' + e.message;
   }
 }
 
