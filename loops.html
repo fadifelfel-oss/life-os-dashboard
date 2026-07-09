@@ -41,10 +41,10 @@ table.loops tr:last-child td { border-bottom: none; }
 .loop-runner, .loop-sched { color: var(--text-secondary); white-space: nowrap; }
 .loop-status { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; }
 .loop-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.dot-live { background: var(--green, #3fb950); }
-.dot-new  { background: var(--blue, #58a6ff); }
-.dot-kill { background: var(--red, #f85149); }
-.dot-hold { background: var(--yellow, #d29922); }
+.dot-live { background: var(--status-live); }
+.dot-new  { background: var(--accent-2); }
+.dot-kill { background: var(--status-failed); }
+.dot-hold { background: var(--status-stale); }
 .loop-status-note { display: block; font-size: 15px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
 </style>
 </head>

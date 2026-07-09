@@ -14,24 +14,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
+  /* Migrated onto the shared theme tokens (R13) — Chat now follows the
+     Blueprint / Graphite / Light switch instead of its old hardcoded dark. */
   --chat-sidebar-w: 260px;
   --chat-toolbar-h: 48px;
-  --chat-input-bg: #1a1d24;
-  --chat-user-bg: #2563eb;
-  --chat-ai-bg: #1e2230;
-  --chat-border: #2a2f3a;
-  --chat-text: #e8eaed;
-  --chat-text-muted: #9aa0a6;
-  --chat-accent: #58a6ff;
-  --chat-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --health-green: #22c55e;
-  --health-blue: #3b82f6;
-  --health-orange: #f59e0b;
-  --health-red: #ef4444;
-  --health-purple: #a855f7;
+  --chat-input-bg: var(--bg-tertiary);
+  --chat-user-bg: var(--accent);
+  --chat-ai-bg: var(--bg-secondary);
+  --chat-border: var(--border-primary);
+  --chat-text: var(--text-primary);
+  --chat-text-muted: var(--text-secondary);
+  --chat-accent: var(--accent);
+  --chat-font: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  --health-green: var(--status-live);
+  --health-blue: var(--accent-2);
+  --health-orange: var(--status-stale);
+  --health-red: var(--status-failed);
+  --health-purple: var(--area-knowledge);
 }
 
-html, body { height: 100%; margin: 0; font-family: var(--chat-font); background: #0f1118; color: var(--chat-text); }
+html, body { height: 100%; margin: 0; font-family: var(--chat-font); background: var(--bg-primary); color: var(--chat-text); }
 
 /* === CHAT LAYOUT === */
 .chat-app {
@@ -65,7 +67,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 
 /* === SIDEBAR === */
 .chat-sidebar {
-  background: #131620;
+  background: var(--bg-secondary);
   border-right: 1px solid var(--chat-border);
   display: flex;
   flex-direction: column;
@@ -93,7 +95,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  background: linear-gradient(135deg, var(--accent), var(--area-knowledge));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,15 +125,15 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   margin-bottom: 2px;
   transition: background 0.15s;
   font-size: 13px;
-  color: #c9d1d9;
+  color: var(--text-secondary);
 }
 
 .sidebar-session:hover {
-  background: rgba(255,255,255,0.04);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .sidebar-session.active {
-  background: rgba(88,166,255,0.1);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--chat-accent);
   font-weight: 600;
 }
@@ -184,7 +186,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .sidebar-session:hover .sidebar-session-delete { opacity: 1; }
-.sidebar-session-delete:hover { background: rgba(248,81,73,0.15); color: var(--red, #f85149); }
+.sidebar-session-delete:hover { background: color-mix(in srgb, var(--status-failed) 18%, transparent); color: var(--red, #f85149); }
 
 .sidebar-footer {
   padding: 12px 16px;
@@ -221,7 +223,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .new-chat-btn:hover {
-  background: rgba(255,255,255,0.05);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
   border-color: var(--chat-accent);
 }
 
@@ -230,7 +232,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #0f1118;
+  background: var(--bg-primary);
 }
 
 /* === TOOLBAR === */
@@ -241,7 +243,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   align-items: center;
   padding: 0 16px;
   gap: 12px;
-  background: #131620;
+  background: var(--bg-secondary);
   flex-shrink: 0;
 }
 
@@ -249,7 +251,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--chat-border);
-  background: #1a1d24;
+  background: var(--bg-tertiary);
   color: var(--chat-text);
   font-size: 12px;
   font-weight: 600;
@@ -286,14 +288,14 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .toolbar-btn:hover {
-  background: rgba(255,255,255,0.05);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
   color: var(--chat-text);
 }
 
 .toolbar-btn.active {
-  background: rgba(88,166,255,0.1);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--chat-accent);
-  border-color: rgba(88,166,255,0.3);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .toolbar-spacer {
@@ -333,11 +335,11 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .message-avatar.user {
-  background: #2563eb;
+  background: var(--accent);
 }
 
 .message-avatar.assistant {
-  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  background: linear-gradient(135deg, var(--accent), var(--area-knowledge));
 }
 
 .message-content {
@@ -389,7 +391,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 
 .message-body strong {
   font-weight: 700;
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .message-body ul, .message-body ol {
@@ -402,7 +404,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .message-body code:not(pre code) {
-  background: rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.9em;
@@ -410,7 +412,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .message-body pre {
-  background: #0d1117;
+  background: var(--bg-primary);
   border: 1px solid var(--chat-border);
   border-radius: 8px;
   padding: 16px;
@@ -451,7 +453,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .message-row.user .message-body {
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .message-row.user .message-avatar {
@@ -486,7 +488,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 .chat-input-wrap {
   border-top: 1px solid var(--chat-border);
   padding: 12px 24px 16px;
-  background: #0f1118;
+  background: var(--bg-primary);
 }
 
 .chat-input-container {
@@ -504,7 +506,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 
 .chat-input-container:focus-within {
   border-color: var(--chat-accent);
-  box-shadow: 0 0 0 3px rgba(88,166,255,0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .chat-input {
@@ -531,7 +533,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   border-radius: 8px;
   border: none;
   background: var(--chat-accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 16px;
   cursor: pointer;
   display: flex;
@@ -569,7 +571,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   right: -400px;
   width: 400px;
   height: 100vh;
-  background: #131620;
+  background: var(--bg-secondary);
   border-left: 1px solid var(--chat-border);
   z-index: 300;
   transition: right 0.3s ease;
@@ -612,7 +614,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .artifacts-close:hover {
-  background: rgba(255,255,255,0.05);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
   color: var(--chat-text);
 }
 
@@ -633,7 +635,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 
 .artifact-item:hover {
   border-color: var(--chat-accent);
-  background: rgba(88,166,255,0.04);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .artifact-item .artifact-icon {
@@ -664,7 +666,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 }
 
 .artifact-preview pre {
-  background: #0d1117;
+  background: var(--bg-primary);
   border: 1px solid var(--chat-border);
   border-radius: 8px;
   padding: 16px;
@@ -680,7 +682,7 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   right: 8px;
   padding: 4px 10px;
   font-size: 11px;
-  background: rgba(255,255,255,0.1);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   border: 1px solid var(--chat-border);
   border-radius: 4px;
   color: var(--chat-text-muted);
@@ -695,7 +697,7 @@ pre:hover .copy-btn {
 }
 
 .copy-btn:hover {
-  background: rgba(255,255,255,0.15);
+  background: color-mix(in srgb, var(--text-primary) 15%, transparent);
   color: var(--chat-text);
 }
 
@@ -739,7 +741,7 @@ pre:hover .copy-btn {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  background: #131620;
+  background: var(--bg-secondary);
   border-top: 1px solid var(--chat-border);
 }
 
@@ -753,7 +755,7 @@ pre:hover .copy-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #1a1d24;
+  background: var(--bg-tertiary);
 }
 
 .coach-panel-header .coach-icon {
@@ -786,7 +788,7 @@ pre:hover .copy-btn {
 }
 
 .metric-card {
-  background: #1a1d24;
+  background: var(--bg-tertiary);
   border: 1px solid var(--chat-border);
   border-radius: 10px;
   padding: 10px 12px;
@@ -796,7 +798,7 @@ pre:hover .copy-btn {
 .metric-card .metric-value {
   font-size: 22px;
   font-weight: 800;
-  color: #fff;
+  color: var(--on-accent);
   line-height: 1.2;
 }
 
@@ -828,7 +830,7 @@ pre:hover .copy-btn {
 }
 
 .workout-item {
-  background: #1a1d24;
+  background: var(--bg-tertiary);
   border: 1px solid var(--chat-border);
   border-radius: 10px;
   padding: 12px;
@@ -851,7 +853,7 @@ pre:hover .copy-btn {
 .workout-item .workout-name {
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: var(--on-accent);
   margin-bottom: 4px;
 }
 
@@ -894,7 +896,7 @@ pre:hover .copy-btn {
 .quick-log-btn:hover {
   border-color: var(--health-green);
   color: var(--health-green);
-  background: rgba(34,197,94,0.05);
+  background: color-mix(in srgb, var(--status-live) 8%, transparent);
 }
 
 /* Coach Selector in Toolbar */
@@ -909,7 +911,7 @@ pre:hover .copy-btn {
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid var(--chat-border);
-  background: #1a1d24;
+  background: var(--bg-tertiary);
   color: var(--chat-text);
   font-size: 13px;
   font-weight: 600;
@@ -931,7 +933,7 @@ pre:hover .copy-btn {
   top: calc(100% + 6px);
   left: 0;
   width: 200px;
-  background: #1a1d24;
+  background: var(--bg-tertiary);
   border: 1px solid var(--chat-border);
   border-radius: 10px;
   z-index: 500;
@@ -956,11 +958,11 @@ pre:hover .copy-btn {
 }
 
 .coach-dropdown-item:hover {
-  background: rgba(255,255,255,0.05);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
 }
 
 .coach-dropdown-item.active {
-  background: rgba(88,166,255,0.1);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--chat-accent);
   font-weight: 600;
 }

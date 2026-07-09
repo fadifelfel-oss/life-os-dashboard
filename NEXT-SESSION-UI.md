@@ -1,4 +1,88 @@
-# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-07)
+# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-08)
+
+## 2026-07-08 session — 3D Brain (Stage 4 front-end) + /api/arms (Stage 4 backend) + chat.html full theme migration + color audit
+
+Fadi directed an autonomous ~90% build pass (he was out). Decisions he set:
+1) priority 3D Brain → Chat → sweep; 2) chat.html FULL theme migration;
+3) build the backend too, in a SEPARATE commit he pushes/tests after the front-end.
+All work verified statically (node --check / py_compile / NUL scan) — NOT yet
+eyeballed live (he does that when back).
+
+**graph3d.html (3D Brain) — front-end, DONE:**
+- **Click bug FIXED (the known R-issue).** Root cause: `onMouseUp` opened the
+  detail panel off a stale/null `hoveredNode`. Replaced with real click-vs-drag
+  detection (`didDrag`, 4px threshold from `downMouse`) + a FRESH raycast at the
+  release point. Clicks now reliably open the node detail panel.
+- **Theme-responsive colors.** New `cssVar()` + `refreshThemeColors()` map each
+  vault domain onto the shared `--area-*` tokens (career→career, fieldbridgehq→
+  fieldbridge, ai-tools→knowledge, inbox/general→admin, etc.). Scene background/
+  fog read `--bg-primary`; link colors read `--border-secondary` / `--area-career`;
+  opportunity gold reads `--area-career`. Node colors now match nav/kanban and
+  re-theme with Blueprint/Graphite/Light.
+- **Layout toggle added:** Force / Rings / Sphere / Grid (Display panel). Force
+  positions cached as `_fx/_fy/_fz`; opportunity glow meshes tracked as `node._glow`
+  so they move with their node; `syncPositions()` rebuilds link geometry.
+- Overlay/panel chrome moved off hardcoded rgba dark to `color-mix()` on
+  `--bg-secondary` + `--bg-primary` (loading overlay, header gradient, sidebar
+  panels, stats bar, tooltip). `.not-okf-badge` → `--status-stale`.
+
+**server.py — backend, DONE (SEPARATE COMMIT):**
+- Added `GET /api/arms` → parses `_system/registry/{applications,routines,skills}.md`
+  from the vault mirror into JSON `{data:{applications,routines,skills}, counts}`.
+  Defensive markdown-table parser (handles skills.md's `##` sections; missing/
+  malformed file → empty arm, never 500). Verified against the real registry files:
+  applications 14 / routines 8 / skills 20 (3 sections). Route wired in
+  `_handle_api_get`. **A visible ARMS/Systems panel in graph3d was intentionally
+  NOT built yet** — probe `/api/arms` live first to confirm the shape, then wire
+  the consumer next session (kept front-end/back-end cleanly separable).
+
+**chat.html — FULL theme migration, DONE:**
+- Local `:root` `--chat-*` / `--health-*` vars re-aliased onto shared tokens
+  (`--bg-*`, `--text-*`, `--border-primary`, `--accent`, `--accent-2`, `--status-*`,
+  `--area-knowledge`). All hardcoded page backgrounds (#0f1118/#131620/#1a1d24/
+  #0d1117), accent blue, `color:#fff`→`--on-accent`, white-overlay rgba, and
+  accent-tint rgba converted to tokens / `color-mix()`. Chat now follows all 3
+  themes. `.message-body` already 18px (R1 eyesight) — confirmed. JS untouched
+  (node --check clean). **Known follow-up:** the CDN `github-markdown-dark.css`
+  still forces dark rendered-markdown; a light-theme variant swap is a later task.
+
+**Color audit (Stage 3 tail) — DONE for the fixable set:**
+- Repo-wide grep for hardcoded CSS hex: only 29 left across 6 files, and all but
+  two are intentional exemptions (use-cases per-area brand colors, chat persona
+  dots, theme-preview swatches, artifacts preview-canvas #fff, token-with-fallback
+  patterns). Fixed the two real gaps: graph3d `--warning` fallback and loops.html
+  status dots (`--green/--blue/--yellow` → `--status-*`/`--accent-2`).
+
+**Still NOT done (the remaining ~5-10%, deliberately deferred — too risky blind):**
+- Card-anatomy structural standardization (eyebrow/value/delta/footer) across the
+  ~15 pages — this restructures each page's card markup and needs live visual
+  testing; not safe to do without eyes on it.
+- Stage 5 Hub rebuild (dashboard.html).
+- The graph3d ARMS/Systems panel consumer (gated on live-verifying `/api/arms`).
+- github-markdown light-theme variant for chat.
+
+### Git — TWO commits this session (I never run git — hard rule). Run `git status` first.
+```
+cd C:\Dev\life-os-dashboard
+git status
+# FIRST resolve the pre-existing broken state if still present (see "Pre-existing
+# repo issue" further down): the truncated use-cases.html rename + voice.html
+# delete/re-add. Do that by hand BEFORE staging.
+
+# --- Commit 1: front-end (safe to deploy + eyeball first) ---
+git add graph3d.html chat.html loops.html NEXT-SESSION-UI.md
+git commit -m "3D Brain: fix node-click (raycast on mouseup), theme-responsive colors, Force/Rings/Sphere/Grid layouts; chat.html full theme migration onto shared tokens; loops/graph3d color-token fixes"
+git push origin main
+# auto-pull deploys within ~1 min — open the live 3D Brain + Chat, click a node,
+# switch themes, and confirm before pushing commit 2.
+
+# --- Commit 2: backend (/api/arms) — push AFTER front-end looks good ---
+git add server.py
+git commit -m "Add GET /api/arms — parse _system/registry/*.md into JSON for ARMS panel/Loops/Skills hubs (defensive table parser)"
+git push origin main
+# then browse to https://<vps>/api/arms and confirm it returns the 3 arms.
+```
+
 
 ## 2026-07-07 session — card anatomy (4 pages) + light-touch sweep (8 pages) + 2 real bugs fixed
 
