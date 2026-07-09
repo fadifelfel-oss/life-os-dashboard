@@ -3,217 +3,287 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Command Center — Life OS</title>
+<title>Today — Life OS</title>
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 </head>
 <body>
 
-<!-- COMMAND CENTER — Life OS Home -->
-<div class="container" id="dashboardContainer" style="max-width:900px;margin:0 auto;padding:0 16px;">
+<!-- TODAY / HUB — Life OS Home. One /api/today fetch drives every data card. -->
+<div class="container" id="dashboardContainer" style="max-width:1100px;margin:0 auto;padding:0 16px;">
 
-<!-- Hero Strip: Days to Deadline -->
-<div class="cmd-hero">
-  <div class="cmd-hero-left">
-    <div class="cmd-days" id="cmdDays">--</div>
-    <div class="cmd-days-label">days to Aug 6 deadline</div>
+<!-- Header strip -->
+<div class="hub-head">
+  <div>
+    <div class="hub-eyebrow">Today</div>
+    <div class="hub-date" id="hubDate">—</div>
   </div>
-  <div class="cmd-hero-right">
-    <div class="cmd-hero-stat"><span class="cmd-stat-num" id="cmdApps">0</span><span class="cmd-stat-label">Apps sent</span></div>
-    <div class="cmd-hero-stat"><span class="cmd-stat-num" id="cmdRecruiters">0</span><span class="cmd-stat-label">Recruiters</span></div>
-    <div class="cmd-hero-stat"><span class="cmd-stat-num" id="cmdPosts">2</span><span class="cmd-stat-label">LinkedIn posts</span></div>
+  <div class="hub-head-right">
+    <div class="hub-stat"><span class="hub-stat-num" id="hubDays">--</span><span class="hub-stat-label">days to Aug 6</span></div>
   </div>
 </div>
 
 <!-- Quick Capture -->
-<div class="cmd-capture">
-  <div class="cmd-capture-input-wrap">
-    <input type="text" id="cmdCaptureInput" class="cmd-capture-input" placeholder="Type a thought, task, or note — press Enter to save to inbox" onkeydown="if(event.key==='Enter')cmdCapture()">
-    <button class="cmd-capture-btn" onclick="cmdCapture()">→</button>
+<div class="hub-capture">
+  <div class="hub-capture-input-wrap">
+    <input type="text" id="cmdCaptureInput" class="hub-capture-input" placeholder="Type a thought, task, or note — press Enter to save to inbox" onkeydown="if(event.key==='Enter')cmdCapture()">
+    <button class="hub-capture-btn" onclick="cmdCapture()" title="Save">→</button>
     <button class="voice-btn" id="voiceBtn" onclick="startVoiceCapture()" title="Voice capture (click to start/stop)"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-mic"/></svg></button>
   </div>
-  <div class="cmd-capture-hint" id="captureHint">Saved to local inbox</div>
+  <div class="hub-capture-hint" id="captureHint">Saved to local inbox</div>
 </div>
 
-<!-- Today's Big 3 -->
-<div class="cmd-section">
-  <div class="cmd-section-header">
-    <span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Today's Priorities</span>
-    <span class="cmd-section-count" id="cmdTodayCount">3 items</span>
+<!-- BAND 1 — Morning launch -->
+<div class="hub-band hub-band-3">
+  <!-- Power 3 -->
+  <div class="hub-card">
+    <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Power 3</div>
+    <div class="hub-card-body" id="cardPower3"><div class="hub-skel"></div><div class="hub-skel"></div><div class="hub-skel"></div></div>
   </div>
-  <div class="cmd-priorities" id="cmdPriorities">
-    <div class="cmd-priority-item high"><span class="cmd-priority-dot"></span><span class="cmd-priority-text">Update LinkedIn headline + About section</span></div>
-    <div class="cmd-priority-item high"><span class="cmd-priority-dot"></span><span class="cmd-priority-text">Send first recruiter message</span></div>
-    <div class="cmd-priority-item medium"><span class="cmd-priority-dot"></span><span class="cmd-priority-text">Submit at least 1 job application</span></div>
+  <!-- Due Today -->
+  <div class="hub-card">
+    <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Due Today <span class="hub-count" id="dueCount"></span></div>
+    <div class="hub-card-body" id="cardDue"><div class="hub-skel"></div><div class="hub-skel"></div></div>
+    <a class="hub-card-foot" href="kanban.html">Open board →</a>
   </div>
+  <!-- HIGH signals -->
+  <div class="hub-card">
+    <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-radar"/></svg> High Signals <span class="hub-count" id="sigCount"></span></div>
+    <div class="hub-card-body" id="cardSignals"><div class="hub-skel"></div><div class="hub-skel"></div></div>
+    <a class="hub-card-foot" href="graph3d.html">Open 3D Brain →</a>
+  </div>
+</div>
+
+<!-- Nightly digest (full width) -->
+<div class="hub-card hub-card-wide" id="digestCard">
+  <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-moon"/></svg> Nightly digest <span class="hub-count" id="digestDate"></span></div>
+  <div class="hub-card-body" id="cardDigest"><div class="hub-skel"></div></div>
+</div>
+
+<!-- BAND 2 — Execution / accountability -->
+<div class="hub-band hub-band-21">
+  <!-- In progress -->
+  <div class="hub-card">
+    <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> In progress <span class="hub-count" id="wipCount"></span></div>
+    <div class="hub-card-body" id="cardWip"><div class="hub-skel"></div><div class="hub-skel"></div></div>
+    <a class="hub-card-foot" href="kanban.html">Open board →</a>
+  </div>
+  <!-- Open wagers -->
+  <div class="hub-card">
+    <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-scale"/></svg> Open wagers <span class="hub-count" id="wagerCount"></span></div>
+    <div class="hub-card-body" id="cardWagers"><div class="hub-skel"></div></div>
+  </div>
+</div>
+
+<!-- Hermes Pilot (read-only view into ~/hermes-pilot) -->
+<div class="hub-card hub-card-wide">
+  <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> Hermes Pilot — FB-PILOT <span class="hub-count" id="pilotCounts"></span></div>
+  <div class="hub-card-body" id="pilotBody"><div class="hub-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pilot status…</div></div>
 </div>
 
 <!-- Quick Launch -->
-<div class="cmd-section">
-  <div class="cmd-section-header"><span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Quick Launch</span></div>
-  <div class="cmd-launch-grid">
-    <button class="cmd-launch-btn" onclick="navigateTo('tasks')">
-      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg></span>
-      <span class="cmd-launch-name">Tasks</span>
-      <span class="cmd-launch-count" id="cmdTaskCount">--</span>
-    </button>
-    <button class="cmd-launch-btn" onclick="navigateTo('brain')">
-      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-brain"/></svg></span>
-      <span class="cmd-launch-name">3D Brain</span>
-      <span class="cmd-launch-count">196 nodes</span>
-    </button>
-    <button class="cmd-launch-btn" onclick="navigateTo('sessions')">
-      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg></span>
-      <span class="cmd-launch-name">Chat</span>
-      <span class="cmd-launch-count">OWL</span>
-    </button>
-    <button class="cmd-launch-btn" onclick="navigateTo('files')">
-      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></span>
-      <span class="cmd-launch-name">Files</span>
-      <span class="cmd-launch-count">Vault</span>
-    </button>
-    <button class="cmd-launch-btn" onclick="navigateTo('models')">
-      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-bot"/></svg></span>
-      <span class="cmd-launch-name">Models</span>
-      <span class="cmd-launch-count">25</span>
-    </button>
-    <button class="cmd-launch-btn" onclick="navigateTo('skills')">
-      <span class="cmd-launch-icon"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-puzzle"/></svg></span>
-      <span class="cmd-launch-name">Skills</span>
-      <span class="cmd-launch-count">15+</span>
-    </button>
+<div class="hub-card hub-card-wide">
+  <div class="hub-card-eyebrow"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Quick launch</div>
+  <div class="hub-launch-grid">
+    <a class="hub-launch-btn" href="graph3d.html"><span class="hub-launch-icon"><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-brain"/></svg></span><span class="hub-launch-name">3D Brain</span></a>
+    <a class="hub-launch-btn" href="chat.html"><span class="hub-launch-icon"><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg></span><span class="hub-launch-name">Chat</span></a>
+    <a class="hub-launch-btn" href="kanban.html"><span class="hub-launch-icon"><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg></span><span class="hub-launch-name">Kanban</span></a>
+    <a class="hub-launch-btn" href="files.html"><span class="hub-launch-icon"><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></span><span class="hub-launch-name">Files</span></a>
+    <a class="hub-launch-btn" href="models.html"><span class="hub-launch-icon"><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-bot"/></svg></span><span class="hub-launch-name">Models</span></a>
+    <a class="hub-launch-btn" href="skills.html"><span class="hub-launch-icon"><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-puzzle"/></svg></span><span class="hub-launch-name">Skills</span></a>
   </div>
 </div>
 
-<!-- Hermes Pilot (FB-PILOT) — read-only view into ~/hermes-pilot on this VPS -->
-<div class="cmd-section">
-  <div class="cmd-section-header">
-    <span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> Hermes Pilot — FB-PILOT</span>
-    <span class="cmd-section-count" id="pilotCounts"></span>
-  </div>
-  <div class="cmd-pilot" id="pilotBody">
-    <div class="cmd-alert info"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pilot status…</div>
-  </div>
-</div>
-
-<!-- Alerts / Status -->
-<div class="cmd-section">
-  <div class="cmd-section-header"><span><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-bell"/></svg> Status</span></div>
-  <div class="cmd-alerts" id="cmdAlerts">
-    <div class="cmd-alert warn"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> <strong>P1 Job Search:</strong> 0 applications sent — URGENT</div>
-    <div class="cmd-alert info"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-pin"/></svg> <strong>FieldBridge:</strong> SSL issue on fieldbridgehq.com — fix before driving traffic</div>
-    <div class="cmd-alert ok"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> <strong>Vault:</strong> Synced to GitHub</div>
-  </div>
-</div>
-
-<!-- CSS -->
 <style>
-.cmd-hero {
-  display: flex; justify-content: space-between; align-items: center;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, color-mix(in srgb, var(--purple) 8%, transparent) 100%);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-xl); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3);
-}
-.cmd-hero-left { text-align: center; }
-.cmd-days { font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1; }
-.cmd-days-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
-.cmd-hero-right { display: flex; gap: var(--space-5); }
-.cmd-hero-stat { text-align: center; }
-.cmd-stat-num { display: block; font-size: 24px; font-weight: 700; color: var(--text-primary); }
-.cmd-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.hub-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: var(--space-4); }
+.hub-eyebrow { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); }
+.hub-date { font-family: var(--font-display); font-size: 28px; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin-top: 2px; }
+.hub-head-right { display:flex; gap: var(--space-4); }
+.hub-stat { text-align:right; }
+.hub-stat-num { display:block; font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--accent); line-height:1; font-variant-numeric: tabular-nums; }
+.hub-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-.cmd-capture { margin-bottom: var(--space-4); }
-.cmd-capture-input-wrap { display: flex; gap: 8px; }
-.cmd-capture-input {
-  flex: 1; background: var(--bg-secondary); border: 2px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: 14px 18px; font-size: 14px; color: var(--text-primary);
-  outline: none; transition: border-color 0.2s;
-}
-.cmd-capture-input:focus { border-color: var(--accent); }
-.cmd-capture-input::placeholder { color: var(--text-muted); }
-.cmd-capture-btn {
-  background: var(--accent); color: var(--on-accent); border: none; border-radius: var(--radius-lg);
-  padding: 0 20px; font-size: 20px; cursor: pointer; font-weight: 700; transition: opacity 0.2s;
-}
-.cmd-capture-btn:hover { opacity: 0.85; }
-.cmd-capture-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-left: 4px; }
-
-/* Voice capture button */
-.voice-btn {
-  background: var(--bg-tertiary); border: 2px solid var(--border-primary); color: var(--text-secondary);
-  border-radius: var(--radius-lg); padding: 12px 16px; font-size: 18px; cursor: pointer;
-  transition: all 0.2s; display: flex; align-items: center; justify-content: center;
-}
+.hub-capture { margin-bottom: var(--space-4); }
+.hub-capture-input-wrap { display:flex; gap:8px; flex-wrap:wrap; }
+.hub-capture-input { flex:1; min-width: 200px; background: var(--bg-secondary); border: 2px solid var(--border-primary); border-radius: var(--radius-lg); padding: 14px 18px; font-size: 15px; color: var(--text-primary); outline:none; transition: border-color .2s; }
+.hub-capture-input:focus { border-color: var(--accent); }
+.hub-capture-input::placeholder { color: var(--text-muted); }
+.hub-capture-btn { background: var(--accent); color: var(--on-accent); border:none; border-radius: var(--radius-lg); padding: 0 20px; font-size: 20px; cursor:pointer; font-weight:700; transition: opacity .2s; }
+.hub-capture-btn:hover { opacity:.85; }
+.hub-capture-hint { font-size: 10px; color: var(--text-muted); margin-top:4px; padding-left:4px; }
+.voice-btn { background: var(--bg-tertiary); border: 2px solid var(--border-primary); color: var(--text-secondary); border-radius: var(--radius-lg); padding: 12px 16px; cursor:pointer; transition: all .2s; display:flex; align-items:center; justify-content:center; }
 .voice-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
-.voice-btn.recording { background: var(--red-bg); border-color: var(--red); color: var(--red); animation: pulse 1.5s infinite; }
-@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.voice-btn.recording { background: var(--red-bg); border-color: var(--red); color: var(--red); animation: hubpulse 1.5s infinite; }
+@keyframes hubpulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.05);} }
 
-.cmd-capture-input-wrap { display: flex; gap: 8px; flex-wrap: wrap; }
-.cmd-section-header {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 13px; font-weight: 800; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2);
-}
-.cmd-section-count { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.hub-band { display:grid; gap: var(--space-3); margin-bottom: var(--space-3); }
+.hub-band-3 { grid-template-columns: repeat(3, 1fr); }
+.hub-band-21 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 860px) { .hub-band-3, .hub-band-21 { grid-template-columns: 1fr; } }
 
-.cmd-priorities { display: flex; flex-direction: column; gap: 6px; }
-.cmd-priority-item {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); padding: 10px 14px; cursor: pointer;
-  transition: border-color 0.2s, transform 0.1s;
-}
-.cmd-priority-item:hover { border-color: var(--accent-border); transform: translateX(2px); }
-.cmd-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.cmd-priority-item.high .cmd-priority-dot { background: var(--red); }
-.cmd-priority-item.medium .cmd-priority-dot { background: var(--orange); }
-.cmd-priority-item.low .cmd-priority-dot { background: var(--green); }
-.cmd-priority-text { font-size: 14px; font-weight: 500; }
+.hub-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-xl); padding: var(--space-4); display:flex; flex-direction:column; }
+.hub-card-wide { margin-bottom: var(--space-3); }
+.hub-card-eyebrow { display:flex; align-items:center; gap:6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); margin-bottom: var(--space-3); }
+.hub-count { color: var(--text-muted); font-weight: 600; }
+.hub-card-body { display:flex; flex-direction:column; gap: 8px; flex:1; }
+.hub-card-foot { margin-top: var(--space-3); font-size: 12px; font-weight: 600; color: var(--accent); text-decoration:none; }
+.hub-card-foot:hover { text-decoration: underline; }
 
-.cmd-launch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.cmd-launch-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: 12px 8px; cursor: pointer;
-  transition: all 0.2s;
-}
-.cmd-launch-btn:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.cmd-launch-icon { font-size: 28px; }
-.cmd-launch-name { font-size: 12px; font-weight: 600; }
-.cmd-launch-count { font-size: 10px; color: var(--text-muted); }
+/* rows */
+.hub-row { display:flex; align-items:flex-start; gap: 8px; font-size: 18px; line-height: 1.4; color: var(--text-primary); }
+.hub-row .r-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink:0; margin-top: 6px; background: var(--area-admin); }
+.hub-row .r-dot.due { background: var(--status-stale); }
+.hub-row .r-dot.overdue { background: var(--status-failed); }
+.hub-row .r-num { font-family: var(--font-display); font-weight: 800; color: var(--accent); flex-shrink:0; }
+.hub-row .r-text { flex:1; min-width:0; }
+.hub-row .r-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
+.hub-chip { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space:nowrap; align-self:flex-start; margin-top:3px; }
+.hub-chip.overdue { color: var(--status-failed); border-color: var(--status-failed); }
 
-.cmd-pilot { display: flex; flex-direction: column; gap: 6px; }
-.pilot-row {
-  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px;
-}
-.pilot-row .p-date { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
-.pilot-row .p-task { font-weight: 600; color: var(--text-primary); flex: 1; min-width: 140px; }
-.pilot-row .p-score { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hub-empty { display:flex; flex-direction:column; align-items:flex-start; gap:6px; color: var(--text-muted); font-size: 14px; padding: 6px 0; }
+.hub-empty a { color: var(--accent); text-decoration:none; font-size: 13px; }
+.hub-empty a:hover { text-decoration: underline; }
+.hub-loading { color: var(--text-muted); font-size: 13px; display:flex; align-items:center; gap:6px; }
+.hub-skel { height: 16px; border-radius: 6px; background: linear-gradient(90deg, var(--bg-tertiary), color-mix(in srgb, var(--bg-tertiary) 40%, transparent), var(--bg-tertiary)); background-size: 200% 100%; animation: hubshimmer 1.4s infinite; }
+@keyframes hubshimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+.hub-banner { font-size: 12px; padding: 8px 12px; border-radius: var(--radius-md); border-left: 3px solid var(--status-stale); background: color-mix(in srgb, var(--status-stale) 10%, transparent); color: var(--text-secondary); margin-bottom: 8px; }
+.hub-digest-text { font-size: 15px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; }
+
+.pilot-row { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px; }
+.pilot-row .p-date { color: var(--text-muted); font-size: 11px; white-space:nowrap; }
+.pilot-row .p-task { font-weight:600; color: var(--text-primary); flex:1; min-width:140px; }
+.pilot-row .p-score { white-space:nowrap; font-variant-numeric: tabular-nums; }
 .pilot-row .p-score .self { color: var(--orange); }
-.pilot-row .p-score .measured { color: var(--green); font-weight: 700; }
-.pilot-row .p-lesson { width: 100%; color: var(--text-secondary); font-size: 11px; }
+.pilot-row .p-score .measured { color: var(--green); font-weight:700; }
+.pilot-row .p-lesson { width:100%; color: var(--text-secondary); font-size: 11px; }
+.hub-alert { font-size: 13px; padding: 10px 14px; border-radius: var(--radius-md); border-left: 3px solid; display:flex; align-items:flex-start; gap:6px; }
+.hub-alert .icon { flex-shrink:0; margin-top:1px; }
+.hub-alert.warn { background: var(--red-bg); border-left-color: var(--red); }
+.hub-alert.info { background: var(--accent-bg); border-left-color: var(--accent); }
+.hub-alert.ok { background: var(--green-bg); border-left-color: var(--green); }
 
-.cmd-alerts { display: flex; flex-direction: column; gap: 6px; }
-.cmd-alert {
-  font-size: 12px; padding: 10px 14px; border-radius: var(--radius-md);
-  border-left: 3px solid;
-}
-.cmd-alert { display: flex; align-items: flex-start; gap: 6px; }
-.cmd-alert .icon { flex-shrink: 0; margin-top: 1px; }
-.cmd-alert.warn { background: var(--red-bg); border-left-color: var(--red); }
-.cmd-alert.info { background: var(--accent-bg); border-left-color: var(--accent); }
-.cmd-alert.ok { background: var(--green-bg); border-left-color: var(--green); }
-
-@media (max-width: 768px) {
-  .cmd-hero { flex-direction: column; gap: 16px; text-align: center; }
-  .cmd-launch-grid { grid-template-columns: repeat(2, 1fr); }
-}
+.hub-launch-grid { display:grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+@media (max-width: 860px) { .hub-launch-grid { grid-template-columns: repeat(3, 1fr); } }
+.hub-launch-btn { display:flex; flex-direction:column; align-items:center; gap:6px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: 14px 8px; cursor:pointer; text-decoration:none; color: var(--text-secondary); transition: all .2s; }
+.hub-launch-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.hub-launch-name { font-size: 12px; font-weight: 600; }
 </style>
 
 <script>
-// Quick Capture to localStorage inbox
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Header: date + days to Aug 6
+(function(){
+  const now = new Date();
+  const el = document.getElementById('hubDate');
+  if (el) el.textContent = now.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  const deadline = new Date('2026-08-06T00:00:00');
+  const days = Math.ceil((deadline - now) / 86400000);
+  const d = document.getElementById('hubDays');
+  if (d) d.textContent = days > 0 ? days : 0;
+})();
+
+function daysAgo(iso) {
+  if (!iso) return null;
+  const then = new Date(iso + (iso.length <= 10 ? 'T00:00:00' : ''));
+  if (isNaN(then)) return null;
+  return Math.floor((Date.now() - then.getTime()) / 86400000);
+}
+
+// ============================================================
+// TODAY — one fetch drives Power 3, Due, Signals, Digest, WIP, Wagers
+// ============================================================
+fetch('/api/today').then(r => r.json()).then(d => {
+  renderPower3(d.power3 || []);
+  renderDue((d.kanban && d.kanban.due) || []);
+  renderSignals((d.radar && d.radar.high) || []);
+  renderDigest(d.nightly_digest, d.nightly_date);
+  renderWip((d.kanban && d.kanban.in_progress) || []);
+  renderWagers(d.wagers_open || []);
+}).catch(err => {
+  ['cardPower3','cardDue','cardSignals','cardDigest','cardWip','cardWagers'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="hub-alert warn"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> Could not reach /api/today — server may need a restart.</div>';
+  });
+});
+
+function emptyState(text, linkHref, linkText) {
+  return `<div class="hub-empty"><span>${escHtml(text)}</span>${linkHref ? `<a href="${escHtml(linkHref)}">${escHtml(linkText)}</a>` : ''}</div>`;
+}
+
+function renderPower3(items) {
+  const el = document.getElementById('cardPower3');
+  if (!items.length) {
+    const today = new Date().toISOString().slice(0,10);
+    el.innerHTML = emptyState('No Power 3 set today.', 'files.html?path=' + encodeURIComponent('journal/' + today + '.md'), 'Open today’s journal →');
+    return;
+  }
+  el.innerHTML = items.slice(0,3).map((t,i) =>
+    `<div class="hub-row"><span class="r-num">${i+1}</span><span class="r-text">${escHtml(t)}</span></div>`
+  ).join('');
+}
+
+function renderDue(items) {
+  const el = document.getElementById('cardDue');
+  const count = document.getElementById('dueCount');
+  if (count) count.textContent = items.length ? '(' + items.length + ')' : '';
+  if (!items.length) { el.innerHTML = emptyState('Nothing due today — clear.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  el.innerHTML = items.map(c => {
+    const overdue = c.due && String(c.due).slice(0,10) < today;
+    return `<div class="hub-row"><span class="r-dot ${overdue ? 'overdue' : 'due'}"></span><span class="r-text">${escHtml(c.title)}${c.tag ? `<span class="r-meta">${escHtml(c.tag)}</span>` : ''}</span>${overdue ? '<span class="hub-chip overdue">overdue</span>' : ''}</div>`;
+  }).join('');
+}
+
+function renderSignals(items) {
+  const el = document.getElementById('cardSignals');
+  const count = document.getElementById('sigCount');
+  if (count) count.textContent = items.length ? '(' + items.length + ')' : '';
+  if (!items.length) { el.innerHTML = emptyState('No high-confidence signals.'); return; }
+  el.innerHTML = items.slice(0,5).map(s =>
+    `<div class="hub-row"><span class="r-dot" style="background:var(--area-fieldbridge);"></span><span class="r-text">${escHtml(s.title)}${s.action ? `<span class="r-meta">${escHtml(s.action)}</span>` : ''}</span></div>`
+  ).join('');
+}
+
+function renderDigest(text, date) {
+  const el = document.getElementById('cardDigest');
+  const dateEl = document.getElementById('digestDate');
+  if (dateEl) dateEl.textContent = date ? '(' + date + ')' : '';
+  if (!text) { el.innerHTML = emptyState('No nightly digest yet.'); return; }
+  const age = daysAgo(date);
+  const banner = (age !== null && age > 1)
+    ? `<div class="hub-banner"><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> Nightly hasn’t run in ${age} days.</div>`
+    : '';
+  el.innerHTML = banner + `<div class="hub-digest-text">${escHtml(text)}</div>`;
+}
+
+function renderWip(items) {
+  const el = document.getElementById('cardWip');
+  const count = document.getElementById('wipCount');
+  if (count) count.textContent = items.length ? '(' + items.length + ')' : '';
+  if (!items.length) { el.innerHTML = emptyState('Nothing in progress.'); return; }
+  el.innerHTML = items.map(c =>
+    `<div class="hub-row"><span class="r-dot" style="background:var(--accent-2);"></span><span class="r-text">${escHtml(c.title)}${c.tag ? `<span class="r-meta">${escHtml(c.tag)}</span>` : ''}</span></div>`
+  ).join('');
+}
+
+function renderWagers(items) {
+  const el = document.getElementById('cardWagers');
+  const count = document.getElementById('wagerCount');
+  if (count) count.textContent = items.length ? '(' + items.length + ')' : '';
+  if (!items.length) { el.innerHTML = emptyState('No open wagers.'); return; }
+  el.innerHTML = items.map(w => {
+    const age = daysAgo(w.date);
+    return `<div class="hub-row"><span class="r-dot" style="background:var(--area-trading);"></span><span class="r-text">${escHtml(w.text)}${age !== null ? `<span class="r-meta">${age}d open</span>` : ''}</span></div>`;
+  }).join('');
+}
+
+// ============================================================
+// Quick Capture (localStorage inbox) + voice
+// ============================================================
 function cmdCapture() {
   const input = document.getElementById('cmdCaptureInput');
   const text = input.value.trim();
@@ -222,120 +292,84 @@ function cmdCapture() {
   inbox.unshift({ text, time: new Date().toISOString(), done: false });
   localStorage.setItem('cmd-inbox', JSON.stringify(inbox.slice(0, 100)));
   input.value = '';
-  // Visual feedback
   input.placeholder = 'Saved! Type another...';
   setTimeout(() => { input.placeholder = 'Type a thought, task, or note — press Enter to save to inbox'; }, 2000);
 }
 
-// Voice Capture
-let mediaRecorder = null;
-let audioChunks = [];
-let isRecording = false;
-
+let mediaRecorder = null, audioChunks = [], isRecording = false;
 async function startVoiceCapture() {
   const btn = document.getElementById('voiceBtn');
   const hint = document.getElementById('captureHint');
   const input = document.getElementById('cmdCaptureInput');
-  
-  if (isRecording) {
-    stopRecording();
-    return;
-  }
-  
+  if (isRecording) { stopRecording(); return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
-    
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
-    
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = async () => {
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
       await transcribeAudio(blob);
       stream.getTracks().forEach(t => t.stop());
     };
-    
     mediaRecorder.start();
     isRecording = true;
     btn.classList.add('recording');
     btn.innerHTML = '<svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg>';
     hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--red);"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Recording... Click to stop';
     input.placeholder = 'Listening...';
-
   } catch (err) {
-    console.error('Mic access denied:', err);
     hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Microphone access denied';
     setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
   }
 }
-
 function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-  }
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   isRecording = false;
   const btn = document.getElementById('voiceBtn');
   btn.classList.remove('recording');
   btn.innerHTML = '<svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-mic"/></svg>';
 }
-
 async function transcribeAudio(blob) {
   const hint = document.getElementById('captureHint');
   const input = document.getElementById('cmdCaptureInput');
-
   hint.innerHTML = '<svg class="icon icon-sm icon-spin" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Transcribing...';
-
   try {
     const formData = new FormData();
     formData.append('audio', blob, 'voice-capture.webm');
-
-    const resp = await fetch('/api/transcribe', {
-      method: 'POST',
-      body: formData
-    });
-
+    const resp = await fetch('/api/transcribe', { method: 'POST', body: formData });
     const data = await resp.json();
-
     if (data.success && data.text) {
       input.value = data.text;
-      hint.innerHTML = `<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Captured: "${data.text.slice(0, 50)}..."`;
-      // Auto-save after 2 seconds
-      setTimeout(() => {
-        cmdCapture();
-        hint.textContent = 'Saved to local inbox';
-      }, 2000);
+      hint.innerHTML = `<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Captured: "${escHtml(data.text.slice(0, 50))}..."`;
+      setTimeout(() => { cmdCapture(); hint.textContent = 'Saved to local inbox'; }, 2000);
     } else {
       hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Transcription failed';
       setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
     }
   } catch (err) {
-    console.error('Transcription error:', err);
     hint.innerHTML = '<svg class="icon icon-sm" width="12" height="12" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Transcription error';
     setTimeout(() => { hint.textContent = 'Saved to local inbox'; }, 3000);
   }
 }
 
-// Hermes Pilot card — read-only reporting on FB-PILOT (~/hermes-pilot on this VPS).
-// Separation wall: dashboard READS the pilot log only; never writes, pilot never reads back.
-function escHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+// ============================================================
+// Hermes Pilot card (read-only) — unchanged behavior
+// ============================================================
 fetch('/api/hermes-pilot').then(r => r.json()).then(resp => {
   const d = (resp && resp.data) || {};
   const body = document.getElementById('pilotBody');
   const counts = document.getElementById('pilotCounts');
   if (!body) return;
   if (!d.installed) {
-    body.innerHTML = '<div class="cmd-alert info"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg> Pilot not installed yet — 45-min VPS setup planned for the weekend (SETUP-GUIDE.md, task H-01). This card lights up automatically once <code>~/hermes-pilot/</code> exists.</div>';
+    body.innerHTML = '<div class="hub-alert info"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg> Pilot not installed yet — lights up automatically once <code>~/hermes-pilot/</code> exists.</div>';
     return;
   }
   const c = d.counts || {};
   if (counts) counts.textContent = `${c.log_entries || 0} runs · ${c.skills || 0} skills · inbox ${c.inbox || 0} / outbox ${c.outbox || 0}`;
   const entries = (d.entries || []).slice(-3).reverse();
   if (!entries.length) {
-    body.innerHTML = '<div class="cmd-alert ok"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Workspace live — no task runs logged yet. Waiting on Task 01 (drawing register extraction).</div>';
+    body.innerHTML = '<div class="hub-alert ok"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Workspace live — no task runs logged yet.</div>';
     return;
   }
   body.innerHTML = entries.map(e => `
@@ -347,22 +381,8 @@ fetch('/api/hermes-pilot').then(r => r.json()).then(resp => {
     </div>`).join('');
 }).catch(() => {
   const body = document.getElementById('pilotBody');
-  if (body) body.innerHTML = '<div class="cmd-alert warn"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> Could not reach /api/hermes-pilot — server.py may need a restart to pick up the new endpoint.</div>';
+  if (body) body.innerHTML = '<div class="hub-alert warn"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg> Could not reach /api/hermes-pilot.</div>';
 });
-
-// Load task count
-fetch('/api/tasks').then(r => r.json()).then(d => {
-  const todo = (d.data || []).filter(t => !t.completed).length;
-  const el = document.getElementById('cmdTaskCount');
-  if (el) el.textContent = todo + ' open';
-}).catch(() => {});
-
-// Calculate days to deadline
-const deadline = new Date('2026-08-06');
-const today = new Date();
-const daysLeft = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-const daysEl = document.getElementById('cmdDays');
-if (daysEl) daysEl.textContent = daysLeft > 0 ? daysLeft : 0;
 </script>
 
 </div><!-- /container -->
