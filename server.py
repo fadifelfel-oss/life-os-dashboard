@@ -341,6 +341,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_hermes_pilot()
         elif path == "/api/wiki/prompts":
             self._serve_prompts_library()
+        elif path == "/api/arms":
+            self._serve_arms()
         elif path == "/api/wiki/crm":
             self._serve_crm_snapshot()
         elif path == "/api/upload":
@@ -353,7 +355,50 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_error(405, "Method not allowed. Use POST.")
         else:
             self._json_error(404, "API endpoint not found")
-    
+
+    def _serve_arms(self):
+        """GET /api/arms — the ARMS registry (Applications / Routines / Skills)
+        parsed from _system/registry/*.md in the vault mirror. Feeds the 3D
+        Brain's systems panel + the Loops/Skills hubs. Defensive by design: a
+        missing or malformed file yields an empty arm, never a 500."""
+        base = VAULT_DIR / "_system" / "registry"
+
+        def parse_tables(text):
+            rows, headers, section = [], None, None
+            for line in text.splitlines():
+                s = line.strip()
+                if s.startswith("## "):
+                    section, headers = s[3:].strip(), None
+                    continue
+                if not s.startswith("|"):
+                    if s == "":
+                        headers = None  # blank line ends the current table
+                    continue
+                cells = [c.strip() for c in s.strip("|").split("|")]
+                joined = "".join(cells)
+                if joined and set(joined) <= set("-: "):
+                    continue  # separator row (|---|:--:|)
+                if headers is None:
+                    headers = cells
+                    continue
+                rec = {}
+                for i, h in enumerate(headers):
+                    rec[h] = cells[i] if i < len(cells) else ""
+                if section:
+                    rec["_section"] = section
+                rows.append(rec)
+            return rows
+
+        out = {}
+        for arm in ("applications", "routines", "skills"):
+            f = base / (arm + ".md")
+            try:
+                out[arm] = parse_tables(f.read_text(encoding="utf-8")) if f.exists() else []
+            except Exception:
+                out[arm] = []
+        counts = {k: len(v) for k, v in out.items()}
+        self._json_response({"data": out, "counts": counts})
+
     def _get_env_var(self, var_name):
         """Generic reader for any NAME=value line in ~/.hermes/.env — shared
         by all the provider-specific _get_*_key() helpers below and by
