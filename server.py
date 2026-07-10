@@ -1006,7 +1006,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                         meta[key] = val.strip('"\'')
         return meta, body
 
-    def _call_hermes(self, messages, model='deepseek-v4-flash', max_tokens=1200, temperature=0.4):
+    def _call_hermes(self, messages, model='nvidia/nemotron-3-ultra-550b-a55b:free', max_tokens=1200, temperature=0.4):
         """Internal helper — call the Hermes chat completion endpoint directly
         (server-side, not proxied through a browser request) and return the
         assistant's text, or None on failure."""
@@ -2628,7 +2628,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             
             # Transform to OpenAI format if needed
             messages = data.get('messages', [])
-            model = data.get('model', 'deepseek-v4-flash')
+            model = data.get('model', 'nvidia/nemotron-3-ultra-550b-a55b:free')
             
             # Build OpenAI-compatible request
             openai_request = {

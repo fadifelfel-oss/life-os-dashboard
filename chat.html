@@ -1228,7 +1228,7 @@ pre:hover .copy-btn {
 <script src="shared.js"></script>
 <script>
 // === STATE ===
-let currentModel = 'deepseek-v4-flash'; // confirmed 2026-07-10: Hermes's real configured default (owl-alpha isn't a real model — never was in Hermes's config)
+let currentModel = 'nvidia/nemotron-3-ultra-550b-a55b:free'; // 2026-07-10 decision: DeepSeek's direct-API key (Hermes config.yaml provider:deepseek) had $0 balance, causing a 402-then-fallback tax on every message. Nemotron 3 Ultra via OpenRouter is free, proven reliable (it was already the working fallback), and per benchmark research beats DeepSeek V4 on knowledge (62.6 vs 49.4) + coding (74.2 vs 58.8) — only loses on agentic/tool-orchestration (51.7 vs 59.1), which isn't Hermes's typical day-to-day job. Matches the config.yaml default Fadi is setting on Hermes's side.
 let kbEnabled = true;   // default ON 2026-07-10: this is brain.py's real retrieval
                           // ladder (/api/kb/search, same engine as graph3d.html's wiki
                           // query), not a placeholder. Every vault write already reaches
@@ -2070,6 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const MODEL_NAMES = {
+  'nvidia/nemotron-3-ultra-550b-a55b:free': '⚡ Nemotron 3 Ultra',
   'deepseek-v4-flash': '🐋 DeepSeek V4 Flash',
   'claude-sonnet': '🧠 Claude Sonnet',
   'gpt-4o': '⚡ GPT-4o',
@@ -2135,11 +2136,11 @@ async function loadChatModels() {
     // Honor a default model chosen on the models page, if it's available live.
     const saved = window.lifeosGetDefaultModel ? window.lifeosGetDefaultModel() : '';
     currentModel = (saved && models.some(m => m.id === saved)) ? saved
-                 : (def || (models[0] && models[0].id) || 'deepseek-v4-flash');
+                 : (def || (models[0] && models[0].id) || 'nvidia/nemotron-3-ultra-550b-a55b:free');
     select.value = currentModel;
   } catch(e) {
     console.log('Chat models fallback:', e);
-    select.innerHTML = '<option value="deepseek-v4-flash">DeepSeek v4 Flash (Hermes default)</option><option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron 3 Ultra (free fallback)</option>';
+    select.innerHTML = '<option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron 3 Ultra (Hermes default, free)</option><option value="deepseek-v4-flash">DeepSeek V4 Flash (needs funded key)</option>';
   }
 }
 </script>

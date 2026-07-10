@@ -672,10 +672,10 @@ const JOBS = window.LIFEOS_JOBS || [
   {
     key:'agent', emoji:'bot', title:'Agent / Tool-use (Hermes routes)',
     sub:'VPS automations, function-calling, ingestion pipelines — needs reliable structured output.',
-    tip:'Note: the hermes-agent framework routes to ANY OpenRouter model — Nous Hermes weights aren\'t in the current catalog, so pick the best tool-caller by job. Match the model to the tool set: cheap for simple tools, escalate only for multi-step planning.',
+    tip:'Note: the hermes-agent framework routes to ANY OpenRouter model — Nous Hermes weights aren\'t in the current catalog, so pick the best tool-caller by job. Match the model to the tool set: cheap for simple tools, escalate only for multi-step planning. 2026-07-10: Hermes\'s actual default is Nemotron 3 Ultra (free, via OpenRouter) after DeepSeek\'s direct-API key ran out of balance and caused a 402-then-fallback tax on every call — DeepSeek picks below need a funded key to be worth using again.',
     picks:[
-      { role:'rec', match:['deepseek-v4-pro','deepseek/deepseek-v4-pro'], fb:{name:'DeepSeek V4 Pro',provider:'DeepSeek',pp:0.000000435,pc:0.00000087,ctx:1048576}, why:'Strong, cheap structured-output/function-calling with 1M context — reliable default for routine agent loops.' },
-      { role:'budget', match:['deepseek-v4-flash','qwen3.6-flash'], fb:{name:'DeepSeek V4 Flash',provider:'DeepSeek',pp:0.00000009,pc:0.00000018,ctx:1048576}, why:'Near-free for simple, well-defined single-tool calls at high volume.' },
+      { role:'rec', match:['nemotron-3-ultra-550b:free','nemotron-3-ultra'], fb:{name:'Nemotron 3 Ultra 550B (free)',provider:'NVIDIA',pp:0,pc:0,ctx:1000000}, why:'Free, proven reliable in production, and per benchmarks weaker only on multi-step agentic orchestration (51.7 vs 59.1) vs DeepSeek V4 Pro — fine for routine agent loops.' },
+      { role:'budget', match:['deepseek-v4-pro','deepseek/deepseek-v4-pro'], fb:{name:'DeepSeek V4 Pro',provider:'DeepSeek',pp:0.000000435,pc:0.00000087,ctx:1048576}, why:'Strongest agentic/multi-step benchmark score if the DeepSeek key is funded — escalate here for complex tool-call chains, not as a blind default.' },
       { role:'premium', match:['claude-opus-4.8','gpt-5.5','claude-opus-latest'], fb:{name:'Claude Opus 4.8',provider:'Anthropic',pp:0.000005,pc:0.000025,ctx:1000000}, why:'For hard multi-step plans where a wrong tool call is expensive — highest reliability.' },
     ],
   },
