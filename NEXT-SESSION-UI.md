@@ -33,6 +33,22 @@ remain gated exactly as before; nothing gated was touched this pass.
    IS the home it would point back to). `theme-preview.html` confirmed orphaned (not linked
    from anywhere, its own decision already shipped into shared.css) — left untouched.
 
+**BUILD NOW (added by Fable 2026-07-10 — Fadi feature request, approved):**
+9. **Chat activity trace (replaces the thinking dots).** Two parts:
+   (a) UNBLOCKED — server-side stage streaming for dashboard chat: while a request runs, show a
+   live status line in the message area — "Searching vault…" → "Found N files: <names>" →
+   "Asking <model>…" → streaming. Implement with SSE or chunked responses from chat_proxy/server
+   (probe which path chat.html actually uses first); fall back to polling a per-request status
+   endpoint if streaming is awkward. Render as a muted mono-font activity line that collapses
+   into a small "▸ activity" toggle once the reply lands. 18px body text rule doesn't apply to
+   this chrome (12px mono fine), but keep contrast high.
+   (b) GATED on Hermes cooperation — Hermes tool-call trace: give Hermes a standing rule (its
+   lane, via Fadi on Telegram or hermes config) to append each tool/command it uses to an
+   activity log file in its own workspace as it works; add a read-only endpoint + collapsible
+   "Activity" panel under Hermes replies that tails it. Verify what Hermes's loop can actually
+   emit BEFORE building the panel — no fabricated traces: if the log doesn't exist, the panel
+   doesn't render.
+
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
    (roadmap 3.4) and names which pages look wrong. Was explicitly deferred as too risky blind.
