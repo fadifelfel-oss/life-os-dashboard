@@ -2645,7 +2645,13 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             )
             
             try:
-                with urllib.request.urlopen(req, timeout=60) as response:
+                # 150s, not 60s: confirmed 2026-07-10 via Hermes's own gateway
+                # logs that normal completions (including the fallback chain
+                # when the default model fails, e.g. DeepSeek 402s) take
+                # 29-120s over Telegram. A 60s timeout was killing legitimate
+                # in-flight requests before Hermes finished — this was the
+                # actual cause of "Could not reach Hermes", not connectivity.
+                with urllib.request.urlopen(req, timeout=150) as response:
                     response_data = response.read()
                     self.send_response(response.status)
                     self.send_header("Content-Type", "application/json")

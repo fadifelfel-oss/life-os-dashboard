@@ -1207,7 +1207,7 @@ pre:hover .copy-btn {
 <script src="shared.js"></script>
 <script>
 // === STATE ===
-let currentModel = 'owl-alpha';
+let currentModel = 'deepseek-v4-flash'; // confirmed 2026-07-10: Hermes's real configured default (owl-alpha isn't a real model — never was in Hermes's config)
 let kbEnabled = false;
 let thinkingEnabled = false;
 let artifactsOpen = false;
@@ -2108,11 +2108,11 @@ async function loadChatModels() {
     // Honor a default model chosen on the models page, if it's available live.
     const saved = window.lifeosGetDefaultModel ? window.lifeosGetDefaultModel() : '';
     currentModel = (saved && models.some(m => m.id === saved)) ? saved
-                 : (def || (models[0] && models[0].id) || 'owl-alpha');
+                 : (def || (models[0] && models[0].id) || 'deepseek-v4-flash');
     select.value = currentModel;
   } catch(e) {
     console.log('Chat models fallback:', e);
-    select.innerHTML = '<option value="owl-alpha">🦉 OWL-Alpha</option><option value="claude-sonnet">🧠 Claude Sonnet</option>';
+    select.innerHTML = '<option value="deepseek-v4-flash">DeepSeek v4 Flash (Hermes default)</option><option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron 3 Ultra (free fallback)</option>';
   }
 }
 </script>
