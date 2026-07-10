@@ -1,5 +1,14 @@
 # NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-09)
 
+> **MODEL ROUTING (Fable, 2026-07-09 evening): no Fable needed from here.** All design/architecture
+> decisions are made and persisted (vault: STANDARD — System Architecture.md · ROADMAP · agents.md;
+> repo: UI-MASTER-PLAN.md · design/*.md · this file). Remaining work is execution-tier — fine for
+> Sonnet or cheaper: live-QA fixes (R-items), Skills Hub click→side panel, card-anatomy sweep,
+> Morning Brief card (ONLY once Hermes actually produces briefs), capture-pipeline plumbing,
+> weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
+> writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
+> not execution.
+
 ## 2026-07-09 EVENING session (Fable, Second Brain project) — Skills Hub + Trading/Fitness pages + /api/logs
 
 Built after the system-architecture standard + trading/fitness vault systems were created the same day
