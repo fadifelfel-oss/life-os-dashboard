@@ -610,34 +610,41 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
 
         self._json_response({"data": self._FALLBACK_MODELS, "source": "fallback_curated"})
 
+    # NOTE (2026-07-10): this whole list is EMERGENCY FALLBACK ONLY — it renders
+    # solely when the live OpenRouter fetch below fails (no key configured, or
+    # the API call errors). It is a static snapshot, not verified against the
+    # current catalog line-by-line. 'openrouter/owl-alpha' was removed here
+    # after Hermes confirmed (reading its own config.yaml) that it isn't a real
+    # model anywhere in its setup — it was fabricated placeholder data ranked
+    # #1 "Free Champion," which is exactly the kind of thing that misleads
+    # silently. The rest of this list has NOT been individually re-verified;
+    # treat it as best-effort, not ground truth. Scheduled biweekly refresh
+    # (agent-profiles or a Cowork scheduled task) should re-derive this whole
+    # block from a live catalog pull rather than hand-editing entries.
     _FALLBACK_MODELS = [
             # ═══════════════════════════════════════════════════════════
             # 🏆 FREE CHAMPIONS — Best free models (no cost)
             # ═══════════════════════════════════════════════════════════
-            {"id": "openrouter/owl-alpha", "name": "Owl Alpha", "provider": "OWL", "context_length": 1048756, "max_tokens": 262144,
-             "pricing": {"prompt": 0, "completion": 0},
-             "category": "free", "best_for": "Agent workflows, autonomous tasks",
-             "score": 88, "speed": "fast", "rank": 1},
             {"id": "google/lyria-3-pro-preview", "name": "Lyria 3 Pro Preview", "provider": "Google", "context_length": 1048576, "max_tokens": 65536,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "Reasoning, long context, analysis",
-             "score": 87, "speed": "fast", "rank": 2},
+             "score": 87, "speed": "fast", "rank": 1},
             {"id": "qwen/qwen3-coder:free", "name": "Qwen3 Coder 480B", "provider": "Alibaba", "context_length": 1048576, "max_tokens": 262000,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "Coding, long context, open source",
-             "score": 85, "speed": "fast", "rank": 3},
+             "score": 85, "speed": "fast", "rank": 2},
             {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "name": "NVIDIA Nemotron 3 Ultra", "provider": "NVIDIA", "context_length": 1000000, "max_tokens": 65536,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "Reasoning, math, open source",
-             "score": 84, "speed": "fast", "rank": 4},
+             "score": 84, "speed": "fast", "rank": 3},
             {"id": "google/lyria-3-clip-preview", "name": "Lyria 3 Clip Preview", "provider": "Google", "context_length": 1048576, "max_tokens": 65536,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "Vision + text, multimodal",
-             "score": 82, "speed": "fast", "rank": 5},
+             "score": 82, "speed": "fast", "rank": 4},
             {"id": "nvidia/nemotron-3-super-120b-a12b:free", "name": "NVIDIA Nemotron 3 Super", "provider": "NVIDIA", "context_length": 1000000, "max_tokens": 65536,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "General purpose, reasoning, open source",
-             "score": 81, "speed": "fast", "rank": 6},
+             "score": 81, "speed": "fast", "rank": 5},
 
             # ═══════════════════════════════════════════════════════════
             # 🧠 REASONING — Deep thinking, analysis, multi-step reasoning
@@ -999,7 +1006,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                         meta[key] = val.strip('"\'')
         return meta, body
 
-    def _call_hermes(self, messages, model='owl-alpha', max_tokens=1200, temperature=0.4):
+    def _call_hermes(self, messages, model='deepseek-v4-flash', max_tokens=1200, temperature=0.4):
         """Internal helper — call the Hermes chat completion endpoint directly
         (server-side, not proxied through a browser request) and return the
         assistant's text, or None on failure."""
@@ -2621,7 +2628,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             
             # Transform to OpenAI format if needed
             messages = data.get('messages', [])
-            model = data.get('model', 'owl-alpha')
+            model = data.get('model', 'deepseek-v4-flash')
             
             # Build OpenAI-compatible request
             openai_request = {

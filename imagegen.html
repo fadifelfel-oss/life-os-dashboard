@@ -138,7 +138,7 @@
           'Authorization': `Bearer ${MODEL_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'owl-alpha',
+          model: 'deepseek-v4-flash',
           messages: [{
             role: 'user',
             content: `Create a p5.js sketch that visually represents: "${prompt}". The canvas should be ${width}x${height} pixels. Use simple shapes, colors, and positioning to convey the idea. Only return the JavaScript code inside the setup() and draw() functions, no HTML or p5.js library code. Make it clear and recognizable.`
@@ -230,7 +230,7 @@
           'Authorization': `Bearer ${MODEL_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'owl-alpha',
+          model: 'deepseek-v4-flash',
           messages: [{
             role: 'user',
             content: `Search for images related to: "${prompt}". Return up to 5 image URLs that are directly accessible (ending in .jpg, .png, .gif, etc.). If you cannot access real search, provide a helpful response about what images one might find. Format as a simple list of URLs, one per line.`

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# DEPRECATED / UNUSED (confirmed 2026-07-10): chat.html talks to server.py's
+# /api/chat (port 8090), which proxies to Hermes's own gateway on :8642 —
+# this standalone proxy on :8091 is not wired to anything in the current
+# dashboard. Left as-is (including the stale 'owl-alpha' MODEL_MAP key)
+# rather than touched, since fixing dead code risks implying it's live.
+# Candidate for deletion in a future cleanup pass.
 import json, os, urllib.request, urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 

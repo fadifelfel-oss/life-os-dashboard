@@ -8,6 +8,18 @@
 <link rel="stylesheet" href="shared.css">
 <style>
 /* Models page specific */
+.or-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  cursor: help;
+}
 .models-layout { display: grid; grid-template-columns:1fr 320px; gap:var(--space-5); }
 @media (max-width: 900px) { .models-layout { grid-template-columns:1fr; } }
 
@@ -287,6 +299,7 @@
   <a href="index.html" class="header-back">← Life OS</a>
   <h1><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-bot"/></svg> Models & Token Consumption Tracker</h1>
   <span style="font-size:11px;color:var(--text-muted);" id="model-count">Loading models…</span>
+  <span class="or-badge" title="Every model on this page is routed through OpenRouter (openrouter.ai) — one API, many providers. Catalog and prices are pulled live from OpenRouter, cached 6h.">via OpenRouter</span>
 </div>
 
 <div class="container">
@@ -302,8 +315,11 @@
 
   <!-- BY JOB TAB -->
   <div id="tab-byjob" class="tab-content">
-    <div class="section-desc" style="margin-bottom:var(--space-3);">
-      Pick a model by <strong>what you're doing</strong>. Each job shows the best value pick, a cheaper option, and a premium option — with live prices from OpenRouter. Prices are per 1M tokens (in / out).
+    <div class="section-desc" style="margin-bottom:var(--space-3);display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+      <span>Pick a model by <strong>what you're doing</strong>. Each job shows the best value pick, a cheaper option, and a premium option — with live prices from OpenRouter. Prices are per 1M tokens (in / out).</span>
+      <button class="btn" style="white-space:nowrap;" onclick="jumpToFreeModels()" title="Every $0 model in the live OpenRouter catalog, not just the one budget pick per job category">
+        <svg class="icon icon-sm" width="13" height="13" style="color:var(--green);"><use href="assets/lucide-sprite.svg#icon-circle"/></svg> See ALL free models
+      </button>
     </div>
     <div id="jobs-list"></div>
   </div>
@@ -612,7 +628,6 @@ function getModelIcon(id, name) {
 
 // Fallback models (when Hermes API unavailable)
 const FALLBACK_MODELS = [
-  { id:'openrouter/owl-alpha', name:'owl-alpha', icon:'🦉', provider:'OpenRouter', arena:1200, mmlu:82, ctx:1048, pp:0, pc:0, tags:['free','reasoning'] },
   { id:'google/gemini-2.5-flash-lite', name:'Gemini 2.5 Flash Lite', icon:'⚡', provider:'Google', arena:1280, mmlu:82, ctx:1048, pp:0.0000001, pc:0.0000004, tags:['cheap','flash','fast'] },
   { id:'google/gemini-2.5-flash', name:'Gemini 2.5 Flash', icon:'✨', provider:'Google', arena:1340, mmlu:87, ctx:1048, pp:0.0000003, pc:0.0000025, tags:['cheap','flash','strong'] },
   { id:'deepseek/deepseek-chat', name:'DeepSeek V3', icon:'🔮', provider:'DeepSeek', arena:1310, mmlu:88.5, ctx:131, pp:0.00000027, pc:0.0000011, tags:['cheap','strong'] },
@@ -640,7 +655,7 @@ const JOBS = window.LIFEOS_JOBS || [
     tip:'Your highest-volume job. DeepSeek V4 Flash summarizes a 1M-token doc for pennies — route the bulk here and only escalate dense technical sources.',
     picks:[
       { role:'rec', match:['deepseek-v4-flash','deepseek/deepseek-v4-flash'], fb:{name:'DeepSeek V4 Flash',provider:'DeepSeek',pp:0.00000009,pc:0.00000018,ctx:1048576}, why:'~$0.09/$0.18 per 1M with 1M context — cheapest capable summarizer available. Ideal for bulk ingestion.' },
-      { role:'budget', match:['owl-alpha','ling-2.6-flash'], fb:{name:'owl-alpha (free)',provider:'OpenRouter',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — use for huge batches of light clippings where volume beats nuance.' },
+      { role:'budget', match:['lyria-3-pro-preview','nemotron-3-ultra-550b:free','ling-2.6-flash'], fb:{name:'Lyria 3 Pro Preview (free)',provider:'Google',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — use for huge batches of light clippings where volume beats nuance.' },
       { role:'premium', match:['gemini-3.5-flash','gemini-flash-latest'], fb:{name:'Gemini 3.5 Flash',provider:'Google',pp:0.0000015,pc:0.000009,ctx:1048576}, why:'~$1.5/$9 per 1M, 1M context — higher fidelity for long, dense, or technical documents.' },
     ],
   },
@@ -680,7 +695,7 @@ const JOBS = window.LIFEOS_JOBS || [
     tip:'Your bread-and-butter. Claude Haiku covers 90% of drafting cleanly and cheaply; only reach for premium on client-facing writing.',
     picks:[
       { role:'rec', match:['claude-haiku-latest','claude-haiku'], fb:{name:'Claude Haiku (latest)',provider:'Anthropic',pp:0.000001,pc:0.000005,ctx:200000}, why:'~$1/$5 per 1M — clean tone for emails, notes, and docs at a low price. Ideal everyday default.' },
-      { role:'budget', match:['gemini-3.1-flash-lite','deepseek-v4-flash','owl-alpha'], fb:{name:'Gemini 3.1 Flash Lite',provider:'Google',pp:0.00000025,pc:0.0000015,ctx:1048576}, why:'~$0.25/$1.5 per 1M — near-free for quick admin questions and short drafts.' },
+      { role:'budget', match:['gemini-3.1-flash-lite','deepseek-v4-flash','nemotron-3-ultra-550b:free'], fb:{name:'Gemini 3.1 Flash Lite',provider:'Google',pp:0.00000025,pc:0.0000015,ctx:1048576}, why:'~$0.25/$1.5 per 1M — near-free for quick admin questions and short drafts.' },
       { role:'premium', match:['claude-sonnet-latest','claude-sonnet'], fb:{name:'Claude Sonnet (latest)',provider:'Anthropic',pp:0.000003,pc:0.000015,ctx:1000000}, why:'~$3/$15 per 1M — best tone and polish for client-facing emails and important documents.' },
     ],
   },
@@ -1055,6 +1070,18 @@ function showTab(tab, btn) {
   if (tab === 'tracker') renderUsage();
   if (tab === 'calculator') initCalculator();
   if (tab === 'compare') renderCompareGrid();
+}
+
+// Shortcut from the By-Job tab: jump straight to All Models, pre-filtered to
+// the Free price tier — this is EVERY $0 model in the live OpenRouter catalog
+// (computed from real pricing.prompt===0 && pricing.completion===0, not a
+// curated subset), covering "all capable free models for all use cases"
+// rather than just the one budget pick each job category shows.
+function jumpToFreeModels() {
+  const modelsTabBtn = document.querySelectorAll('.tab')[1];
+  showTab('models', modelsTabBtn);
+  const freeTierBtn = document.querySelector('.tier-btn[onclick*="setTier(\'free\'"]');
+  if (freeTierBtn) setTier('free', freeTierBtn);
 }
 
 // Init

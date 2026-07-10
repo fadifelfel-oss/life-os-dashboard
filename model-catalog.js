@@ -4,6 +4,13 @@
 // Edit the picks here once; both pages update together.
 // Prices in `fb` are per-TOKEN (USD); comments show $/1M.
 // Sourced from the live OpenRouter catalog 2026-07-02.
+// Patched 2026-07-10: removed 'owl-alpha' from match arrays (confirmed via
+// Hermes reading its own config.yaml that it isn't a real configured model
+// anywhere) — this file had NOT been re-verified against the live catalog
+// since 07-02, which is exactly how a fake model ID survives for a week+.
+// A biweekly scheduled task now re-derives this file from a live pull —
+// see agent-profiles/model-catalog-refresh.md. Don't hand-edit `match`
+// fragments without also checking they resolve against /api/models live.
 // ============================================================
 window.LIFEOS_JOBS = [
   {
@@ -12,7 +19,7 @@ window.LIFEOS_JOBS = [
     tip:'Your highest-volume job. DeepSeek V4 Flash summarizes a 1M-token doc for pennies — route the bulk here and only escalate dense technical sources.',
     picks:[
       { role:'rec', match:['deepseek-v4-flash','deepseek/deepseek-v4-flash'], fb:{name:'DeepSeek V4 Flash',provider:'DeepSeek',pp:0.00000009,pc:0.00000018,ctx:1048576}, why:'~$0.09/$0.18 per 1M with 1M context — cheapest capable summarizer available. Ideal for bulk ingestion.' },
-      { role:'budget', match:['owl-alpha','ling-2.6-flash'], fb:{name:'owl-alpha (free)',provider:'OpenRouter',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — use for huge batches of light clippings where volume beats nuance.' },
+      { role:'budget', match:['lyria-3-pro-preview','nemotron-3-ultra-550b:free','ling-2.6-flash'], fb:{name:'Lyria 3 Pro Preview (free)',provider:'Google',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — use for huge batches of light clippings where volume beats nuance.' },
       { role:'premium', match:['gemini-3.5-flash','gemini-flash-latest'], fb:{name:'Gemini 3.5 Flash',provider:'Google',pp:0.0000015,pc:0.000009,ctx:1048576}, why:'~$1.5/$9 per 1M, 1M context — higher fidelity for long, dense, or technical documents.' },
     ],
   },
@@ -52,7 +59,7 @@ window.LIFEOS_JOBS = [
     tip:'Your bread-and-butter. Claude Haiku covers 90% of drafting cleanly and cheaply; only reach for premium on client-facing writing.',
     picks:[
       { role:'rec', match:['claude-haiku-latest','claude-haiku'], fb:{name:'Claude Haiku (latest)',provider:'Anthropic',pp:0.000001,pc:0.000005,ctx:200000}, why:'~$1/$5 per 1M — clean tone for emails, notes, and docs at a low price. Ideal everyday default.' },
-      { role:'budget', match:['gemini-3.1-flash-lite','deepseek-v4-flash','owl-alpha'], fb:{name:'Gemini 3.1 Flash Lite',provider:'Google',pp:0.00000025,pc:0.0000015,ctx:1048576}, why:'Near-free for quick admin questions and short drafts.' },
+      { role:'budget', match:['gemini-3.1-flash-lite','deepseek-v4-flash','nemotron-3-ultra-550b:free'], fb:{name:'Gemini 3.1 Flash Lite',provider:'Google',pp:0.00000025,pc:0.0000015,ctx:1048576}, why:'Near-free for quick admin questions and short drafts.' },
       { role:'premium', match:['claude-sonnet-latest','claude-sonnet'], fb:{name:'Claude Sonnet (latest)',provider:'Anthropic',pp:0.000003,pc:0.000015,ctx:1000000}, why:'~$3/$15 per 1M — best tone and polish for client-facing emails and important documents.' },
     ],
   },

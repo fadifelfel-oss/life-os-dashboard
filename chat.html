@@ -278,6 +278,19 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
   background: var(--chat-border);
 }
 
+.or-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--chat-text-muted);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--chat-border);
+  border-radius: 5px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  cursor: help;
+}
+
 .toolbar-btn {
   padding: 6px 10px;
   border-radius: 6px;
@@ -1106,6 +1119,7 @@ pre:hover .copy-btn {
       <select class="toolbar-select" id="modelSelect" onchange="setModel(this.value)">
         <option value="">Loading models...</option>
       </select>
+      <span class="or-badge" title="Every model in this list is routed through OpenRouter (openrouter.ai) — one API, many providers. Prices and availability are live from OpenRouter's catalog.">via OpenRouter</span>
       <div class="toolbar-divider"></div>
       <button class="toolbar-btn active" id="kbToggle" onclick="toggleKB()" title="Search your vault for relevant notes before answering">
         <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> <span style="font-size:11px;">KB</span>
@@ -2056,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const MODEL_NAMES = {
-  'owl-alpha': '🦉 OWL-Alpha',
+  'deepseek-v4-flash': '🐋 DeepSeek V4 Flash',
   'claude-sonnet': '🧠 Claude Sonnet',
   'gpt-4o': '⚡ GPT-4o',
   'deepseek': '🐋 DeepSeek'
