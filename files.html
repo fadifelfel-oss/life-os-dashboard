@@ -424,7 +424,15 @@ function navigateUp() {
 }
 
 function refreshTree() { loadTree(); }
-document.addEventListener('DOMContentLoaded', loadTree);
+document.addEventListener('DOMContentLoaded', () => {
+  loadTree().then(() => {
+    // Deep-link support: files.html?path=<vault-relative path> (used by Skills
+    // Hub's registry side panel to linkify "Wired to" entries). Best-effort —
+    // openFile() already renders a friendly error if the path doesn't exist.
+    const p = new URLSearchParams(location.search).get('path');
+    if (p) openFile(p);
+  });
+});
 </script>
 </body>
 </html>

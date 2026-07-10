@@ -1,4 +1,4 @@
-# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-09)
+# NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-10)
 
 ## ⚡ QUEUE FOR NEXT SONNET SESSION (planned by Fable 2026-07-10 — execute top to bottom)
 
@@ -7,19 +7,31 @@
 > only, the $10k/Jul-24 tripwire owns prime hours · any change touching tool roles / writer
 > lanes / data stores → STOP, flag against vault STANDARD — System Architecture.md.
 
-**BUILD NOW (unblocked, ~one session):**
-1. **Registry hygiene.** Verify the 2026-07-10 additions are registered: `model-catalog-refresh`
-   (biweekly 1st+15th automation) needs a row in the vault's `_system/registry/routines.md`
-   (roadmap standing rule: registry row before any new automation); confirm
-   `agent-profiles/model-catalog-refresh.md` + `agent-profiles/hermes-vault-search.md` +
-   `agent-profiles/hermes-market-scanner.md` are consistent with what actually runs. Vault edits
-   → remind Fadi to run sync-vault-to-git.bat.
-2. **Skills Hub click→side panel** (remainder of design/SKILLS-HUB-SPEC.md): clicking a registry
-   row in skills.html opens a side panel with the full Wired-to text (linkified to files.html
-   where a path is recognizable), status/score, and the last log.md line mentioning that skill
-   if `/api/wiki` search can find one cheaply. Keep it read-only and defensive.
-3. **Back-button standardization** (deferred 2026-07-09): every standalone page gets the same
-   `← Life OS` header-back pattern (crm.html is the reference). Sweep, don't redesign.
+**Items 1-3 SHIPPED 2026-07-10 (Sonnet) — see session write-up below for detail.** Items 4-8
+remain gated exactly as before; nothing gated was touched this pass.
+
+1. ~~**Registry hygiene.**~~ DONE — `model-catalog-refresh` now has a live row in
+   `_system/registry/routines.md` (confirmed as a real registered Cowork scheduled task, cron
+   `0 9 1,15 * *`); the old stale "monthly model-picks review" backlog row (superseded) was
+   removed. `hermes-vault-search` + `hermes-market-scanner` confirmed correctly NOT registered
+   as routines — both are `spec-ready`, not live yet, so no orphan risk. Vault edit → **remind
+   Fadi to run sync-vault-to-git.bat.**
+2. ~~**Skills Hub click→side panel.**~~ DONE — clicking an ARMS registry row in skills.html now
+   opens a right-side panel: status/score chips, job, Wired-to (linkified to
+   `files.html?path=...` for anything path-shaped), and the last log.md line mentioning that
+   skill (fetched client-side from the existing `/api/file?path=log.md`, cheap at today's
+   ~47KB/144 lines — no new backend endpoint). Added minimal `?path=` deep-link support to
+   files.html so those links actually open something (best-effort — some Wired-to values name
+   dashboard-repo files like `server.py`, not vault paths, and will 404 gracefully).
+3. ~~**Back-button standardization.**~~ DONE — sweep only, no redesign. `kanban.html`,
+   `meetings.html`, `graph3d.html` had a "← Life OS" link but with 3 different classes
+   (`btn btn-sm` / `back-btn` / `toggle-btn`) and inconsistent placement; all 3 now use
+   `.header-back` (crm.html's class) as the leftmost header element. `chat.html` had NO back
+   link at all — added one to the chat-toolbar (compact size to fit the 48px bar).
+   `dashboard.html` and `index.html` deliberately left alone (dashboard.html is an SPA fragment
+   injected into index.html, never navigated to directly — no page links to it; index.html
+   IS the home it would point back to). `theme-preview.html` confirmed orphaned (not linked
+   from anywhere, its own decision already shipped into shared.css) — left untouched.
 
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
@@ -48,6 +60,74 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-10 session (Sonnet, Second Brain project) — Registry hygiene + Skills Hub side panel + back-button sweep
+
+Executed items 1-3 of the queue above, top to bottom, per session rules. Did not touch any
+GATED item (4-8).
+
+**1. Registry hygiene (vault):**
+- `_system/registry/routines.md` — added a row for `model-catalog-refresh` (Cowork scheduled
+  task, confirmed live via the scheduler: cron `0 9 1,15 * *`, next run 2026-07-15), replacing
+  the stale "monthly model-picks review" backlog row it supersedes.
+- Confirmed `agent-profiles/hermes-vault-search.md` and `agent-profiles/hermes-market-scanner.md`
+  are correctly `spec-ready` (not live routines) — market-scanner isn't a registered Cowork
+  scheduled task (it would be a Hermes-side VPS cron, not built yet — gated item 5) and
+  vault-search is a standing behavior, not a scheduled job. Neither needs a registry row yet;
+  no drift found.
+
+**2. Skills Hub click→side panel (dashboard repo — skills.html, files.html):**
+- `skills.html`: ARMS registry rows are now clickable (mouse + keyboard) and open a right-side
+  slide-in panel (`#regDetailOverlay`) showing status/score chips, the job description, a
+  linkified Wired-to line, and a "Last log.md mention" block. `linkifyWired()` only turns a
+  Wired-to token into a link if it looks path-shaped (has a file extension, trailing slash, or
+  a `NNN Name` vault-folder pattern like `010 Projects`) — vague tokens like "client bases" stay
+  plain text. `findLastLogMention()` fetches `/api/file?path=log.md` (existing endpoint, no
+  backend change), strips the rendered HTML to text, and shows the last paragraph mentioning the
+  skill name, or an honest "no mention yet" — never opens any other wiki page body.
+- `files.html`: added `?path=` query-param support so a Skills Hub link (or any future deep
+  link) can open a specific file on load; falls back gracefully to the existing "Failed to load
+  file" error if the path doesn't resolve (e.g. a Wired-to value naming a dashboard-repo file
+  like `server.py` rather than a vault path).
+- Verified: extracted skills.html's script to the sandbox outputs folder and ran `node --check`
+  — `SYNTAX_OK`. NUL-scanned both files via Grep — clean.
+
+**3. Back-button standardization (dashboard repo — kanban.html, meetings.html, graph3d.html, chat.html):**
+- Reclassed the existing back link to `.header-back` (crm.html's shared class) and moved it to
+  the leftmost header position in `kanban.html` (was `btn btn-sm`, sat in header-actions on the
+  right), `meetings.html` (was `.back-btn` with an `onclick="history.back()"` — now a
+  deterministic `href="index.html"` like every other page), and `graph3d.html` (was
+  `.toggle-btn`, sat inside `.graph-controls` on the right).
+- `chat.html` had no back link anywhere — added one to `.chat-toolbar` (compact sizing to fit
+  the 48px bar).
+- Left `dashboard.html` (SPA fragment, no page links to it directly) and `index.html` (it IS the
+  home) without a back link — consistent with why they weren't already in scope. Confirmed
+  `theme-preview.html` is unlinked anywhere in the app (orphaned Fable design artifact, decision
+  already shipped into shared.css) and left it alone.
+- Verified: NUL-scanned all 4 files via Grep — clean. Read back each edited header block to
+  confirm well-formed HTML (no stray tags).
+
+**Not touched:** anything gated (4-8), any tool-role/writer-lane/data-store change (none of this
+session's work qualifies — pure front-end + a registry-table edit).
+
+### Git — commands for Fadi (sessions never run git):
+
+**Commit 1 — dashboard repo (6 files):**
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add skills.html files.html kanban.html meetings.html graph3d.html chat.html NEXT-SESSION-UI.md
+git commit -m "Skills Hub: registry row click -> side panel (wired-to linkified, log.md mention); files.html ?path= deep-link support; back-button sweep (kanban/meetings/graph3d/chat now use .header-back like crm.html)"
+git push origin main
+# auto-pull deploys within ~1 min — open skills.html, click a registry row, confirm the panel;
+# check the 4 back-button pages; confirm files.html deep-link from a Wired-to link.
+```
+
+**Commit 2 — vault (registry hygiene, separate location — run in the vault's own sync):**
+The vault lives in your OneDrive Second Brain folder, not this repo. Its push is the existing
+`sync-vault-to-git.bat` — double-click it in File Explorer (Second Brain folder root) to push
+the `_system/registry/routines.md` change to the second-brain-vault repo. No manual git needed.
 
 ## 2026-07-09 EVENING session (Fable, Second Brain project) — Skills Hub + Trading/Fitness pages + /api/logs
 

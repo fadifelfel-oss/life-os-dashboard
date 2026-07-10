@@ -82,6 +82,30 @@
 .skill-detail p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--space-2); }
 .skill-detail .meta-row { display: flex; gap: var(--space-4); font-size: 11px; color: var(--text-muted); margin: var(--space-3) 0; }
 .skill-detail .close-btn { float: right; background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+
+/* Registry row → side panel (SKILLS-HUB-SPEC: click row -> wired-to + log mention) */
+.reg-row { cursor: pointer; }
+.reg-row:hover { background: var(--bg-tertiary); border-radius: var(--radius-sm); }
+.reg-detail-overlay {
+  display: none; position: fixed; inset: 0; background: var(--bg-overlay); z-index: 1000;
+}
+.reg-detail-overlay.open { display: block; }
+.reg-detail-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 92vw;
+  background: var(--bg-secondary); border-left: 1px solid var(--border-primary);
+  padding: var(--space-5); overflow-y: auto;
+  transform: translateX(100%); transition: transform 0.2s ease;
+}
+.reg-detail-overlay.open .reg-detail-panel { transform: translateX(0); }
+.reg-detail-panel h3 { font-size: var(--font-size-md); margin-bottom: var(--space-2); padding-right: 28px; }
+.reg-detail-panel .close-btn { position: absolute; top: var(--space-4); right: var(--space-4); background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+.reg-detail-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.reg-detail-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin: var(--space-4) 0 var(--space-2); }
+.reg-detail-job { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.reg-detail-wired a { color: var(--text-link); text-decoration: none; }
+.reg-detail-wired a:hover { text-decoration: underline; }
+.reg-detail-wired .plain { color: var(--text-secondary); }
+.reg-detail-log { font-size: 12px; color: var(--text-secondary); line-height: 1.6; background: var(--bg-tertiary); border-radius: var(--radius-sm); padding: var(--space-3); }
 </style>
 </head>
 <body>
@@ -135,6 +159,21 @@
       <span id="skillDetailSource"></span>
       <span id="skillDetailUsage"></span>
     </div>
+  </div>
+</div>
+
+<!-- ARMS REGISTRY ROW → SIDE PANEL (SKILLS-HUB-SPEC: wired-to + status/score + log.md mention) -->
+<div class="reg-detail-overlay" id="regDetailOverlay" onclick="if(event.target===this) closeRegDetail()">
+  <div class="reg-detail-panel">
+    <button class="close-btn" onclick="closeRegDetail()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button>
+    <h3 id="regDetailName"></h3>
+    <div class="reg-detail-meta" id="regDetailMeta"></div>
+    <div class="reg-detail-label">Job</div>
+    <div class="reg-detail-job" id="regDetailJob"></div>
+    <div class="reg-detail-label">Wired to</div>
+    <div class="reg-detail-wired" id="regDetailWired"></div>
+    <div class="reg-detail-label">Last log.md mention</div>
+    <div class="reg-detail-log" id="regDetailLog">Checking…</div>
   </div>
 </div>
 
@@ -297,6 +336,8 @@ function regStatusChip(status) {
   return `<span class="reg-chip" style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block;"></span>${escapeAttr(status || 'unknown')}</span>`;
 }
 
+let ARMS_SKILLS_NORM = [];
+
 async function loadArmsRegistry() {
   const body = document.getElementById('regBody');
   const stats = document.getElementById('regStats');
@@ -312,6 +353,8 @@ async function loadArmsRegistry() {
       wired: String(r['Wired to'] || '').trim(),
       section: r['_section'] || 'Other',
     })).filter(r => r.name);
+    norm.forEach((r, i) => { r._idx = i; });
+    ARMS_SKILLS_NORM = norm;
     if (!norm.length) {
       body.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Registry empty — check <code>_system/registry/skills.md</code> in the vault mirror.</div>';
       stats.innerHTML = '';
@@ -329,7 +372,7 @@ async function loadArmsRegistry() {
         const measured = r.score && !/not measured/i.test(r.score) && r.score !== '—' && r.score !== '-';
         const wired = r.wired && r.wired !== '—' && r.wired !== '-';
         return `
-        <div class="reg-row">
+        <div class="reg-row" tabindex="0" role="button" aria-label="View details for ${escapeAttr(r.name)}" onclick="openRegDetail(${r._idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRegDetail(${r._idx})}">
           <div class="reg-name" title="${escapeAttr(r.name)}">${escapeAttr(r.name)}</div>
           <div class="reg-job" title="${escapeAttr(r.job)}">${escapeAttr(r.job)}</div>
           ${regStatusChip(r.status)}
@@ -341,6 +384,64 @@ async function loadArmsRegistry() {
   } catch (e) {
     body.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">Couldn't load /api/arms (${escapeAttr(e.message)}) — the server may need the backend commit deployed.</div>`;
   }
+}
+
+// ── Registry row detail panel (SKILLS-HUB-SPEC: click row -> wired-to + log mention) ──
+function linkifyWired(wired) {
+  if (!wired || wired === '—' || wired === '-') return '<span class="plain">Not documented yet.</span>';
+  const tokens = wired.split(/,|·/).map(t => t.trim()).filter(Boolean);
+  return tokens.map(t => {
+    const looksLikePath = /\.[a-z0-9]{1,5}$/i.test(t) || /\/\s*$/.test(t) || /^\d{2,3} [A-Z]/.test(t);
+    if (looksLikePath) {
+      const clean = t.replace(/\/$/, '');
+      return `<a href="files.html?path=${encodeURIComponent(clean)}" title="Open in Files (404s if it's a dashboard-repo file, not a vault path)">${escapeAttr(t)}</a>`;
+    }
+    return `<span class="plain">${escapeAttr(t)}</span>`;
+  }).join(' · ');
+}
+
+async function findLastLogMention(skillName) {
+  const el = document.getElementById('regDetailLog');
+  el.textContent = 'Checking log.md…';
+  try {
+    const resp = await fetch('/api/file?path=log.md');
+    if (!resp.ok) { el.textContent = 'log.md not available yet.'; return; }
+    const data = await resp.json();
+    let text = '';
+    if (data.html) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = data.html;
+      text = tmp.textContent || '';
+    } else if (data.content) {
+      text = data.content;
+    } else {
+      el.textContent = 'log.md not available yet.';
+      return;
+    }
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const needle = skillName.toLowerCase();
+    const hits = lines.filter(l => l.toLowerCase().includes(needle));
+    el.textContent = hits.length ? hits[hits.length - 1].slice(0, 300) : 'No mention found in log.md yet.';
+  } catch (e) {
+    el.textContent = "Couldn't check log.md (" + e.message + ")";
+  }
+}
+
+function openRegDetail(idx) {
+  const r = ARMS_SKILLS_NORM[idx];
+  if (!r) return;
+  const measured = r.score && !/not measured/i.test(r.score) && r.score !== '—' && r.score !== '-';
+  document.getElementById('regDetailName').textContent = r.name;
+  document.getElementById('regDetailMeta').innerHTML = regStatusChip(r.status) +
+    (measured ? `<span class="reg-chip" style="color:var(--accent);">${escapeAttr(r.score)}</span>` : `<span class="reg-chip">not measured</span>`);
+  document.getElementById('regDetailJob').textContent = r.job || 'Not documented yet.';
+  document.getElementById('regDetailWired').innerHTML = linkifyWired(r.wired);
+  document.getElementById('regDetailOverlay').classList.add('open');
+  findLastLogMention(r.name);
+}
+
+function closeRegDetail() {
+  document.getElementById('regDetailOverlay').classList.remove('open');
 }
 
 function refreshSkills() { loadSkills(); loadArmsRegistry(); }
