@@ -345,6 +345,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_arms()
         elif path == "/api/projects":
             self._serve_projects()
+        elif path == "/api/logs":
+            self._serve_logs(query)
         elif path == "/api/wiki/crm":
             self._serve_crm_snapshot()
         elif path == "/api/upload":
@@ -415,6 +417,13 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                         meta, _ = self._parse_frontmatter(f.read_text(encoding='utf-8'))
                     except Exception:
                         continue
+                    # Hub notes only: journal entries / strategies / programs also live
+                    # under 010 Projects (typed trade/workout/strategy/program as of
+                    # 2026-07-09) and must not render as projects. Typed hubs pass;
+                    # untyped files pass only if named like their folder (hub convention).
+                    ftype = str(meta.get('type') or '').strip().lower()
+                    if ftype not in ('project', 'cowork-project-hub') and not (ftype == '' and f.stem == f.parent.name):
+                        continue
                     tags = meta.get('tags', []) or []
                     if isinstance(tags, str):
                         tags = [t.strip() for t in tags.strip('[]').split(',')]
@@ -438,6 +447,47 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_response({"data": rows})
         except Exception as e:
             self._json_error(500, f"Failed to serve projects: {str(e)}")
+
+    def _serve_logs(self, query):
+        """GET /api/logs?kind=trading|fitness — journal-entry frontmatter from
+        the vault mirror's 010 Projects log folders (Cowork/Fadi write entries
+        from _Templates; this dashboard only reads). Feeds trading.html and
+        fitness.html. Defensive: missing folder or malformed entry yields
+        empty/partial rows, never a 500."""
+        KINDS = {
+            "trading": ("010 Projects/Prop Trading/Trade Journal", "trade"),
+            "fitness": ("010 Projects/Fitness Rebuild/Workout Log", "workout"),
+        }
+        kind = (query.get("kind") or ["trading"])[0].strip().lower()
+        if kind not in KINDS:
+            self._json_error(400, "kind must be one of: " + ", ".join(sorted(KINDS)))
+            return
+        folder, expected_type = KINDS[kind]
+        rows = []
+        try:
+            log_dir = VAULT_DIR / folder
+            if log_dir.exists():
+                for f in sorted(log_dir.glob("*.md")):
+                    try:
+                        meta, _ = self._parse_frontmatter(f.read_text(encoding="utf-8"))
+                    except Exception:
+                        continue
+                    clean = {}
+                    for k, v in meta.items():
+                        if isinstance(v, str):
+                            # strip the templates' inline "# comment" hints from values
+                            v = v.split(" #")[0].split("\t#")[0].strip()
+                        clean[k] = v
+                    ftype = str(clean.get("type") or "").strip().lower()
+                    if ftype and ftype != expected_type:
+                        continue
+                    clean["path"] = str(f.relative_to(VAULT_DIR))
+                    clean["file"] = f.stem
+                    rows.append(clean)
+            rows.sort(key=lambda r: str(r.get("date") or r.get("file") or ""), reverse=True)
+            self._json_response({"data": rows, "kind": kind, "count": len(rows)})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve logs: {str(e)}")
 
     def _get_env_var(self, var_name):
         """Generic reader for any NAME=value line in ~/.hermes/.env — shared
