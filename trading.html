@@ -41,6 +41,24 @@
 .tr-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
 .tr-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
 .tr-scroll { overflow-x: auto; }
+.tr-gate-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--space-2); }
+.tr-gate-label { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+.tr-gate-sub { font-size: 12px; color: var(--text-muted); }
+.tr-gate-track { width: 100%; height: 10px; border-radius: var(--radius-full); background: var(--bg-tertiary); border: 1px solid var(--border-primary); overflow: hidden; }
+.tr-gate-fill { height: 100%; background: var(--area-trading); border-radius: var(--radius-full); transition: width 0.4s ease; }
+.tr-checklist { list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.9; }
+.tr-checklist li { display: flex; align-items: flex-start; gap: 8px; }
+.tr-checklist li::before { content: ''; width: 5px; height: 5px; margin-top: 7px; border-radius: 50%; background: var(--area-trading); flex-shrink: 0; }
+details.tr-panel > summary { cursor: pointer; list-style: none; }
+details.tr-panel > summary::-webkit-details-marker { display: none; }
+details.tr-panel[open] > summary h2 .tr-chev { transform: rotate(90deg); }
+.tr-chev { transition: transform 0.15s ease; }
+.tr-strategy-body { margin-top: var(--space-3); font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.tr-strategy-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--space-2) 0; }
+.tr-strategy-body th, .tr-strategy-body td { border: 1px solid var(--border-primary); padding: 6px 8px; text-align: left; }
+.tr-strategy-body th { color: var(--text-tertiary); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+.tr-status-chip { font-size: 10px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; margin-left: 8px; }
+.tr-brief-empty { font-size: 13px; color: var(--text-muted); line-height: 1.7; padding: var(--space-3) 0; }
 </style>
 </head>
 <body>
@@ -58,11 +76,43 @@
   <span id="guardText">Guardrails: risk ≤1–2%/trade · stop &amp; target set before entry · 4H/Daily only · no revenge trades · AI never executes. Journal lives in the vault (Trade Journal folder); this page reads the mirror.</span>
 </div>
 
+<div class="tr-panel" id="gatePanel">
+  <div class="tr-gate-row">
+    <span class="tr-gate-label"><svg class="icon icon-sm" width="14" height="14" style="vertical-align:-2px"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Gate 1 — 50 paper trades</span>
+    <span class="tr-gate-sub" id="gateSub">0 / 50 logged</span>
+  </div>
+  <div class="tr-gate-track"><div class="tr-gate-fill" id="gateFill" style="width:0%"></div></div>
+</div>
+
 <div class="tr-stats" id="trStats"></div>
 
 <div class="tr-panel" id="sparkPanel" style="display:none;">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Equity curve (cumulative R, closed trades)</h2>
   <svg class="tr-spark" id="sparkSvg" viewBox="0 0 600 60" preserveAspectRatio="none"></svg>
+</div>
+
+<details class="tr-panel" id="strategyPanel">
+  <summary>
+    <h2><span class="tr-chev" style="display:inline-block;font-weight:700;">›</span> <svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Strategy v1 — rules &amp; backtest results<span class="tr-status-chip" id="strategyStatus">loading</span></h2>
+  </summary>
+  <div class="tr-strategy-body" id="strategyBody">Loading from vault…</div>
+</details>
+
+<div class="tr-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Pre-trade guardrails</h2>
+  <ul class="tr-checklist">
+    <li>Risk ≤ 1–2% of account per trade (FundedNext later: ≤ 1%)</li>
+    <li>Daily loss so far under limit (personal 5%; challenge plan limit if on FundedNext)</li>
+    <li>Not a revenge trade</li>
+    <li>Stop and target set BEFORE entry, never widened</li>
+    <li>4H/Daily timeframe only — no day-trading (protects the 05:00/06:45 schedule)</li>
+    <li>Red-news day (Fed/ECB/BoE, NFP, CPI) or Friday after ~12:00 ET → no new entries</li>
+  </ul>
+</div>
+
+<div class="tr-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-sun-moon"/></svg> Morning Brief (Hermes)<span class="tr-status-chip">not live</span></h2>
+  <div class="tr-brief-empty">Scanner not built yet (roadmap 4.8). Once shipped, this card will show Daily/4H trend state, key levels, and setup-forming status for EUR/USD and GBP/USD from Hermes's 05:15 scan — before you open the journal, not after.</div>
 </div>
 
 <div class="tr-panel">
@@ -100,6 +150,35 @@ function drawSpark(rs) {
     `<polyline points="${line}" fill="none" stroke="var(--area-trading)" stroke-width="2"/>`;
 }
 
+function setGate(count, totalR) {
+  const pct = Math.max(0, Math.min(100, (count / 50) * 100));
+  document.getElementById('gateFill').style.width = pct.toFixed(1) + '%';
+  const rTxt = (totalR === null || totalR === undefined) ? '' : ` · ${(totalR >= 0 ? '+' : '') + totalR.toFixed(1)}R net`;
+  document.getElementById('gateSub').textContent = `${count} / 50 logged${rTxt}`;
+}
+
+async function loadStrategy() {
+  const body = document.getElementById('strategyBody');
+  const chip = document.getElementById('strategyStatus');
+  try {
+    const res = await fetch('/api/file?path=' + encodeURIComponent('010 Projects/Prop Trading/Strategy v1.md'));
+    const json = await res.json();
+    if (json && json.html) {
+      body.innerHTML = json.html;
+      chip.textContent = 'backtest-pending';
+    } else if (json && json.content) {
+      body.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;">' + escH(json.content) + '</pre>';
+      chip.textContent = 'raw';
+    } else {
+      body.innerHTML = '<div class="tr-empty">Strategy file not found in the vault mirror yet.</div>';
+      chip.textContent = 'missing';
+    }
+  } catch (e) {
+    body.innerHTML = `<div class="tr-empty">Couldn't load Strategy v1.md (${escH(e.message)}).</div>`;
+    chip.textContent = 'error';
+  }
+}
+
 async function loadTrades() {
   const body = document.getElementById('trBody');
   const stats = document.getElementById('trStats');
@@ -111,6 +190,7 @@ async function loadTrades() {
       stats.innerHTML = statCard('0/50', 'Paper gate') + statCard('—', 'Win rate') + statCard('—', 'Total R') + statCard('0', 'Rule breaks');
       body.innerHTML = '<div class="tr-empty">No trades logged yet.<br>First paper trade = a note in the vault\'s <strong>Trade Journal</strong> folder from the <strong>Trade Journal Entry</strong> template.<br><span style="font-size:12px;">Strategy v1 (Daily-Trend 4H Pullback) is awaiting its TradingView backtest — alerts go live after it passes.</span></div>';
       drawSpark([]);
+      setGate(0, null);
       return;
     }
     // oldest → newest for the curve
@@ -136,6 +216,7 @@ async function loadTrades() {
     }
 
     drawSpark(rVals);
+    setGate(rows.length, totalR);
 
     body.innerHTML = '<div class="tr-scroll"><table class="tr-table"><thead><tr>' +
       '<th>Date</th><th>Pair</th><th>Dir</th><th>Setup</th><th>Risk %</th><th>R:R</th><th>Outcome</th><th>P&amp;L (R)</th><th>Rules</th>' +
@@ -161,7 +242,7 @@ async function loadTrades() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadTrades);
+document.addEventListener('DOMContentLoaded', () => { loadTrades(); loadStrategy(); });
 </script>
 </body>
 </html>
