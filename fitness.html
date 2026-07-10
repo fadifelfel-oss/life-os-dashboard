@@ -48,6 +48,13 @@ details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
 .ft-program-body th { color: var(--text-tertiary); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
 .ft-status-chip { font-size: 10px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; margin-left: 8px; }
 .ft-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+.ft-ex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+.ft-ex-card { background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-3); text-align: center; }
+.ft-ex-icon { color: var(--area-health); margin-bottom: 6px; }
+.ft-ex-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.ft-ex-reps { font-size: 11px; color: var(--area-health); font-weight: 600; margin-top: 2px; }
+.ft-ex-cue { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 4px; }
+.ft-note { font-size: 12px; color: var(--text-muted); margin: var(--space-2) 0 0; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -72,12 +79,27 @@ details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
 
 <div class="ft-stats" id="ftStats"></div>
 
+<div class="ft-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-dumbbell"/></svg> Today's circuit — 2 rounds, ~20 min</h2>
+  <div class="ft-ex-grid">
+    <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-leg-press"/></svg><div class="ft-ex-name">Leg press</div><div class="ft-ex-reps">10 reps</div><div class="ft-ex-cue">Light. Stop above parallel. Exhale pushing.</div></div>
+    <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-chest-press"/></svg><div class="ft-ex-name">Chest press machine</div><div class="ft-ex-reps">10 reps</div><div class="ft-ex-cue">Smooth tempo, no grinding reps.</div></div>
+    <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-seated-row"/></svg><div class="ft-ex-name">Seated row machine</div><div class="ft-ex-reps">10 reps</div><div class="ft-ex-cue">Squeeze shoulder blades, exhale pulling.</div></div>
+    <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-lat-pulldown"/></svg><div class="ft-ex-name">Lat pulldown</div><div class="ft-ex-reps">10 reps</div><div class="ft-ex-cue">To collarbone, never behind neck.</div></div>
+    <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-leg-curl"/></svg><div class="ft-ex-name">Seated leg curl</div><div class="ft-ex-reps">10 reps</div><div class="ft-ex-cue">Light, controlled.</div></div>
+    <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-dead-bug"/></svg><div class="ft-ex-name">Dead bug (mat)</div><div class="ft-ex-reps">8/side</div><div class="ft-ex-cue">Slow. Low back stays on the mat.</div></div>
+  </div>
+  <p class="ft-note">Rest 60–90 sec between machines · everything at RPE ≤ 6–7. Illustrations are simple reference diagrams, not photos — my build sandbox can't verify external image links right now, so nothing here depends on one. Ask staff at LA Fitness if a machine's setup looks different from what you expect.</p>
+</div>
+
 <details class="ft-panel" id="programPanel">
   <summary>
-    <h2><span class="ft-chev">›</span> <svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Program v1 — Phase 1 (this week's routine)<span class="ft-status-chip" id="programStatus">loading</span></h2>
+    <h2><span class="ft-chev">›</span> <svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Full program details (rules, progression, phases)<span class="ft-status-chip" id="programStatus">loading</span></h2>
   </summary>
   <div class="ft-program-body" id="programBody">Loading from vault…</div>
 </details>
+
+<p class="ft-note" style="padding:0 var(--space-1);"><svg class="icon icon-sm" width="12" height="12" style="vertical-align:-1px"><use href="assets/lucide-sprite.svg#icon-repeat"/></svg> By design, Session A, B, and C are the identical workout — Phase 1 favors repetition over variety while you relearn the movements and rebuild base fitness at light load. Variety comes in Phase 2 (week 7+).</p>
 
 <div class="ft-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Daily anchors (gym or not)</h2>
