@@ -1107,7 +1107,7 @@ pre:hover .copy-btn {
         <option value="">Loading models...</option>
       </select>
       <div class="toolbar-divider"></div>
-      <button class="toolbar-btn" id="kbToggle" onclick="toggleKB()" title="Search your vault for relevant notes before answering">
+      <button class="toolbar-btn active" id="kbToggle" onclick="toggleKB()" title="Search your vault for relevant notes before answering">
         <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-brain"/></svg> <span style="font-size:11px;">KB</span>
       </button>
       <button class="toolbar-btn" id="thinkingToggle" onclick="toggleThinking()" title="Ask Hermes to reason step-by-step before answering">
@@ -1215,7 +1215,13 @@ pre:hover .copy-btn {
 <script>
 // === STATE ===
 let currentModel = 'deepseek-v4-flash'; // confirmed 2026-07-10: Hermes's real configured default (owl-alpha isn't a real model — never was in Hermes's config)
-let kbEnabled = false;
+let kbEnabled = true;   // default ON 2026-07-10: this is brain.py's real retrieval
+                          // ladder (/api/kb/search, same engine as graph3d.html's wiki
+                          // query), not a placeholder. Every vault write already reaches
+                          // both agents mechanically (git push -> VPS mirror) — this is
+                          // what makes chat actually USE that content instead of just
+                          // having it sit on disk. Off was hiding a feature that already
+                          // worked. Fadi can still toggle it off via the KB button.
 let thinkingEnabled = false;
 let artifactsOpen = false;
 let currentCoach = 'lifeos';
