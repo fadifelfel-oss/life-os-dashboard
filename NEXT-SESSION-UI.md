@@ -1,5 +1,45 @@
 # NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-09)
 
+## ⚡ QUEUE FOR NEXT SONNET SESSION (planned by Fable 2026-07-10 — execute top to bottom)
+
+> Session rules: git READ-ONLY (print commands for Fadi) · verify with Read/Grep, never bash on
+> C:\Dev (stale mount) · NUL-scan every touched file before handing off · UI work = idle hours
+> only, the $10k/Jul-24 tripwire owns prime hours · any change touching tool roles / writer
+> lanes / data stores → STOP, flag against vault STANDARD — System Architecture.md.
+
+**BUILD NOW (unblocked, ~one session):**
+1. **Registry hygiene.** Verify the 2026-07-10 additions are registered: `model-catalog-refresh`
+   (biweekly 1st+15th automation) needs a row in the vault's `_system/registry/routines.md`
+   (roadmap standing rule: registry row before any new automation); confirm
+   `agent-profiles/model-catalog-refresh.md` + `agent-profiles/hermes-vault-search.md` +
+   `agent-profiles/hermes-market-scanner.md` are consistent with what actually runs. Vault edits
+   → remind Fadi to run sync-vault-to-git.bat.
+2. **Skills Hub click→side panel** (remainder of design/SKILLS-HUB-SPEC.md): clicking a registry
+   row in skills.html opens a side panel with the full Wired-to text (linkified to files.html
+   where a path is recognizable), status/score, and the last log.md line mentioning that skill
+   if `/api/wiki` search can find one cheaply. Keep it read-only and defensive.
+3. **Back-button standardization** (deferred 2026-07-09): every standalone page gets the same
+   `← Life OS` header-back pattern (crm.html is the reference). Sweep, don't redesign.
+
+**GATED — do NOT build until the named gate clears:**
+4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
+   (roadmap 3.4) and names which pages look wrong. Was explicitly deferred as too risky blind.
+5. **Morning Brief card on Home** — GATE: Hermes actually produces a brief. First help Fadi set
+   up Hermes's 05:15 scheduled task per vault `agent-profiles/hermes-market-scanner.md` (click-by-
+   click, Hermes side), verify a real brief exists in Hermes's lane, THEN build the card.
+6. **3D Brain link-density bridge** (Smart Connections → real [[wikilinks]] → more edges; memory:
+   life-os-ui-backlog / task 4.1) — GATE: Fadi says go. He named the 3D Brain as shiny-object
+   risk vs the revenue tripwire; do not auto-run.
+7. **Remaining life-area pages** (6 of 8) — GATE: a real data source exists per area. No static
+   placeholder pages. FieldBridge area page (reads existing /api/wiki/crm + Radar) is the only
+   near-term candidate.
+8. **Capture-pipeline full strength** — GATE: Fadi enters credentials (roadmap 3.2). Nothing for
+   Sonnet to build; just re-verify channel watermarks after he does.
+
+**NOT in scope for any session:** new tools/stores (see Recall decision 2026-07-10: capture-slot
+alternative at most, vault stays the spine), Hermes write-lane token (build when Hermes writes),
+anything on UI-MASTER-PLAN already marked done.
+
 > **MODEL ROUTING (Fable, 2026-07-09 evening): no Fable needed from here.** All design/architecture
 > decisions are made and persisted (vault: STANDARD — System Architecture.md · ROADMAP · agents.md;
 > repo: UI-MASTER-PLAN.md · design/*.md · this file). Remaining work is execution-tier — fine for
