@@ -984,6 +984,47 @@ pre:hover .copy-btn {
   content: ' 🏋️';
   font-size: 12px;
 }
+
+/* === ATTACH (vault file picker) === */
+.attach-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-width: 800px; margin: 0 auto 8px; padding: 0 24px;
+}
+.attach-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-tertiary); border: 1px solid var(--chat-border);
+  border-radius: var(--radius-full, 999px); padding: 4px 10px 4px 12px;
+  font-size: 12px; color: var(--chat-text);
+}
+.attach-chip button {
+  background: none; border: none; color: var(--chat-text-muted); cursor: pointer;
+  font-size: 13px; padding: 0; line-height: 1; display: flex;
+}
+.attach-chip button:hover { color: var(--red, #f85149); }
+.attach-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 600;
+  display: none; align-items: flex-start; justify-content: center; padding-top: 10vh;
+}
+.attach-modal-overlay.open { display: flex; }
+.attach-modal {
+  width: 480px; max-width: 92vw; max-height: 70vh; display: flex; flex-direction: column;
+  background: var(--bg-secondary); border: 1px solid var(--chat-border);
+  border-radius: 12px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.attach-modal-header { padding: 12px 14px; border-bottom: 1px solid var(--chat-border); }
+.attach-modal-header input {
+  width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--chat-border);
+  background: var(--bg-tertiary); color: var(--chat-text); font-size: 14px; font-family: inherit;
+  box-sizing: border-box;
+}
+.attach-modal-list { flex: 1; overflow-y: auto; padding: 6px; }
+.attach-modal-item {
+  display: flex; flex-direction: column; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+}
+.attach-modal-item:hover { background: color-mix(in srgb, var(--text-primary) 5%, transparent); }
+.attach-modal-item .a-name { font-size: 13px; font-weight: 600; color: var(--chat-text); }
+.attach-modal-item .a-path { font-size: 11px; color: var(--chat-text-muted); }
+.attach-modal-empty { padding: 20px; text-align: center; font-size: 12px; color: var(--chat-text-muted); }
 </style>
 </head>
 <body>
@@ -1092,9 +1133,15 @@ pre:hover .copy-btn {
       </div>
     </div>
 
+    <!-- ATTACHED FILES -->
+    <div class="attach-chips" id="attachChips"></div>
+
     <!-- INPUT -->
     <div class="chat-input-wrap">
       <div class="chat-input-container">
+        <button class="toolbar-btn" onclick="openAttachModal()" title="Attach a note from your vault" style="flex-shrink:0;align-self:flex-end;margin-bottom:2px;">
+          <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-folder"/></svg>
+        </button>
         <textarea
           class="chat-input"
           id="chatInput"
@@ -1106,11 +1153,21 @@ pre:hover .copy-btn {
         <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">▶</button>
       </div>
       <div class="chat-input-footer">
-        <span>Enter to send · Shift+Enter for new line · Drag files to attach</span>
+        <span>Enter to send · Shift+Enter for new line · 📎 to attach a vault note</span>
         <span id="tokenStatus">0 tokens</span>
       </div>
     </div>
   </main>
+</div>
+
+<!-- ATTACH MODAL -->
+<div class="attach-modal-overlay" id="attachOverlay" onclick="if(event.target===this) closeAttachModal()">
+  <div class="attach-modal">
+    <div class="attach-modal-header">
+      <input type="text" id="attachSearch" placeholder="Search your vault (e.g. Program v1, CRM, Strategy)…" oninput="filterAttachList(this.value)" autocomplete="off">
+    </div>
+    <div class="attach-modal-list" id="attachList"><div class="attach-modal-empty">Loading vault files…</div></div>
+  </div>
 </div>
 
 <!-- ARTIFACTS PANEL -->
@@ -1231,6 +1288,120 @@ async function loadPMContext() {
     return pmContext;
   })();
   return pmContextLoading;
+}
+
+// === ATTACH (vault file picker) ===
+// Lets Fadi pin any specific note as context for the conversation, instead of
+// relying on KB fuzzy search or a hardcoded per-persona file. Read-only:
+// fetches via the existing /api/tree + /api/file endpoints, never writes.
+let vaultFileList = null;       // flat [{name, path}], fetched once, cached
+let vaultFileListLoading = null;
+let attachedFiles = [];         // [{name, path}] currently pinned to this conversation
+
+const ATTACH_EXCLUDE_TOP = ['.git', '.obsidian', '.smart-env', 'node_modules', '__pycache__'];
+
+async function loadVaultFileList() {
+  if (vaultFileList) return vaultFileList;
+  if (vaultFileListLoading) return vaultFileListLoading;
+  vaultFileListLoading = (async () => {
+    const flat = [];
+    function flatten(items) {
+      (items || []).forEach(item => {
+        if (ATTACH_EXCLUDE_TOP.includes(item.name)) return;
+        if (item.type === 'directory' || item.type === 'dir') {
+          if (item.children) flatten(item.children);
+        } else if (item.name && item.name.toLowerCase().endsWith('.md')) {
+          flat.push({ name: item.name, path: item.path });
+        }
+      });
+    }
+    try {
+      const res = await fetch('/api/tree');
+      const json = await res.json();
+      flatten(json.data || []);
+    } catch (e) {
+      console.warn('Attach: vault tree fetch failed', e);
+    }
+    vaultFileList = flat;
+    return flat;
+  })();
+  return vaultFileListLoading;
+}
+
+async function openAttachModal() {
+  document.getElementById('attachOverlay').classList.add('open');
+  document.getElementById('attachSearch').value = '';
+  document.getElementById('attachSearch').focus();
+  const list = await loadVaultFileList();
+  renderAttachList(list.slice(0, 60));
+}
+
+function closeAttachModal() {
+  document.getElementById('attachOverlay').classList.remove('open');
+}
+
+function filterAttachList(q) {
+  const query = q.trim().toLowerCase();
+  const list = vaultFileList || [];
+  const hits = query
+    ? list.filter(f => f.name.toLowerCase().includes(query) || f.path.toLowerCase().includes(query)).slice(0, 60)
+    : list.slice(0, 60);
+  renderAttachList(hits);
+}
+
+function renderAttachList(items) {
+  const el = document.getElementById('attachList');
+  if (!items.length) {
+    el.innerHTML = '<div class="attach-modal-empty">No matching notes.</div>';
+    return;
+  }
+  el.innerHTML = items.map((f, i) => `
+    <div class="attach-modal-item" onclick="attachFile(${JSON.stringify(f.name).replace(/"/g, '&quot;')}, ${JSON.stringify(f.path).replace(/"/g, '&quot;')})">
+      <span class="a-name">${escapeHtml(f.name)}</span>
+      <span class="a-path">${escapeHtml(f.path)}</span>
+    </div>`).join('');
+}
+
+function attachFile(name, path) {
+  if (!attachedFiles.some(a => a.path === path)) {
+    attachedFiles.push({ name, path });
+    renderAttachChips();
+  }
+  closeAttachModal();
+}
+
+function removeAttachment(path) {
+  attachedFiles = attachedFiles.filter(a => a.path !== path);
+  renderAttachChips();
+}
+
+function renderAttachChips() {
+  const el = document.getElementById('attachChips');
+  el.innerHTML = attachedFiles.map(a => `
+    <span class="attach-chip">📎 ${escapeHtml(a.name)}<button onclick="removeAttachment(${JSON.stringify(a.path).replace(/"/g, '&quot;')})" title="Remove">✕</button></span>`).join('');
+}
+
+// Fetches the current attachments' real content — called once per send, not
+// cached, so edits made in Obsidian since the last message show up. Each
+// file is capped so one huge note can't silently blow out the context window.
+const ATTACH_MAX_CHARS_PER_FILE = 6000;
+async function buildAttachmentContext() {
+  if (!attachedFiles.length) return '';
+  const parts = await Promise.all(attachedFiles.map(async (a) => {
+    try {
+      const res = await fetch('/api/file?path=' + encodeURIComponent(a.path));
+      const json = await res.json();
+      let text = json && json.html ? json.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+               : (json && json.content) ? json.content : '';
+      if (text.length > ATTACH_MAX_CHARS_PER_FILE) {
+        text = text.slice(0, ATTACH_MAX_CHARS_PER_FILE) + '\n[...truncated, note is longer than the context cap...]';
+      }
+      return `--- Attached note: ${a.path} ---\n${text || '(could not load this file)'}\n--- end ---`;
+    } catch (e) {
+      return `--- Attached note: ${a.path} --- (failed to load: ${e.message}) ---`;
+    }
+  }));
+  return parts.join('\n\n');
 }
 
 function toggleCoachDropdown() {
@@ -1442,6 +1613,15 @@ async function sendMessage() {
       }
     }
 
+    if (attachedFiles.length) {
+      try {
+        const attachCtx = await buildAttachmentContext();
+        if (attachCtx) systemPrompt += (systemPrompt ? '\n\n' : '') + attachCtx;
+      } catch (e) {
+        console.warn('Attachment context unavailable, continuing without it:', e);
+      }
+    }
+
     if (thinkingEnabled) {
       systemPrompt += (systemPrompt ? ' ' : '') + 'Think through this step by step before answering. Briefly show your reasoning, then give a clear final answer.';
     }
@@ -1593,6 +1773,8 @@ function renderMarkdown(text) {
 function startNewChat() {
   currentSessionId = null;
   conversationHistory = [];
+  attachedFiles = [];
+  renderAttachChips();
   addWelcomeMessage();
   resetArtifactsPanel();
   document.querySelectorAll('.sidebar-session').forEach(el => el.classList.remove('active'));
