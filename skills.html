@@ -24,6 +24,29 @@
 .skill-section { padding: var(--space-4); }
 .skill-section h2 { font-size: var(--font-size-md); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
 
+/* ARMS Skills Registry (source of truth: _system/registry/skills.md via /api/arms) */
+.registry {
+  margin: var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+.registry-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
+.registry-header h2 { font-size: var(--font-size-md); display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.registry-stats { display: flex; gap: var(--space-4); }
+.reg-stat { text-align: center; }
+.reg-stat-value { font-size: 20px; font-weight: 800; color: var(--accent); }
+.reg-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.reg-group-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin: var(--space-3) 0 var(--space-2); padding-bottom: 4px; border-bottom: 2px solid var(--area-fieldbridge); }
+.reg-group-title.cowork { border-bottom-color: var(--area-knowledge); }
+.reg-row { display: flex; align-items: center; gap: var(--space-2); padding: 6px 4px; border-bottom: 1px solid var(--border-primary); font-size: 12px; }
+.reg-row:last-child { border-bottom: none; }
+.reg-name { width: 150px; flex-shrink: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reg-job { flex: 1; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 120px; }
+.reg-chip { font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space: nowrap; }
+.registry-foot { font-size: 10px; color: var(--text-muted); margin-top: var(--space-3); }
+
 /* Skill Health Check */
 .health-check {
   margin: var(--space-4);
@@ -69,6 +92,16 @@
 <div class="header-actions">
 <button class="btn btn-sm" onclick="refreshSkills()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
 </div>
+</div>
+
+<!-- ARMS SKILLS REGISTRY (SKILLS-HUB-SPEC / R11) -->
+<div class="registry" id="armsRegistry">
+  <div class="registry-header">
+    <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Skills Registry (ARMS)</h2>
+    <div class="registry-stats" id="regStats"></div>
+  </div>
+  <div id="regBody"><div style="color:var(--text-muted);font-size:12px;">Loading registry…</div></div>
+  <div class="registry-foot">Source of truth: <code>_system/registry/skills.md</code> in the vault mirror. Internal — not client-facing.</div>
 </div>
 
 <!-- SKILL HEALTH CHECK -->
@@ -255,9 +288,64 @@ function closeSkillDetail() {
   document.getElementById('skillDetailOverlay').classList.remove('open');
 }
 
-function refreshSkills() { loadSkills(); }
+// ── ARMS Skills Registry (reads /api/arms — same data as 3D Brain Systems panel) ──
+function regStatHtml(v, l) { return `<div class="reg-stat"><div class="reg-stat-value">${v}</div><div class="reg-stat-label">${l}</div></div>`; }
 
-document.addEventListener('DOMContentLoaded', loadSkills);
+function regStatusChip(status) {
+  const map = { active: 'var(--status-live)', consolidating: 'var(--status-stale)', retired: 'var(--status-orphan)' };
+  const c = map[status] || 'var(--text-muted)';
+  return `<span class="reg-chip" style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block;"></span>${escapeAttr(status || 'unknown')}</span>`;
+}
+
+async function loadArmsRegistry() {
+  const body = document.getElementById('regBody');
+  const stats = document.getElementById('regStats');
+  try {
+    const res = await fetch('/api/arms');
+    const json = await res.json();
+    const raw = (json.data && json.data.skills) || [];
+    const norm = raw.map(r => ({
+      name: r['Skill'] || '',
+      job: r['Job (one line)'] || r['Job'] || '',
+      status: String(r['Status'] || '').toLowerCase().trim(),
+      score: String(r['Test score'] || '').trim(),
+      wired: String(r['Wired to'] || '').trim(),
+      section: r['_section'] || 'Other',
+    })).filter(r => r.name);
+    if (!norm.length) {
+      body.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Registry empty — check <code>_system/registry/skills.md</code> in the vault mirror.</div>';
+      stats.innerHTML = '';
+      return;
+    }
+    const active = norm.filter(r => r.status === 'active').length;
+    const consolidating = norm.filter(r => r.status.startsWith('consolidat')).length;
+    const notMeasured = norm.filter(r => !r.score || /not measured/i.test(r.score) || r.score === '—' || r.score === '-').length;
+    stats.innerHTML = regStatHtml(active, 'Active') + regStatHtml(consolidating, 'Consolidating') + regStatHtml(notMeasured, 'Untested');
+    const groups = {};
+    norm.forEach(r => { (groups[r.section] = groups[r.section] || []).push(r); });
+    body.innerHTML = Object.keys(groups).map(sec => {
+      const cls = /cowork/i.test(sec) ? ' cowork' : '';
+      return `<div class="reg-group-title${cls}">${escapeAttr(sec)}</div>` + groups[sec].map(r => {
+        const measured = r.score && !/not measured/i.test(r.score) && r.score !== '—' && r.score !== '-';
+        const wired = r.wired && r.wired !== '—' && r.wired !== '-';
+        return `
+        <div class="reg-row">
+          <div class="reg-name" title="${escapeAttr(r.name)}">${escapeAttr(r.name)}</div>
+          <div class="reg-job" title="${escapeAttr(r.job)}">${escapeAttr(r.job)}</div>
+          ${regStatusChip(r.status)}
+          ${measured ? `<span class="reg-chip" style="color:var(--accent);">${escapeAttr(r.score)}</span>` : `<span class="reg-chip">not measured</span>`}
+          ${wired ? `<span class="reg-chip" title="${escapeAttr(r.wired)}">wired</span>` : ''}
+        </div>`;
+      }).join('');
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">Couldn't load /api/arms (${escapeAttr(e.message)}) — the server may need the backend commit deployed.</div>`;
+  }
+}
+
+function refreshSkills() { loadSkills(); loadArmsRegistry(); }
+
+document.addEventListener('DOMContentLoaded', () => { loadSkills(); loadArmsRegistry(); });
 </script>
 </body>
 </html>

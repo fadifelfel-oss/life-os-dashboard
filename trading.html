@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading — Life OS</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
+<style>
+.tr-banner {
+  font-size: 13px; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--area-trading); border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
+  display: flex; align-items: center; gap: 8px;
+}
+.tr-banner.alert { border-left-color: var(--status-failed); }
+.tr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.tr-stat {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-3); text-align: center;
+}
+.tr-stat-value { font-size: 22px; font-weight: 800; color: var(--area-trading); }
+.tr-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.tr-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+}
+.tr-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.tr-rules { font-size: 12px; color: var(--text-secondary); line-height: 1.7; margin: 0; padding-left: 18px; }
+.tr-spark { width: 100%; height: 60px; display: block; }
+.tr-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tr-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); padding: 6px 8px; border-bottom: 2px solid var(--area-trading); white-space: nowrap; }
+.tr-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-primary); color: var(--text-secondary); white-space: nowrap; }
+.tr-table tr:hover td { background: var(--bg-tertiary); }
+.tr-table a { color: var(--text-primary); text-decoration: none; font-weight: 600; }
+.tr-chip { font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); }
+.tr-pos { color: var(--status-live); font-weight: 700; }
+.tr-neg { color: var(--status-failed); font-weight: 700; }
+.tr-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.tr-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
+.tr-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
+.tr-scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <div class="header-title"><svg class="icon" width="18" height="18" style="color:var(--area-trading)"><use href="assets/lucide-sprite.svg#icon-candlestick-chart"/></svg> Trading — Journal &amp; Stats</div>
+  <div class="header-actions">
+    <button class="btn btn-sm" onclick="loadTrades()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
+  </div>
+</div>
+
+<div class="tr-banner" id="guardBanner">
+  <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
+  <span id="guardText">Guardrails: risk ≤1–2%/trade · stop &amp; target set before entry · 4H/Daily only · no revenge trades · AI never executes. Journal lives in the vault (Trade Journal folder); this page reads the mirror.</span>
+</div>
+
+<div class="tr-stats" id="trStats"></div>
+
+<div class="tr-panel" id="sparkPanel" style="display:none;">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Equity curve (cumulative R, closed trades)</h2>
+  <svg class="tr-spark" id="sparkSvg" viewBox="0 0 600 60" preserveAspectRatio="none"></svg>
+</div>
+
+<div class="tr-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Trade log</h2>
+  <div id="trBody"><div class="tr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading journal…</div></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function escH(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
+
+function statCard(value, label, cls) {
+  return `<div class="tr-stat"><div class="tr-stat-value${cls ? ' ' + cls : ''}">${value}</div><div class="tr-stat-label">${label}</div></div>`;
+}
+
+function drawSpark(rs) {
+  const svg = document.getElementById('sparkSvg');
+  const panel = document.getElementById('sparkPanel');
+  if (rs.length < 2) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  let cum = 0;
+  const pts = [0].concat(rs.map(r => (cum += r)));
+  const min = Math.min(0, Math.min.apply(null, pts));
+  const max = Math.max(0, Math.max.apply(null, pts));
+  const span = (max - min) || 1;
+  const W = 600, H = 60, pad = 4;
+  const x = i => pad + (i / (pts.length - 1)) * (W - 2 * pad);
+  const y = v => H - pad - ((v - min) / span) * (H - 2 * pad);
+  const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const zero = y(0).toFixed(1);
+  svg.innerHTML =
+    `<line x1="0" y1="${zero}" x2="${W}" y2="${zero}" stroke="var(--border-primary)" stroke-width="1" stroke-dasharray="4 4"/>` +
+    `<polyline points="${line}" fill="none" stroke="var(--area-trading)" stroke-width="2"/>`;
+}
+
+async function loadTrades() {
+  const body = document.getElementById('trBody');
+  const stats = document.getElementById('trStats');
+  try {
+    const res = await fetch('/api/logs?kind=trading');
+    const json = await res.json();
+    const rows = (json && json.data) || [];
+    if (!rows.length) {
+      stats.innerHTML = statCard('0/50', 'Paper gate') + statCard('—', 'Win rate') + statCard('—', 'Total R') + statCard('0', 'Rule breaks');
+      body.innerHTML = '<div class="tr-empty">No trades logged yet.<br>First paper trade = a note in the vault\'s <strong>Trade Journal</strong> folder from the <strong>Trade Journal Entry</strong> template.<br><span style="font-size:12px;">Strategy v1 (Daily-Trend 4H Pullback) is awaiting its TradingView backtest — alerts go live after it passes.</span></div>';
+      drawSpark([]);
+      return;
+    }
+    // oldest → newest for the curve
+    const asc = rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    const closed = asc.filter(r => ['win', 'loss', 'breakeven'].indexOf(String(r.outcome || '').toLowerCase()) >= 0);
+    const wins = closed.filter(r => String(r.outcome).toLowerCase() === 'win').length;
+    const rVals = closed.map(r => num(r.pnl_r)).filter(v => v !== null);
+    const totalR = rVals.reduce((a, b) => a + b, 0);
+    const violations = rows.filter(r => String(r.rules_followed).toLowerCase() === 'false');
+    const recentViolation = violations.some(r => (Date.now() - new Date(r.date).getTime()) < 7 * 86400000);
+    const winRate = closed.length ? Math.round((wins / closed.length) * 100) + '%' : '—';
+
+    stats.innerHTML =
+      statCard(rows.length + '/50', 'Paper gate') +
+      statCard(winRate, 'Win rate (' + closed.length + ' closed)') +
+      statCard((totalR >= 0 ? '+' : '') + totalR.toFixed(1) + 'R', 'Total R', totalR >= 0 ? 'tr-pos' : 'tr-neg') +
+      statCard(String(violations.length), 'Rule breaks', violations.length ? 'tr-neg' : '');
+
+    const banner = document.getElementById('guardBanner');
+    banner.classList.toggle('alert', recentViolation);
+    if (recentViolation) {
+      document.getElementById('guardText').textContent = 'A rules_followed: false entry exists in the last 7 days — review it in Saturday\'s journal review before the next trade.';
+    }
+
+    drawSpark(rVals);
+
+    body.innerHTML = '<div class="tr-scroll"><table class="tr-table"><thead><tr>' +
+      '<th>Date</th><th>Pair</th><th>Dir</th><th>Setup</th><th>Risk %</th><th>R:R</th><th>Outcome</th><th>P&amp;L (R)</th><th>Rules</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(r => {
+        const out = String(r.outcome || 'open').toLowerCase();
+        const pnl = num(r.pnl_r);
+        const rules = String(r.rules_followed).toLowerCase() !== 'false';
+        return `<tr>
+          <td><a href="files.html?path=${encodeURIComponent(r.path || '')}">${escH(r.date || r.file)}</a></td>
+          <td>${escH(r.pair || '—')}</td>
+          <td>${escH(r.direction || '—')}</td>
+          <td>${escH(r.setup || '—')}</td>
+          <td>${escH(r.risk_pct || '—')}</td>
+          <td>${escH(r.rr_planned || '—')}</td>
+          <td><span class="tr-chip">${escH(out)}</span></td>
+          <td class="${pnl === null ? '' : pnl >= 0 ? 'tr-pos' : 'tr-neg'}">${pnl === null ? '—' : (pnl >= 0 ? '+' : '') + pnl}</td>
+          <td><span class="tr-dot" style="background:${rules ? 'var(--status-live)' : 'var(--status-failed)'}" title="${rules ? 'rules followed' : 'RULE BREAK'}"></span></td>
+        </tr>`;
+      }).join('') + '</tbody></table></div>';
+  } catch (e) {
+    body.innerHTML = `<div class="tr-empty">Couldn't load the journal (${escH(e.message)}). The backend commit (/api/logs) may not be deployed yet.</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadTrades);
+</script>
+</body>
+</html>

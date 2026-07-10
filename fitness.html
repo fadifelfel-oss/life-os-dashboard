@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitness — Life OS</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
+<style>
+.ft-banner {
+  font-size: 13px; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--area-health); border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
+  display: flex; align-items: center; gap: 8px; line-height: 1.5;
+}
+.ft-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.ft-stat {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-3); text-align: center;
+}
+.ft-stat-value { font-size: 22px; font-weight: 800; color: var(--area-health); }
+.ft-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.ft-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+}
+.ft-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.ft-anchors { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-2); }
+.ft-anchor { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+.ft-spark { width: 100%; height: 60px; display: block; }
+.ft-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ft-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); padding: 6px 8px; border-bottom: 2px solid var(--area-health); white-space: nowrap; }
+.ft-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-primary); color: var(--text-secondary); white-space: nowrap; }
+.ft-table tr:hover td { background: var(--bg-tertiary); }
+.ft-table a { color: var(--text-primary); text-decoration: none; font-weight: 600; }
+.ft-chip { font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); }
+.ft-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
+.ft-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
+.ft-scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <div class="header-title"><svg class="icon" width="18" height="18" style="color:var(--area-health)"><use href="assets/lucide-sprite.svg#icon-heart-pulse"/></svg> Fitness — Rebuild Tracker</div>
+  <div class="header-actions">
+    <button class="btn btn-sm" onclick="loadWorkouts()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-heart"/></svg> Refresh</button>
+  </div>
+</div>
+
+<div class="ft-banner">
+  <svg class="icon icon-sm" width="14" height="14" style="flex-shrink:0;"><use href="assets/lucide-sprite.svg#icon-heart-pulse"/></svg>
+  <span>Phase 1 — Foundation (LA Fitness, 3–4×/week). Safety rules: exhale on exertion · RPE ≤ 7 · no head-below-heart · bad-energy day = walk only, still counts. Log lives in the vault (Workout Log folder); this page reads the mirror.</span>
+</div>
+
+<div class="ft-stats" id="ftStats"></div>
+
+<div class="ft-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Daily anchors (gym or not)</h2>
+  <div class="ft-anchors">
+    <div class="ft-anchor"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Morning light — 5–10 min outside</div>
+    <div class="ft-anchor"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-repeat"/></svg> 10-min mobility, any time</div>
+    <div class="ft-anchor"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-heart"/></svg> Physiological sigh when stressed</div>
+  </div>
+</div>
+
+<div class="ft-panel" id="sparkPanel" style="display:none;">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Energy after sessions (trend)</h2>
+  <svg class="ft-spark" id="sparkSvg" viewBox="0 0 600 60" preserveAspectRatio="none"></svg>
+</div>
+
+<div class="ft-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Session log</h2>
+  <div id="ftBody"><div class="ft-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading log…</div></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+const PROGRAM_START = '2026-07-09'; // Program v1 — Phase 1 created (weeks 1–6)
+
+function escH(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
+
+function statCard(value, label) {
+  return `<div class="ft-stat"><div class="ft-stat-value">${value}</div><div class="ft-stat-label">${label}</div></div>`;
+}
+
+function mondayOf(d) {
+  const x = new Date(d); const day = (x.getDay() + 6) % 7; // Mon=0
+  x.setDate(x.getDate() - day); x.setHours(0, 0, 0, 0); return x;
+}
+
+function drawSpark(vals) {
+  const svg = document.getElementById('sparkSvg');
+  const panel = document.getElementById('sparkPanel');
+  if (vals.length < 2) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const W = 600, H = 60, pad = 4, min = 1, max = 10;
+  const x = i => pad + (i / (vals.length - 1)) * (W - 2 * pad);
+  const y = v => H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
+  const line = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  svg.innerHTML =
+    `<line x1="0" y1="${y(6).toFixed(1)}" x2="${W}" y2="${y(6).toFixed(1)}" stroke="var(--border-primary)" stroke-width="1" stroke-dasharray="4 4"/>` +
+    `<polyline points="${line}" fill="none" stroke="var(--area-health)" stroke-width="2"/>`;
+}
+
+async function loadWorkouts() {
+  const body = document.getElementById('ftBody');
+  const stats = document.getElementById('ftStats');
+  try {
+    const res = await fetch('/api/logs?kind=fitness');
+    const json = await res.json();
+    const rows = (json && json.data) || [];
+
+    const week = Math.max(1, Math.floor((Date.now() - new Date(PROGRAM_START).getTime()) / (7 * 86400000)) + 1);
+    const phaseLabel = week <= 6 ? 'Phase 1 · wk ' + week + '/6' : 'Phase 2 gate';
+
+    if (!rows.length) {
+      stats.innerHTML = statCard('0/3', 'This week') + statCard(phaseLabel, 'Program') + statCard('—', 'Avg energy after') + statCard('—', 'Last session');
+      body.innerHTML = '<div class="ft-empty">No sessions logged yet.<br>Session #1 = a note in the vault\'s <strong>Workout Log</strong> folder from the <strong>Workout Log Entry</strong> template.<br><span style="font-size:12px;">Program v1: 25 min Zone 2 + 2 rounds machine circuit, RPE ≤ 7 — embarrassingly light is correct.</span></div>';
+      drawSpark([]);
+      return;
+    }
+
+    const asc = rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    const weekStart = mondayOf(new Date());
+    const thisWeek = rows.filter(r => new Date(r.date) >= weekStart).length;
+    const energies = asc.map(r => num(r.energy_after)).filter(v => v !== null);
+    const last10 = energies.slice(-10);
+    const avgEnergy = last10.length ? (last10.reduce((a, b) => a + b, 0) / last10.length).toFixed(1) : '—';
+    const lastDate = asc.length ? asc[asc.length - 1].date : null;
+    const daysAgo = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : null;
+
+    stats.innerHTML =
+      statCard(thisWeek + '/3', 'This week (target 3–4)') +
+      statCard(phaseLabel, 'Program') +
+      statCard(avgEnergy, 'Avg energy after (last 10)') +
+      statCard(daysAgo === null ? '—' : daysAgo === 0 ? 'today' : daysAgo + 'd ago', 'Last session');
+
+    drawSpark(last10);
+
+    body.innerHTML = '<div class="ft-scroll"><table class="ft-table"><thead><tr>' +
+      '<th>Date</th><th>Type</th><th>Min</th><th>Energy</th><th>Max RPE</th><th>Weight</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(r => {
+        const eb = r.energy_before || '—', ea = r.energy_after || '—';
+        const rpe = num(r.rpe_max);
+        return `<tr>
+          <td><a href="files.html?path=${encodeURIComponent(r.path || '')}">${escH(r.date || r.file)}</a></td>
+          <td><span class="ft-chip">${escH(r.session_type || 'gym')}</span></td>
+          <td>${escH(r.duration_min || '—')}</td>
+          <td>${escH(eb)} → ${escH(ea)}</td>
+          <td style="${rpe !== null && rpe > 7 ? 'color:var(--status-failed);font-weight:700;' : ''}">${rpe === null ? '—' : rpe}${rpe !== null && rpe > 7 ? ' ⚠' : ''}</td>
+          <td>${escH(r.weight_kg || '—')}</td>
+        </tr>`;
+      }).join('') + '</tbody></table></div>';
+  } catch (e) {
+    body.innerHTML = `<div class="ft-empty">Couldn't load the log (${escH(e.message)}). The backend commit (/api/logs) may not be deployed yet.</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadWorkouts);
+</script>
+</body>
+</html>

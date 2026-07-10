@@ -1,5 +1,64 @@
 # NEXT SESSION — UI Build (Sonnet handoff, updated 2026-07-09)
 
+## 2026-07-09 EVENING session (Fable, Second Brain project) — Skills Hub + Trading/Fitness pages + /api/logs
+
+Built after the system-architecture standard + trading/fitness vault systems were created the same day
+(see vault: STANDARD — System Architecture.md, 010 Projects/Prop Trading/, 010 Projects/Fitness Rebuild/).
+
+**Front-end (commit 1):**
+- `skills.html` — **ARMS Skills Registry section added** (ROADMAP 4.3 / SKILLS-HUB-SPEC): reads `/api/arms`,
+  stat strip (Active/Consolidating/Untested), rows grouped by registry section (FieldBridge amber border,
+  Cowork purple via `--area-knowledge`), status dot + score chip + wired chip, "Internal — not client-facing"
+  footer. Spec's click→side-panel deferred (needs live testing). Health Check + skill grids untouched.
+- `trading.html` — **NEW** (ROADMAP 4.7, spec in vault Prop Trading hub): reads `/api/logs?kind=trading`.
+  Guardrails banner (turns red if a `rules_followed: false` entry exists in last 7 days), stat cards
+  (paper-gate X/50, win rate, total R, rule breaks), cumulative-R sparkline (inline SVG), trade table
+  linking each row to files.html. Honest empty state.
+- `fitness.html` — **NEW** (ROADMAP 4.7): reads `/api/logs?kind=fitness`. Phase 1 banner w/ safety rules,
+  stat cards (sessions this week vs 3–4 target, program week, avg energy-after, last session), daily-anchors
+  card, energy sparkline, session table (RPE > 7 highlighted red). PROGRAM_START const = 2026-07-09.
+- `shared.js` — both `moduleFiles` maps: `area-trading` → trading.html, `area-health` → fitness.html
+  (sidebar Life Areas buttons now hit real pages); drawer got a "Life" group (Trading/Fitness).
+- `index.html` — Life Areas section title de-"coming soon"-ed.
+- `assets/lucide-sprite.svg` — added missing `icon-lock` symbol (crm.html + trading.html use it; crm's was
+  rendering blank before).
+
+**Backend (commit 2 — separate, deploy after front-end looks right):**
+- `server.py` — new `GET /api/logs?kind=trading|fitness`: parses journal-entry frontmatter from the vault
+  mirror (`010 Projects/Prop Trading/Trade Journal/`, `010 Projects/Fitness Rebuild/Workout Log/`), strips
+  the templates' inline `# comment` hints from values, skips entries whose `type` doesn't match, sorts newest
+  first. Defensive (missing folder → empty, bad kind → 400).
+- `server.py` — `_serve_projects` fix: the vault now stores journal entries/strategies/programs under
+  010 Projects (typed `trade`/`workout`/`strategy`/`program`), which the old rglob would have rendered as
+  fake project rows. Now hub-notes-only: typed `project`/`cowork-project-hub` pass; untyped files pass only
+  if named like their folder.
+
+**Verification done:** NUL scan clean (Grep, whole repo). Logic smoke-tested in the sandbox (node): trading
+stats (win rate/total R/violation flag), fitness week/energy math, registry grouping/counts — all pass.
+`_serve_logs` executed against a fake vault in python3: filtering, comment-stripping, 400-path all correct.
+NOT eyeballed live (as usual) — Fadi walks skills/trading/fitness after deploy. Bash mount staleness
+unchanged: verify with Read/Grep only.
+
+**Vault-side same session (needs vault push too):** `agent-profiles/hermes-market-scanner.md` (05:15 scan
+persona — Morning Brief card ROADMAP 4.8 stays deferred until Hermes actually produces output), trading +
+fitness systems, architecture standard. Vault push = `sync-vault-to-git.bat`.
+
+### Git — commands for Fadi (sessions never run git):
+```
+cd C:\Dev\life-os-dashboard
+git status
+# --- Commit 1: front-end ---
+git add skills.html trading.html fitness.html shared.js index.html assets/lucide-sprite.svg NEXT-SESSION-UI.md
+git commit -m "Skills Hub: ARMS registry section (/api/arms); new trading.html + fitness.html life-area pages (/api/logs); nav wiring (Life group, area-trading/health -> real pages); add missing lock sprite icon"
+git push origin main
+# eyeball live: skills.html registry, trading.html + fitness.html empty states, sidebar Trading/Health links
+# --- Commit 2: backend ---
+git add server.py
+git commit -m "Add GET /api/logs (trade journal + workout log frontmatter from vault mirror); _serve_projects hub-notes-only filter (journal entries/strategies no longer render as projects)"
+git push origin main
+# then check http://<vps>:8090/api/logs?kind=trading returns {"data":[],"kind":"trading","count":0} until entries exist
+```
+
 ## HANDOFF FOR FABLE (design/simplification pass) — state as of 2026-07-09
 Fadi is taking the system to Fable next for a "simplest version of this" rethink. Current shipped/built state:
 - **Connectors LIVE** (via /keys.html): Fireflies, Notion (read-only integration "Life OS Dashboard"), Gmail (fadi@fieldbridgehq.com). Keys page got a real **Save** button per card. Notion CRM DB share status = Fadi to confirm.
