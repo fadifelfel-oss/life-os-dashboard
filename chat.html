@@ -1025,6 +1025,28 @@ pre:hover .copy-btn {
 .attach-modal-item .a-name { font-size: 13px; font-weight: 600; color: var(--chat-text); }
 .attach-modal-item .a-path { font-size: 11px; color: var(--chat-text-muted); }
 .attach-modal-empty { padding: 20px; text-align: center; font-size: 12px; color: var(--chat-text-muted); }
+/* Browse tree (default modal view — collapsible folders, same pattern as files.html) */
+.atn-folder-group { margin-bottom: 2px; }
+.atn-folder-header {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer;
+}
+.atn-folder-header:hover { background: color-mix(in srgb, var(--text-primary) 5%, transparent); }
+.atn-folder-toggle { font-size: 10px; color: var(--chat-text-muted); transition: transform 0.15s; flex-shrink: 0; }
+.atn-folder-toggle.open { transform: rotate(90deg); }
+.atn-folder-name { font-size: 13px; font-weight: 600; color: var(--chat-text); }
+.atn-folder-children { padding-left: 18px; display: none; }
+.atn-folder-children.open { display: block; }
+.atn-file-item {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: var(--chat-text-muted);
+}
+.atn-file-item:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--chat-text); }
+.attach-modal-tabs { display: flex; gap: 4px; padding: 8px 14px 0; }
+.attach-modal-tab {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--chat-text-muted); padding: 4px 10px; border-radius: 6px 6px 0 0; cursor: pointer;
+}
+.attach-modal-tab.active { color: var(--chat-accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 </style>
 </head>
 <body>
@@ -1294,7 +1316,8 @@ async function loadPMContext() {
 // Lets Fadi pin any specific note as context for the conversation, instead of
 // relying on KB fuzzy search or a hardcoded per-persona file. Read-only:
 // fetches via the existing /api/tree + /api/file endpoints, never writes.
-let vaultFileList = null;       // flat [{name, path}], fetched once, cached
+let vaultTreeRaw = null;        // nested tree exactly as /api/tree returns it, for browsing
+let vaultFileList = null;       // flat [{name, path}], derived from the tree, for search
 let vaultFileListLoading = null;
 let attachedFiles = [];         // [{name, path}] currently pinned to this conversation
 
@@ -1318,9 +1341,11 @@ async function loadVaultFileList() {
     try {
       const res = await fetch('/api/tree');
       const json = await res.json();
-      flatten(json.data || []);
+      vaultTreeRaw = json.data || [];
+      flatten(vaultTreeRaw);
     } catch (e) {
       console.warn('Attach: vault tree fetch failed', e);
+      vaultTreeRaw = [];
     }
     vaultFileList = flat;
     return flat;
@@ -1332,8 +1357,8 @@ async function openAttachModal() {
   document.getElementById('attachOverlay').classList.add('open');
   document.getElementById('attachSearch').value = '';
   document.getElementById('attachSearch').focus();
-  const list = await loadVaultFileList();
-  renderAttachList(list.slice(0, 60));
+  await loadVaultFileList();
+  renderAttachTree(vaultTreeRaw || []); // default view: browse the real folder tree
 }
 
 function closeAttachModal() {
@@ -1342,10 +1367,12 @@ function closeAttachModal() {
 
 function filterAttachList(q) {
   const query = q.trim().toLowerCase();
+  if (!query) {
+    renderAttachTree(vaultTreeRaw || []); // empty search box = back to browse mode
+    return;
+  }
   const list = vaultFileList || [];
-  const hits = query
-    ? list.filter(f => f.name.toLowerCase().includes(query) || f.path.toLowerCase().includes(query)).slice(0, 60)
-    : list.slice(0, 60);
+  const hits = list.filter(f => f.name.toLowerCase().includes(query) || f.path.toLowerCase().includes(query)).slice(0, 60);
   renderAttachList(hits);
 }
 
@@ -1360,6 +1387,57 @@ function renderAttachList(items) {
       <span class="a-name">${escapeHtml(f.name)}</span>
       <span class="a-path">${escapeHtml(f.path)}</span>
     </div>`).join('');
+}
+
+// Collapsible folder browse — same interaction pattern as files.html's tree,
+// scoped to .md files only (this is a context picker, not a general browser).
+function renderAttachTree(items, container) {
+  if (!container) {
+    const c = document.getElementById('attachList');
+    c.innerHTML = '';
+    if (!items.length) { c.innerHTML = '<div class="attach-modal-empty">Vault tree is empty or failed to load.</div>'; return; }
+    renderAttachTree(items, c);
+    return;
+  }
+  items.forEach(item => {
+    if (ATTACH_EXCLUDE_TOP.includes(item.name)) return;
+    if (item.type === 'directory' || item.type === 'dir') {
+      const hasMd = folderHasMarkdown(item);
+      if (!hasMd) return; // skip folders with no notes anywhere inside (e.g. .obsidian leftovers, asset-only dirs)
+      const div = document.createElement('div');
+      div.className = 'atn-folder-group';
+      div.innerHTML = `
+        <div class="atn-folder-header" onclick="toggleAttachFolder(this)">
+          <span class="atn-folder-toggle">▶</span>
+          <span class="atn-folder-name">${escapeHtml(item.name)}</span>
+        </div>
+        <div class="atn-folder-children"></div>`;
+      container.appendChild(div);
+      const children = div.querySelector('.atn-folder-children');
+      if (item.children && item.children.length) renderAttachTree(item.children, children);
+    } else if (item.name && item.name.toLowerCase().endsWith('.md')) {
+      const div = document.createElement('div');
+      div.className = 'atn-file-item';
+      div.textContent = item.name;
+      div.onclick = () => attachFile(item.name, item.path);
+      container.appendChild(div);
+    }
+  });
+}
+
+function folderHasMarkdown(folder) {
+  if (!folder.children) return false;
+  return folder.children.some(c =>
+    (c.type === 'file' && c.name.toLowerCase().endsWith('.md')) ||
+    ((c.type === 'directory' || c.type === 'dir') && folderHasMarkdown(c))
+  );
+}
+
+function toggleAttachFolder(headerEl) {
+  const children = headerEl.nextElementSibling;
+  const toggle = headerEl.querySelector('.atn-folder-toggle');
+  children.classList.toggle('open');
+  toggle.classList.toggle('open');
 }
 
 function attachFile(name, path) {
