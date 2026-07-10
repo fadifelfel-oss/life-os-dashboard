@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life Area — Life OS</title>
+<link rel="icon" type="image/svg+xml" href="assets/logo-option-1-node-network.svg">
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
+<style>
+.ar-banner {
+  font-size: 13px; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--accent); border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
+  display: flex; align-items: center; gap: 8px;
+}
+.ar-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+}
+.ar-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.ar-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.ar-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--space-2) 0; }
+.ar-body th, .ar-body td { border: 1px solid var(--border-primary); padding: 6px 8px; text-align: left; }
+.ar-body th { color: var(--text-tertiary); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+.ar-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
+.ar-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
+.ar-proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
+.ar-proj-card { background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-3); text-decoration: none; display: block; transition: border-color .15s; }
+.ar-proj-card:hover { border-color: var(--accent); }
+.ar-proj-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.ar-proj-status { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="life-areas.html" class="header-back">← Life Areas</a>
+  <div class="header-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-compass"/></svg> <span id="areaTitle">Life Area</span></div>
+  <div class="header-actions">
+    <button class="btn btn-sm" onclick="loadArea()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
+  </div>
+</div>
+
+<div class="ar-banner">
+  <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
+  Read-only reference — renders the area's real hub note straight from the vault, plus any linked projects. No tracking or logging is built for this area yet; that's a separate design step if you want one (like Trading and Fitness got).
+</div>
+
+<div class="ar-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Area note</h2>
+  <div class="ar-body" id="areaBody">Loading from vault…</div>
+</div>
+
+<div class="ar-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Related projects</h2>
+  <div id="areaProjects"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function escH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+// area key -> { title, path (vault hub note), tag (matches /api/projects "area" field, best-effort) }
+const AREAS = {
+  career:      { title: 'Career & Growth',   path: '020 Areas/02 Career & Growth.md',        tag: 'career' },
+  fieldbridge: { title: 'FieldBridge',        path: '020 Areas/03 FieldBridge.md',             tag: 'fieldbridge' },
+  work:        { title: 'Work — Active Projects', path: '020 Areas/01 Work — Active Projects.md', tag: 'work' },
+  finances:    { title: 'Finances',           path: '020 Areas/05 Finances.md',                tag: 'finances' },
+  family:      { title: 'Family',             path: '020 Areas/07 Family.md',                  tag: 'family' },
+  knowledge:   { title: 'Knowledge & Learning', path: '020 Areas/08 Knowledge & Learning.md',  tag: 'knowledge' },
+  admin:       { title: 'Personal Admin',     path: '020 Areas/09 Personal Admin.md',          tag: 'admin' },
+};
+
+function currentArea() {
+  const key = new URLSearchParams(window.location.search).get('area');
+  return AREAS[key] ? key : null;
+}
+
+async function loadArea() {
+  const key = currentArea();
+  const body = document.getElementById('areaBody');
+  const projBody = document.getElementById('areaProjects');
+  if (!key) {
+    document.getElementById('areaTitle').textContent = 'Unknown area';
+    body.innerHTML = '<div class="ar-empty">No (or unrecognized) ?area= parameter. Go back to Life Areas and pick one.</div>';
+    projBody.innerHTML = '';
+    return;
+  }
+  const area = AREAS[key];
+  document.getElementById('areaTitle').textContent = area.title;
+  document.title = area.title + ' — Life OS';
+
+  try {
+    const res = await fetch('/api/file?path=' + encodeURIComponent(area.path));
+    const json = await res.json();
+    if (json && json.html) body.innerHTML = json.html;
+    else if (json && json.content) body.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;">' + escH(json.content) + '</pre>';
+    else body.innerHTML = '<div class="ar-empty">Hub note not found in the vault mirror yet.</div>';
+  } catch (e) {
+    body.innerHTML = `<div class="ar-empty">Couldn't load the area note (${escH(e.message)}).</div>`;
+  }
+
+  try {
+    const res2 = await fetch('/api/projects');
+    const json2 = await res2.json();
+    const rows = (json2 && json2.data) || [];
+    const related = rows.filter(r => String(r.area || '').toLowerCase().includes(area.tag));
+    if (!related.length) {
+      projBody.innerHTML = '<div class="ar-empty">No projects tagged to this area yet.</div>';
+      return;
+    }
+    projBody.innerHTML = '<div class="ar-proj-grid">' + related.map(r => `
+      <a class="ar-proj-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
+        <div class="ar-proj-name">${escH(r.name)}</div>
+        <div class="ar-proj-status">${escH(r.status || 'no status')}</div>
+      </a>`).join('') + '</div>';
+  } catch (e) {
+    projBody.innerHTML = `<div class="ar-empty">Couldn't load related projects (${escH(e.message)}).</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadArea);
+</script>
+</body>
+</html>
