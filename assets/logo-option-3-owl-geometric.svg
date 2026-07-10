@@ -1,0 +1,12 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option 3: Geometric owl — keeps continuity with the interim 🦉 emoji
+       branding already in chat.html/sidebar, but as a proper vector mark
+       instead of an emoji glyph. Minimal, two-tone, works dark or light. -->
+  <path d="M32 8 C18 8 10 18 10 32 C10 46 19 56 32 56 C45 56 54 46 54 32 C54 18 46 8 32 8 Z" fill="none" stroke="#58a6ff" stroke-width="2.5"/>
+  <circle cx="22" cy="28" r="7" fill="none" stroke="#58a6ff" stroke-width="2.5"/>
+  <circle cx="42" cy="28" r="7" fill="none" stroke="#58a6ff" stroke-width="2.5"/>
+  <circle cx="22" cy="28" r="2.5" fill="#e8833e"/>
+  <circle cx="42" cy="28" r="2.5" fill="#e8833e"/>
+  <path d="M32 32 L28 40 L36 40 Z" fill="#e8833e"/>
+  <path d="M12 14 L20 22 M52 14 L44 22" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

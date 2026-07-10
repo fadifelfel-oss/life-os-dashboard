@@ -1026,6 +1026,9 @@ pre:hover .copy-btn {
           <div class="coach-dropdown-item" onclick="switchCoach('health')" data-coach="health">
             <span class="coach-dot" style="background:#22c55e;"></span> 🏋️ Health Coach
           </div>
+          <div class="coach-dropdown-item" onclick="switchCoach('virtualpm')" data-coach="virtualpm">
+            <span class="coach-dot" style="background:#e8833e;"></span> 🏗️ Virtual PM
+          </div>
         </div>
       </div>
 
@@ -1147,6 +1150,24 @@ const COACHES = {
     color: '#22c55e',
     systemPrompt: 'You are Fadi\'s Health & Fitness Coach. You help with workout routines, nutrition, weight tracking, sleep, and overall wellness. You are motivating, data-driven, and aware of Fadi\'s construction PM lifestyle (long hours, travel, stress). Always suggest realistic plans.',
     avatarClass: 'coach'
+  },
+  virtualpm: {
+    emoji: '🏗️',
+    name: 'Virtual PM',
+    color: '#e8833e',
+    // Sourced verbatim from agent-profiles/virtual-pm.md (vault) — ADVISOR only;
+    // real skill execution/document generation still hands off to a FieldBridge
+    // Cowork session, per that doc's own scope line.
+    systemPrompt: `You are Fadi Felfel's Virtual PM — a senior construction project manager colleague with 25+ years of delivery experience across Ontario high-rise residential (CCDC, CCA, OBC, TARION, Construction Act incl. prompt payment) and MENA projects (FIDIC 1999/2017 — UAE, Egypt, Saudi). You think and speak like an experienced PM peer, not a chatbot.
+
+The Side-of-Table rule — ALWAYS FIRST. Before assessing any claim, change, payment, or risk question, pin down which chair the client sits in, and say so: Employer/Owner = defend & reduce (bar claims, protect funds, enforce LDs); Contractor/Trade = preserve & recover (keep entitlement alive, get paid, defeat time-bars); Consultant/Engineer/ER = neutral & determine. A time-bar is a sword for the Employer and a shield for the Contractor. If the role isn't clear, ASK before advising.
+
+Jurisdiction personas (adopt the matching lens): Marcus — Ontario/CCDC · Tarek — Egypt/FIDIC · Khalid — UAE/FIDIC · Sherif — Engineer's Representative.
+
+How you work with Fadi: never explain construction basics to him (25 years experience) — explain software/AI simply when it comes up. One recommendation, not a menu — state it, then brief reasoning. Cite the clause/section when relying on contract mechanics; flag uncertainty and say what document would settle it. FieldBridge is a consultancy, never "software" or "a plugin" — funnel is free demo -> free tailored Assessment & Roadmap on the client's own data -> price the first win + roadmap -> retainer; no prices in outreach, skill names are internal-only. Anything requiring real document generation, skill runs, or client deliverables: say "this needs a FieldBridge Cowork session" and state exactly what to run there. NEVER discuss, reference, or process anything related to Jackman Construction or KOC projects — hard rule, no exceptions. End substantive work conversations with: "What did you ship today?"
+
+Tone: direct, warm, senior-peer. Push back when Fadi over-plans. Short answers unless the problem genuinely needs length.`,
+    avatarClass: 'coach'
   }
 };
 
@@ -1189,6 +1210,28 @@ async function loadHealthContext() {
   return healthContextLoading;
 }
 
+// Real CRM context for Virtual PM — same pattern as loadHealthContext(),
+// per virtual-pm.md's own "UI wiring notes": prepend CRM/index.md summary.
+let pmContext = null;
+let pmContextLoading = null;
+
+async function loadPMContext() {
+  if (pmContext !== null) return pmContext;
+  if (pmContextLoading) return pmContextLoading;
+  pmContextLoading = (async () => {
+    let crmTxt = '';
+    try {
+      const res = await fetch('/api/file?path=' + encodeURIComponent('CRM/index.md'));
+      const json = await res.json();
+      if (json && json.html) crmTxt = json.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      else if (json && json.content) crmTxt = json.content;
+    } catch (e) { console.warn('PM context: CRM fetch failed', e); }
+    pmContext = `--- Fadi's real CRM/pipeline summary (vault-sourced, read-only) ---\n${crmTxt || '(could not load CRM/index.md — advise generically and flag this)'}\n--- end CRM summary ---`;
+    return pmContext;
+  })();
+  return pmContextLoading;
+}
+
 function toggleCoachDropdown() {
   document.getElementById('coachDropdown').classList.toggle('open');
 }
@@ -1224,6 +1267,8 @@ function switchCoach(coachId) {
 
   if (coachId === 'health') {
     loadHealthContext(); // fire-and-cache; sendMessage() awaits the same promise if user types fast
+  } else if (coachId === 'virtualpm') {
+    loadPMContext();
   }
 
   Notify.info('Switched to ' + coach.name);
@@ -1386,6 +1431,13 @@ async function sendMessage() {
         systemPrompt += '\n\n' + ctx;
       } catch (e) {
         console.warn('Health context unavailable, continuing without it:', e);
+      }
+    } else if (currentCoach === 'virtualpm') {
+      try {
+        const ctx = await loadPMContext();
+        systemPrompt += '\n\n' + ctx;
+      } catch (e) {
+        console.warn('PM context unavailable, continuing without it:', e);
       }
     }
 

@@ -1,0 +1,10 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option 2: Geometric "F" monogram built from the same blueprint-grid
+       language as the dashboard's "Blueprint Dark" theme — reads as an
+       initial at a glance, but the crossbar doubles as a circuit trace. -->
+  <rect x="6" y="6" width="52" height="52" rx="12" fill="none" stroke="#58a6ff" stroke-width="2.5" opacity="0.35"/>
+  <path d="M20 46 L20 18 L44 18" fill="none" stroke="#58a6ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20 31 L38 31" fill="none" stroke="#58a6ff" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="44" cy="18" r="3" fill="#e8833e"/>
+  <circle cx="38" cy="31" r="3" fill="#22c55e"/>
+</svg>

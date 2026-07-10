@@ -196,8 +196,17 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_api_get(parsed_path)
             return
         elif path.startswith("/knowledge/"):
-            # Serve vault files directly under /knowledge/
-            file_path = VAULT_DIR / path[10:].lstrip('/')
+            # Serve vault files directly under /knowledge/. Containment check
+            # (ROADMAP 4.5 hardening): unlike _serve_vault_file, this route had
+            # no guard against "../" escaping VAULT_DIR — url-decode first so an
+            # encoded traversal (%2e%2e/) can't slip past a raw-string check.
+            requested = urllib.parse.unquote(path[len("/knowledge/"):]).lstrip('/')
+            file_path = VAULT_DIR / requested
+            try:
+                file_path.resolve().relative_to(VAULT_DIR.resolve())
+            except ValueError:
+                self._json_error(403, "Access denied")
+                return
             self._serve_file(file_path)
             return
         else:
