@@ -2651,8 +2651,19 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(response_data)
+            except urllib.error.HTTPError as e:
+                # Hermes IS reachable — it responded, just with an error status
+                # (bad model name, auth mismatch, malformed request, etc). This
+                # is a different failure mode than "can't connect" and was
+                # previously indistinguishable from it on the client — surface
+                # Hermes's own error body so the real cause is visible.
+                try:
+                    detail = e.read().decode('utf-8', errors='replace')[:500]
+                except Exception:
+                    detail = ""
+                self._json_error(e.code, f"Hermes responded with an error (HTTP {e.code}): {detail or str(e)}")
             except urllib.error.URLError as e:
-                self._json_error(502, f"Failed to connect to Hermes API Server: {str(e)}")
+                self._json_error(502, f"Could not reach Hermes API Server at {HERMES_CHAT_PROXY_URL} (connection-level failure): {str(e.reason)}")
             except Exception as e:
                 self._json_error(500, f"Error proxying to Hermes: {str(e)}")
                 

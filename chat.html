@@ -1737,7 +1737,19 @@ async function sendMessage() {
 
     removeTyping();
 
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!resp.ok) {
+      // Read the real error body from server.py's proxy instead of throwing
+      // a bare status code — that's what was hiding whether Hermes was
+      // actually unreachable vs. reachable-but-erroring (bad model, auth,
+      // malformed request). Falls back to the status code only if the body
+      // isn't the JSON shape we expect.
+      let detail = 'HTTP ' + resp.status;
+      try {
+        const errJson = await resp.json();
+        if (errJson && errJson.error) detail = errJson.error;
+      } catch (e) { /* body wasn't JSON — keep the status-only fallback */ }
+      throw new Error(detail);
+    }
 
     const data = await resp.json();
     const reply = data.choices?.[0]?.message?.content || data.response || 'No response';
@@ -1752,7 +1764,7 @@ async function sendMessage() {
     persistSession();
   } catch(err) {
     removeTyping();
-    addMessage('assistant', '⚠️ Could not reach Hermes. Make sure the Hermes gateway is running (port 8642).');
+    addMessage('assistant', `⚠️ ${escapeHtml(err.message || 'Unknown error talking to Hermes.')}`);
     console.error(err);
   }
 
