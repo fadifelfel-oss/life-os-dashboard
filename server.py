@@ -358,6 +358,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_logs(query)
         elif path == "/api/wiki/crm":
             self._serve_crm_snapshot()
+        elif path == "/api/hermes/morning-brief":
+            self._serve_morning_brief()
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -497,6 +499,32 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_response({"data": rows, "kind": kind, "count": len(rows)})
         except Exception as e:
             self._json_error(500, f"Failed to serve logs: {str(e)}")
+
+    def _serve_morning_brief(self):
+        """GET /api/hermes/morning-brief — reads Hermes's own scanner output
+        (its lane, NOT the vault): DATA_DIR/hermes/morning-brief-YYYY-MM-DD.md,
+        confirmed live 2026-07-10 (cron d8d431316fb8, daily 05:15 Toronto).
+        Tries today's file, falls back to yesterday's if today's cron hasn't
+        fired yet (e.g. dashboard checked before 05:15), never errors — just
+        reports which date it found, or none."""
+        brief_dir = DATA_DIR / "hermes"
+        try:
+            today = datetime.date.today()
+            for days_back in (0, 1):
+                d = (today - datetime.timedelta(days=days_back)).isoformat()
+                f = brief_dir / f"morning-brief-{d}.md"
+                if f.exists():
+                    content = f.read_text(encoding='utf-8')
+                    self._json_response({"data": {
+                        "date": d,
+                        "is_today": days_back == 0,
+                        "content": content,
+                        "path": str(f),
+                    }})
+                    return
+            self._json_response({"data": None})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve morning brief: {str(e)}")
 
     def _get_env_var(self, var_name):
         """Generic reader for any NAME=value line in ~/.hermes/.env — shared

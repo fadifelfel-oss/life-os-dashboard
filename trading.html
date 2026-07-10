@@ -111,8 +111,8 @@ details.tr-panel[open] > summary h2 .tr-chev { transform: rotate(90deg); }
 </div>
 
 <div class="tr-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-sun-moon"/></svg> Morning Brief (Hermes)<span class="tr-status-chip">not live</span></h2>
-  <div class="tr-brief-empty">Scanner not built yet (roadmap 4.8). Once shipped, this card will show Daily/4H trend state, key levels, and setup-forming status for EUR/USD and GBP/USD from Hermes's 05:15 scan — before you open the journal, not after.</div>
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-sun-moon"/></svg> Morning Brief (Hermes)<span class="tr-status-chip" id="briefStatus">loading</span></h2>
+  <div id="briefBody" class="tr-brief-empty">Loading…</div>
 </div>
 
 <div class="tr-panel">
@@ -155,6 +155,41 @@ function setGate(count, totalR) {
   document.getElementById('gateFill').style.width = pct.toFixed(1) + '%';
   const rTxt = (totalR === null || totalR === undefined) ? '' : ` · ${(totalR >= 0 ? '+' : '') + totalR.toFixed(1)}R net`;
   document.getElementById('gateSub').textContent = `${count} / 50 logged${rTxt}`;
+}
+
+// Lightweight markdown-ish render for the brief — it's plain text with
+// "## Pair" headers, "**bold**" flags, and a trailing footer line. Not a
+// full markdown parser (that's what /api/file + the 'markdown' package is
+// for on vault notes) — this file has no frontmatter and lives in Hermes's
+// own lane, not the vault, so it's rendered directly rather than through
+// the /api/file path.
+function renderBriefText(raw) {
+  let html = escH(raw);
+  html = html.replace(/^## (.+)$/gm, '<div style="font-weight:800;margin-top:10px;color:var(--area-trading)">$1</div>');
+  html = html.replace(/^# (.+)$/gm, '<div style="font-weight:800;font-size:14px;">$1</div>');
+  html = html.replace(/\*\*(NO-TRADE DAY)\*\*/g, '<strong style="color:var(--status-failed)">$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return html.split('\n').map(l => l.trim() ? l : '<br>').join('<br>');
+}
+
+async function loadMorningBrief() {
+  const body = document.getElementById('briefBody');
+  const chip = document.getElementById('briefStatus');
+  try {
+    const res = await fetch('/api/hermes/morning-brief');
+    const json = await res.json();
+    const data = json && json.data;
+    if (!data) {
+      body.innerHTML = 'No brief yet. Daily 05:15 (America/Toronto) — check back after that, or the first run hasn\'t happened yet.';
+      chip.textContent = 'no data';
+      return;
+    }
+    body.innerHTML = '<div style="font-size:13px;line-height:1.7;">' + renderBriefText(data.content) + '</div>';
+    chip.textContent = data.is_today ? 'today' : data.date + ' (stale)';
+  } catch (e) {
+    body.innerHTML = `Couldn't load the brief (${escH(e.message)}).`;
+    chip.textContent = 'error';
+  }
 }
 
 async function loadStrategy() {
@@ -242,7 +277,7 @@ async function loadTrades() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { loadTrades(); loadStrategy(); });
+document.addEventListener('DOMContentLoaded', () => { loadTrades(); loadStrategy(); loadMorningBrief(); });
 </script>
 </body>
 </html>
