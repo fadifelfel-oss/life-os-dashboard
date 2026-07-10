@@ -1150,6 +1150,45 @@ const COACHES = {
   }
 };
 
+// Real fitness context for the Health Coach — fetched once when switching
+// into that persona, cached, and appended to every message's system prompt.
+// Not dependent on the KB keyword-search toggle, so the coach always knows
+// the actual Program v1 routine and recent adherence, not just what a
+// fuzzy search happens to surface. Read-only: this never writes back.
+let healthContext = null;
+let healthContextLoading = null;
+
+async function loadHealthContext() {
+  if (healthContext !== null) return healthContext;
+  if (healthContextLoading) return healthContextLoading;
+  healthContextLoading = (async () => {
+    let programTxt = '';
+    let logsTxt = '';
+    try {
+      const res = await fetch('/api/file?path=' + encodeURIComponent('010 Projects/Fitness Rebuild/Program v1 — Phase 1.md'));
+      const json = await res.json();
+      const html = json && json.html;
+      if (html) {
+        programTxt = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      } else if (json && json.content) {
+        programTxt = json.content;
+      }
+    } catch (e) { console.warn('Health context: program fetch failed', e); }
+    try {
+      const res2 = await fetch('/api/logs?kind=fitness');
+      const json2 = await res2.json();
+      const rows = (json2 && json2.data) || [];
+      const recent = rows.slice(0, 5);
+      logsTxt = recent.length
+        ? recent.map(r => `${r.date || r.file}: ${r.session_type || 'gym'}, ${r.duration_min || '?'}min, energy ${r.energy_before || '?'}→${r.energy_after || '?'}, RPE max ${r.rpe_max || '?'}`).join('\n')
+        : 'No sessions logged yet.';
+    } catch (e) { console.warn('Health context: logs fetch failed', e); }
+    healthContext = `--- Fadi's real fitness data (vault-sourced, read-only) ---\nProgram v1 — Phase 1:\n${programTxt || '(could not load — advise generically and flag this)'}\n\nLast 5 logged sessions:\n${logsTxt}\n--- end fitness data ---`;
+    return healthContext;
+  })();
+  return healthContextLoading;
+}
+
 function toggleCoachDropdown() {
   document.getElementById('coachDropdown').classList.toggle('open');
 }
@@ -1182,6 +1221,10 @@ function switchCoach(coachId) {
   document.querySelectorAll('.message-avatar.assistant').forEach(avatar => {
     avatar.className = 'message-avatar ' + coach.avatarClass;
   });
+
+  if (coachId === 'health') {
+    loadHealthContext(); // fire-and-cache; sendMessage() awaits the same promise if user types fast
+  }
 
   Notify.info('Switched to ' + coach.name);
 }
@@ -1336,6 +1379,15 @@ async function sendMessage() {
   try {
     const coach = COACHES[currentCoach];
     let systemPrompt = currentCoach !== 'lifeos' ? coach.systemPrompt : '';
+
+    if (currentCoach === 'health') {
+      try {
+        const ctx = await loadHealthContext();
+        systemPrompt += '\n\n' + ctx;
+      } catch (e) {
+        console.warn('Health context unavailable, continuing without it:', e);
+      }
+    }
 
     if (thinkingEnabled) {
       systemPrompt += (systemPrompt ? ' ' : '') + 'Think through this step by step before answering. Briefly show your reasoning, then give a clear final answer.';
@@ -1654,6 +1706,14 @@ document.addEventListener('DOMContentLoaded', () => {
       input.focus();
       input.dispatchEvent(new Event('input'));
     }
+  }
+  // Deep-link support: fitness.html (and future life-area pages) link here
+  // with ?coach=health so Fadi lands directly in the right persona instead
+  // of having to open the dropdown manually.
+  const params = new URLSearchParams(window.location.search);
+  const coachParam = params.get('coach');
+  if (coachParam && COACHES[coachParam]) {
+    switchCoach(coachParam);
   }
 });
 

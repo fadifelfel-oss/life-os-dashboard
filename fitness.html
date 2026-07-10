@@ -38,6 +38,16 @@
 .ft-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
 .ft-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
 .ft-scroll { overflow-x: auto; }
+details.ft-panel > summary { cursor: pointer; list-style: none; }
+details.ft-panel > summary::-webkit-details-marker { display: none; }
+details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
+.ft-chev { display: inline-block; font-weight: 700; transition: transform 0.15s ease; }
+.ft-program-body { margin-top: var(--space-3); font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.ft-program-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--space-2) 0; }
+.ft-program-body th, .ft-program-body td { border: 1px solid var(--border-primary); padding: 6px 8px; text-align: left; }
+.ft-program-body th { color: var(--text-tertiary); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+.ft-status-chip { font-size: 10px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; margin-left: 8px; }
+.ft-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
 </style>
 </head>
 <body>
@@ -55,7 +65,19 @@
   <span>Phase 1 — Foundation (LA Fitness, 3–4×/week). Safety rules: exhale on exertion · RPE ≤ 7 · no head-below-heart · bad-energy day = walk only, still counts. Log lives in the vault (Workout Log folder); this page reads the mirror.</span>
 </div>
 
+<div class="ft-actions">
+  <button class="btn btn-sm" onclick="copyTodayLog()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Copy today's log template</button>
+  <button class="btn btn-sm" onclick="askHealthCoach()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg> Ask the Health Coach</button>
+</div>
+
 <div class="ft-stats" id="ftStats"></div>
+
+<details class="ft-panel" id="programPanel">
+  <summary>
+    <h2><span class="ft-chev">›</span> <svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Program v1 — Phase 1 (this week's routine)<span class="ft-status-chip" id="programStatus">loading</span></h2>
+  </summary>
+  <div class="ft-program-body" id="programBody">Loading from vault…</div>
+</details>
 
 <div class="ft-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Daily anchors (gym or not)</h2>
@@ -86,6 +108,87 @@ function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
 
 function statCard(value, label) {
   return `<div class="ft-stat"><div class="ft-stat-value">${value}</div><div class="ft-stat-label">${label}</div></div>`;
+}
+
+// Cached after each loadWorkouts() run — used by askHealthCoach() so the
+// chat handoff carries real numbers instead of re-deriving them.
+let ftLastSummary = { thisWeek: 0, phaseLabel: 'Phase 1 · wk 1/6', avgEnergy: '—', lastDate: null };
+
+async function loadProgram() {
+  const body = document.getElementById('programBody');
+  const chip = document.getElementById('programStatus');
+  try {
+    const res = await fetch('/api/file?path=' + encodeURIComponent('010 Projects/Fitness Rebuild/Program v1 — Phase 1.md'));
+    const json = await res.json();
+    if (json && json.html) {
+      body.innerHTML = json.html;
+      chip.textContent = 'active';
+    } else if (json && json.content) {
+      body.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;">' + escH(json.content) + '</pre>';
+      chip.textContent = 'raw';
+    } else {
+      body.innerHTML = '<div class="ft-empty">Program file not found in the vault mirror yet.</div>';
+      chip.textContent = 'missing';
+    }
+  } catch (e) {
+    body.innerHTML = `<div class="ft-empty">Couldn't load Program v1 (${escH(e.message)}).</div>`;
+    chip.textContent = 'error';
+  }
+}
+
+function copyTodayLog() {
+  const today = new Date().toISOString().slice(0, 10);
+  const md = `---
+type: workout
+date: ${today}
+session_type: gym        # gym | zone2-only | mobility-only | walk
+duration_min:
+energy_before:           # 1-10
+energy_after:            # 1-10
+rpe_max:                 # hardest set, 1-10 — Phase 1 ceiling is 7
+weight_kg:                # Renpho, weekly only — leave blank most days
+tags: [type/workout, area/health]
+---
+
+# ${today} — Workout
+
+## Zone 2
+- Machine: | Minutes: | Incline/level: | Felt:
+
+## Circuit (rounds × reps @ weight)
+- Leg press:
+- Chest press:
+- Seated row:
+- Lat pulldown:
+- Leg curl:
+- Dead bug:
+
+## Notes
+**Anything unusual (dizziness, swelling, joint pain)?** none / →tell the team
+**One line for next session:**
+
+*Program: [[010 Projects/Fitness Rebuild/Program v1 — Phase 1]] · Rules: exhale on exertion · RPE ≤7 · bad day = walk only, still log it.*
+`;
+  navigator.clipboard.writeText(md).then(() => {
+    if (typeof Notify !== 'undefined') Notify.info('Copied — paste as a new note in Workout Log/ named "' + today + ' gym.md"');
+    else alert('Copied — paste as a new note in Workout Log/ named "' + today + ' gym.md"');
+  }).catch(() => {
+    alert('Clipboard blocked by the browser — here is the template:\n\n' + md);
+  });
+}
+
+function askHealthCoach() {
+  const s = ftLastSummary;
+  const prefill = `Here's my current fitness state — use it, don't ask me to repeat it:
+- Program: Phase 1 Foundation, ${s.phaseLabel}
+- Sessions this week: ${s.thisWeek}/3-4
+- Avg energy after (last 10): ${s.avgEnergy}
+- Last session: ${s.lastDate || 'none logged yet'}
+- Routine: Zone 2 cardio 25min + machine circuit 2 rounds (leg press, chest press, seated row, lat pulldown, leg curl, dead bug) + cooldown. RPE ceiling 7. Progression: add reps at 2x10 easy twice in a row, then smallest weight increment.
+
+`;
+  sessionStorage.setItem('hermes-prefill', prefill);
+  window.location.href = 'chat.html?coach=health';
 }
 
 function mondayOf(d) {
@@ -122,6 +225,7 @@ async function loadWorkouts() {
       stats.innerHTML = statCard('0/3', 'This week') + statCard(phaseLabel, 'Program') + statCard('—', 'Avg energy after') + statCard('—', 'Last session');
       body.innerHTML = '<div class="ft-empty">No sessions logged yet.<br>Session #1 = a note in the vault\'s <strong>Workout Log</strong> folder from the <strong>Workout Log Entry</strong> template.<br><span style="font-size:12px;">Program v1: 25 min Zone 2 + 2 rounds machine circuit, RPE ≤ 7 — embarrassingly light is correct.</span></div>';
       drawSpark([]);
+      ftLastSummary = { thisWeek: 0, phaseLabel, avgEnergy: '—', lastDate: null };
       return;
     }
 
@@ -141,6 +245,7 @@ async function loadWorkouts() {
       statCard(daysAgo === null ? '—' : daysAgo === 0 ? 'today' : daysAgo + 'd ago', 'Last session');
 
     drawSpark(last10);
+    ftLastSummary = { thisWeek, phaseLabel, avgEnergy, lastDate: lastDate ? String(lastDate) : null };
 
     body.innerHTML = '<div class="ft-scroll"><table class="ft-table"><thead><tr>' +
       '<th>Date</th><th>Type</th><th>Min</th><th>Energy</th><th>Max RPE</th><th>Weight</th>' +
@@ -162,7 +267,7 @@ async function loadWorkouts() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadWorkouts);
+document.addEventListener('DOMContentLoaded', () => { loadWorkouts(); loadProgram(); });
 </script>
 </body>
 </html>
