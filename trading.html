@@ -59,6 +59,13 @@ details.tr-panel[open] > summary h2 .tr-chev { transform: rotate(90deg); }
 .tr-strategy-body th { color: var(--text-tertiary); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
 .tr-status-chip { font-size: 10px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; margin-left: 8px; }
 .tr-brief-empty { font-size: 13px; color: var(--text-muted); line-height: 1.7; padding: var(--space-3) 0; }
+.tr-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px; }
+.tr-next { border-left: 3px solid var(--area-trading); }
+.tr-next-action { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.5; }
+.tr-next-rest { font-size: 12px; color: var(--text-secondary); line-height: 1.8; margin-top: var(--space-2); }
+.tr-radar-row { font-size: 12px; color: var(--text-secondary); line-height: 1.6; padding: 6px 0; border-bottom: 1px solid var(--border-primary); }
+.tr-radar-row:last-child { border-bottom: none; }
+.tr-openlink { font-size: 12px; color: var(--area-trading); text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -85,6 +92,11 @@ details.tr-panel[open] > summary h2 .tr-chev { transform: rotate(90deg); }
 </div>
 
 <div class="tr-stats" id="trStats"></div>
+
+<div class="tr-panel tr-next" id="nextPanel">
+  <div class="tr-eyebrow">Next Move</div>
+  <div id="nextBody"><div class="tr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Reading focus from the vault…</div></div>
+</div>
 
 <div class="tr-panel" id="sparkPanel" style="display:none;">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Equity curve (cumulative R, closed trades)</h2>
@@ -118,6 +130,11 @@ details.tr-panel[open] > summary h2 .tr-chev { transform: rotate(90deg); }
 <div class="tr-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Trade log</h2>
   <div id="trBody"><div class="tr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading journal…</div></div>
+</div>
+
+<div class="tr-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-radar"/></svg> Radar — opportunities &amp; cross-links</h2>
+  <div id="radarBody"><div class="tr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Scanning the radar…</div></div>
 </div>
 
 </div><!-- /container -->
@@ -277,7 +294,58 @@ async function loadTrades() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { loadTrades(); loadStrategy(); loadMorningBrief(); });
+// Zone 2 — Next Move: top action from the area hub's Current Focus section.
+async function loadNextMove() {
+  const body = document.getElementById('nextBody');
+  const hubPath = '020 Areas/04 Trading.md';
+  const openLink = `<a class="tr-openlink" href="files.html?path=${encodeURIComponent(hubPath)}">Open Trading hub →</a>`;
+  try {
+    const res = await fetch('/api/file?path=' + encodeURIComponent(hubPath));
+    const json = await res.json();
+    const md = (json && json.content) || '';
+    if (!md) { body.innerHTML = `<div class="tr-brief-empty">No focus set in the vault yet. ${openLink}</div>`; return; }
+    // Grab the Current Focus section (## … Current Focus → next ##)
+    const m = md.match(/^#{1,6}[^\n]*Current Focus[^\n]*\n([\s\S]*?)(?=\n#{1,6}\s|$)/im);
+    const block = m ? m[1] : '';
+    const items = block.split('\n').map(l => l.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
+    if (!items.length) { body.innerHTML = `<div class="tr-brief-empty">Current Focus is empty in the hub. ${openLink}</div>`; return; }
+    const first = items[0], rest = items.slice(1);
+    body.innerHTML =
+      `<div class="tr-next-action">${escH(first)}</div>` +
+      (rest.length ? `<div class="tr-next-rest">then: ${rest.map(escH).join(' · ')}</div>` : '') +
+      `<div style="margin-top:var(--space-2)">${openLink}</div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="tr-brief-empty">Couldn't read the hub (${escH(e.message)}). ${openLink}</div>`;
+  }
+}
+
+// Zone 6 — Radar: trading-relevant opportunity signals from Opportunity Radar.md.
+async function loadRadar() {
+  const body = document.getElementById('radarBody');
+  const radarPath = 'Opportunity Radar.md';
+  const openLink = `<a class="tr-openlink" href="files.html?path=${encodeURIComponent(radarPath)}">Open full Opportunity Radar →</a>`;
+  try {
+    const res = await fetch('/api/file?path=' + encodeURIComponent(radarPath));
+    const json = await res.json();
+    const md = (json && json.content) || '';
+    if (!md) { body.innerHTML = `<div class="tr-brief-empty">Radar note not found in the mirror. ${openLink}</div>`; return; }
+    // Pull lines that mention trading (table rows or bullets), strip markdown table pipes.
+    const hits = md.split('\n')
+      .filter(l => /trad|polymarket|prop firm|fundednext|pine|strateg/i.test(l) && !/^#{1,6}\s|How It Works|Radar Instructions/i.test(l))
+      .map(l => l.replace(/^\s*\|?\s*/, '').replace(/\s*\|\s*$/, '').replace(/\s*\|\s*/g, ' — ').replace(/\[\[([^\]|]*\|)?([^\]]*)\]\]/g, '$2').trim())
+      .filter(l => l.length > 12).slice(0, 6);
+    if (!hits.length) {
+      body.innerHTML = `<div class="tr-brief-empty">No trading-specific signals on the radar yet. New ones land here when a processed clip or CRM note overlaps the trading thesis. ${openLink}</div>`;
+      return;
+    }
+    body.innerHTML = hits.map(h => `<div class="tr-radar-row">${escH(h)}</div>`).join('') +
+      `<div style="margin-top:var(--space-2)">${openLink}</div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="tr-brief-empty">Couldn't read the radar (${escH(e.message)}). ${openLink}</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadTrades(); loadStrategy(); loadMorningBrief(); loadNextMove(); loadRadar(); });
 </script>
 </body>
 </html>
