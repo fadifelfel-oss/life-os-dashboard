@@ -45,7 +45,8 @@ remain gated exactly as before; nothing gated was touched this pass.
    per-message — see write-up for why).
 
 **BUILD NOW (added by Fable 2026-07-11 — Fadi feature request, approved):**
-10. **Playbook goes live (use-cases.html).** The hardcoded `PLAYBOOK` object is stale (job-search-
+10. ~~**Playbook goes live (use-cases.html).**~~ DONE 2026-07-11 (Sonnet) — see session write-up
+    below. The hardcoded `PLAYBOOK` object is stale (job-search-
     era). The play library now lives in the vault: **`_system/playbook/*.md`** — 16 files, one per
     play, frontmatter `title / area / tier / status` + body = the prompt (Cowork owns content).
     Build:
@@ -93,6 +94,91 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-11 session #2 (Sonnet, Second Brain project) — Playbook goes live (item 10)
+
+Executed queue item 10 only, per session instruction. Confirmed the vault push landed first
+(`_system/playbook/*.md` — exactly 16 files, all `status: active`, none `retired`) before
+touching the front-end, per the item's own gate.
+
+**Probe first:** read `_serve_logs`/`_serve_arms`/`_serve_projects` in `server.py` for the
+established pattern (defensive frontmatter parse off `VAULT_DIR`, never writes there; usage/
+counters go to `DATA_DIR`, e.g. `.skill_usage.json`'s counts+last_used shape). Built
+`/api/playbook` and `/api/playbook/run` to match.
+
+**Built:**
+- `server.py` — `_serve_playbook()`: `GET /api/playbook` reads `_system/playbook/*.md` from
+  `VAULT_DIR`, reuses the existing `_parse_frontmatter` helper, skips `status: retired`, returns
+  `{key, title, area, tier, status, prompt (=body), run_count, last_run}` per play. Merges usage
+  from `DATA_DIR/playbook-usage.jsonl` (parsed defensively line-by-line, corrupt lines skipped,
+  never 500s). `_handle_playbook_run()`: `POST /api/playbook/run {key}` appends one
+  `{ts, key}` JSON line to that same file — dashboard's own data lane, never written into
+  `VAULT_DIR` (Decision Gate 1 respected, same boundary as `.skill_usage.json`/`.kanban_store.json`).
+  Wired into both dispatch tables (`_handle_api_get` GET route + 405 guard for the POST-only
+  path; `do_POST` route for the actual handler).
+- `use-cases.html` — deleted the hardcoded `PLAYBOOK` object entirely. `loadPlaybook()` fetches
+  `/api/playbook` and `renderPlaybook()` groups live plays by `tier` (income/life, matching the
+  old top-level structure) then by a fixed `area` display order, using `AREA_META` for label/
+  sub-label only (no more hardcoded hex — colors are `var(--area-<area>)`, one of the 8 shared
+  tokens already in `shared.css`, confirmed all 7 areas actually present in the vault files map
+  cleanly: fieldbridge/career/construction/trading/health/family/knowledge). Each card shows
+  title, first line of the vault prompt as the description, a muted "used N× · last X ago" line
+  only when `run_count > 0`, and "▶ Run in Hermes" — which now both sets the existing
+  `sessionStorage 'hermes-prefill'` handoff AND fires `POST /api/playbook/run` (fire-and-forget,
+  `.catch(()=>{})`, never blocks the redirect to chat.html). Three honest states: HTTP-error
+  (backend not deployed — explicit "returned {status}" message), 200-but-empty (no plays in the
+  vault), and the real 16-play render. Saved Prompts tab untouched.
+- Did not touch tool roles / writer lanes / data stores in a new way — `/api/playbook` is
+  read-only against `VAULT_DIR` (existing pattern), `/api/playbook/run` writes only to
+  `DATA_DIR`, the dashboard's pre-existing own lane (same class of write as `.skill_usage.json`).
+
+**Verification done (bash mount of `C:\Dev\life-os-dashboard` not used for verification — Read/
+Grep only, per the standing gotcha):**
+- **Backend logic simulated against the REAL vault files** (not the VPS — network-unreachable
+  from this sandbox, consistent with prior sessions): copied `_parse_frontmatter` +
+  `_serve_playbook`'s exact logic into a sandbox scratch script pointed at the real
+  `_system/playbook/` folder in the OneDrive-synced vault mirror. Result: **16/16 plays**, all
+  with non-empty title/area/prompt, `tier` ∈ {income, life}, all 7 areas map to a known
+  `--area-*` token (fieldbridge×5, career×2, construction×2, trading×2, health×2, family×1,
+  knowledge×2 — 11 income / 5 life). Also simulated the usage-merge path with fake JSONL lines —
+  `run_count`/`last_run` aggregate correctly per key, untouched plays stay at 0/null. This
+  satisfies the item's own gate ("verify /api/playbook returns 16 plays... before wiring the
+  front-end final pass") as rigorously as is possible without live VPS access.
+- `server.py`: both new methods copied into a dummy-class scratch file (stubbed
+  `_json_response`/`_json_error`/`self.headers`/`self.rfile` surface) and run directly —
+  `SYNTAX_OK`, no exceptions. Dispatch-table edits re-read via the Read tool at both seams
+  (GET `_handle_api_get`, POST `do_POST`) — correctly indented, no stray branches.
+- `use-cases.html`: full file re-read via Read tool — well-formed HTML/CSS/JS, no stray tags.
+  Full `<script>` block copied to the sandbox outputs folder and run through `node --check` —
+  `SYNTAX_OK`.
+- Both touched files (`server.py`, `use-cases.html`) NUL-scanned via Grep — clean.
+- **Not eyeballed live** — Fadi opens `use-cases.html` after deploy and confirms: the Playbook
+  tab renders 16 real cards grouped Income engines → FieldBridge/Career/Construction/Trading
+  then Life and system → Health/Family/AI tools; clicking "Run in Hermes" lands on chat.html
+  with the prompt prefilled; a second click on the same play later shows the "used N× · last X
+  ago" line. Also worth testing the empty-state path once (e.g. temporarily rename the vault
+  folder) to confirm the honest "backend not deployed" vs "no plays" messages render distinctly
+  — not done here since it would require touching the live vault mirror.
+
+**Not touched:** items 4–8 (still gated), item 9 (already shipped in the prior same-day
+session), any tool-role/writer-lane/data-store change (this session's `/api/playbook/run` write
+is the same existing DATA_DIR-write pattern already used by `.skill_usage.json` etc. — not new).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py use-cases.html NEXT-SESSION-UI.md
+git commit -m "Playbook goes live (item 10): GET /api/playbook reads _system/playbook/*.md from the vault mirror (16 plays, defensive frontmatter parse, skips status:retired), POST /api/playbook/run logs usage to DATA_DIR/playbook-usage.jsonl; use-cases.html Playbook tab now renders live from the API (hardcoded PLAYBOOK object deleted) grouped by tier then area, area colors from shared --area-* tokens, run-count/last-run shown per play"
+git push origin main
+# auto-pull deploys within ~1 min — open use-cases.html, confirm 16 real cards render grouped
+# Income engines (FieldBridge/Career/Construction/Trading) then Life and system
+# (Health/Family/AI tools), click "Run in Hermes" on one, confirm it lands on chat.html with
+# the prompt prefilled, then revisit the Playbook tab and confirm that card now shows
+# "used 1× · last just now".
+```
 
 ## 2026-07-11 session (Sonnet, Second Brain project) — Hermes Activity panel (9b, gate cleared)
 

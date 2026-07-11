@@ -269,6 +269,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_crm_ingest()
         elif path == "/api/wiki/extract-prompts":
             self._handle_extract_prompts()
+        elif path == "/api/playbook/run":
+            self._handle_playbook_run()
         else:
             self._json_error(404, "Endpoint not found")
             return
@@ -368,6 +370,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_morning_brief()
         elif path == "/api/hermes/activity":
             self._serve_hermes_activity(query)
+        elif path == "/api/playbook":
+            self._serve_playbook()
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -375,6 +379,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/browser/run":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/clip":
+            self._json_error(405, "Method not allowed. Use POST.")
+        elif path == "/api/playbook/run":
             self._json_error(405, "Method not allowed. Use POST.")
         else:
             self._json_error(404, "API endpoint not found")
@@ -507,6 +513,96 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_response({"data": rows, "kind": kind, "count": len(rows)})
         except Exception as e:
             self._json_error(500, f"Failed to serve logs: {str(e)}")
+
+    def _serve_playbook(self):
+        """GET /api/playbook — the Hermes play library, read from
+        `_system/playbook/*.md` in the vault mirror (Cowork owns the content:
+        one file per play, frontmatter `title/area/tier/status`, body = the
+        prompt). Merges usage counts from DATA_DIR/playbook-usage.jsonl — the
+        dashboard's own data lane (Decision Gate 1: this server never writes
+        into VAULT_DIR). Skips `status: retired` plays. Defensive throughout:
+        a missing folder, malformed play, or corrupt usage line yields
+        empty/partial results, never a 500."""
+        try:
+            pb_dir = VAULT_DIR / "_system" / "playbook"
+
+            usage = {}  # key -> {run_count, last_run}
+            usage_path = DATA_DIR / "playbook-usage.jsonl"
+            if usage_path.exists():
+                try:
+                    with open(usage_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            try:
+                                entry = json.loads(line)
+                            except Exception:
+                                continue
+                            key = entry.get("key")
+                            ts = entry.get("ts")
+                            if not key:
+                                continue
+                            rec = usage.setdefault(key, {"run_count": 0, "last_run": None})
+                            rec["run_count"] += 1
+                            if ts and (rec["last_run"] is None or str(ts) > str(rec["last_run"])):
+                                rec["last_run"] = ts
+                except Exception:
+                    usage = {}
+
+            rows = []
+            if pb_dir.exists():
+                for f in sorted(pb_dir.glob("*.md")):
+                    try:
+                        meta, body = self._parse_frontmatter(f.read_text(encoding="utf-8"))
+                    except Exception:
+                        continue
+                    status = str(meta.get("status") or "").strip().lower()
+                    if status == "retired":
+                        continue
+                    key = f.stem
+                    u = usage.get(key, {})
+                    rows.append({
+                        "key": key,
+                        "title": meta.get("title") or key,
+                        "area": str(meta.get("area") or "").strip().lower(),
+                        "tier": str(meta.get("tier") or "").strip().lower(),
+                        "status": status or "active",
+                        "prompt": body.strip(),
+                        "run_count": u.get("run_count", 0),
+                        "last_run": u.get("last_run"),
+                    })
+            self._json_response({"data": rows, "count": len(rows)})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve playbook: {str(e)}")
+
+    def _handle_playbook_run(self):
+        """POST /api/playbook/run {key} — append one usage line to
+        DATA_DIR/playbook-usage.jsonl (dashboard's own lane, NOT the vault —
+        Decision Gate 1). Best-effort logging only; GET /api/playbook merges
+        this into run_count/last_run per play. Never blocks the actual
+        Hermes handoff, which use-cases.html does client-side regardless of
+        this call's outcome."""
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            data = {}
+            if content_length:
+                body = self.rfile.read(content_length)
+                try:
+                    data = json.loads(body.decode("utf-8"))
+                except Exception:
+                    data = {}
+            key = str(data.get("key") or "").strip()
+            if not key:
+                self._json_error(400, "key required")
+                return
+            usage_path = DATA_DIR / "playbook-usage.jsonl"
+            entry = {"ts": datetime.datetime.now().isoformat(), "key": key}
+            with open(usage_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry) + "\n")
+            self._json_response({"ok": True})
+        except Exception as e:
+            self._json_error(500, f"Failed to log playbook run: {str(e)}")
 
     def _serve_morning_brief(self):
         """GET /api/hermes/morning-brief — reads Hermes's own scanner output

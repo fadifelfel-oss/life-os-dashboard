@@ -27,6 +27,7 @@
 .pb-card:hover { border-color: var(--accent-border); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .pb-card-title { font-size: var(--font-size-sm); font-weight:700; }
 .pb-card-desc { font-size: var(--font-size-xs); color: var(--text-secondary); line-height:1.5; flex:1; }
+.pb-usage { font-size: 10px; color: var(--text-tertiary); }
 .pb-run {
   align-self:flex-start; margin-top:4px;
   font-size: var(--font-size-xs); font-weight:700;
@@ -77,108 +78,112 @@
 <script src="shared.js"></script>
 <script>
 // ============================================================
-// HERMES PLAYBOOK — curated best-use cases per life area.
-// Each card hands a ready prompt to the chat page via
-// sessionStorage 'hermes-prefill' (chat.html picks it up on load).
+// HERMES PLAYBOOK — live from GET /api/playbook, which reads
+// _system/playbook/*.md in the vault mirror (Cowork owns the
+// content: one file per play, frontmatter title/area/tier/status,
+// body = the prompt). Each card hands its prompt to chat.html via
+// sessionStorage 'hermes-prefill' AND logs the run via
+// POST /api/playbook/run (dashboard's own usage lane, never
+// written to the vault).
 // ============================================================
-const PLAYBOOK = {
-  income: [
-    {
-      key:'fieldbridge', title:'FieldBridge', sub:'The product', color:'#7F77DD',
-      cards:[
-        { t:'Draft a prospect follow-up', d:'Turn a discovery call into a tailored follow-up email with clear next steps.', p:'Help me draft a follow-up email to a FieldBridge prospect after a discovery call. Ask me for the prospect name and the 2-3 pains they raised, then write a concise, confident follow-up with a clear next step.' },
-        { t:'Website → outreach angle', d:'Analyze a contractor\'s website and craft a tailored cold message.', p:'I\'m going to give you a specialty trade contractor\'s website. Analyze what they do, spot their likely claim-documentation pain, and draft a short, specific LinkedIn outreach message for FieldBridge. Ask me for the URL.' },
-        { t:'Build a Stage-0 demo script', d:'Prep a tight demo for a specialty trade contractor.', p:'Help me build a Stage-0 FieldBridge demo script for a specialty trade contractor doing $5M-$50M revenue with claim-documentation pain. Keep it to 10 minutes, focused on their ROI.' },
-        { t:'Summarize a client call', d:'Pull decisions, pains, and next steps from a meeting.', p:'I\'ll paste a meeting transcript. Summarize it into: client pains (their words), decisions made, and my next actions. Flag anything that sounds like a monetization opportunity.' },
-      ],
-    },
-    {
-      key:'career', title:'Career', sub:'Job search — priority 1', color:'#378ADD',
-      cards:[
-        { t:'Tailor me to a job posting', d:'Gap-analyze a Senior PM role against my experience.', p:'I\'ll paste a Senior/Executive PM job description. Compare it against my background (25+ yrs construction PM, Ontario + MENA, FieldBridge founder) and give me: strong matches, gaps to address, and 3 bullet points to add to my application.' },
-        { t:'Message a recruiter or contact', d:'Draft a warm, specific outreach to my network.', p:'Help me draft a short, warm message to a recruiter or network contact about Senior/Executive PM roles in Ontario, UAE, Egypt, or Saudi. Ask me who it is and any shared context first.' },
-        { t:'Prep me for an interview', d:'Anticipate questions for a specific role and market.', p:'Prep me for an interview for a Senior PM role. Ask me the company, role, and market (Ontario/UAE/Egypt/Saudi), then give likely questions and strong answers using my real projects (KOC Tower, Mile & Creek, RAK Marriott).' },
-        { t:'Draft a LinkedIn post', d:'Position me as a construction + AI leader.', p:'Help me draft a LinkedIn post positioning me as a Senior Construction PM who builds AI tools (FieldBridge). Ask me what angle or story I want to share, then write it in a confident, non-salesy voice.' },
-      ],
-    },
-    {
-      key:'construction', title:'Construction', sub:'Your expertise', color:'#BA7517',
-      cards:[
-        { t:'Explain a contract clause', d:'Break down a CCDC / FIDIC clause and its risk.', p:'I\'ll paste a CCDC or FIDIC clause. Explain it in plain terms, flag the risk to the owner and to the contractor, and suggest how I\'d handle it as PM.' },
-        { t:'Draft an RFI or change order', d:'Write a clean, defensible project document.', p:'Help me draft an RFI (or change order — I\'ll tell you which). Ask me for the project context and the issue, then write it clearly and professionally.' },
-        { t:'ROM cost estimate', d:'Ballpark a project quickly with assumptions stated.', p:'Help me build a rough order-of-magnitude cost estimate for an Ontario residential project. Ask me the type, size, and location, state your assumptions, and give a defensible range.' },
-      ],
-    },
-    {
-      key:'trading', title:'Trading', sub:'Prop trading', color:'#639922',
-      cards:[
-        { t:'Analyze a setup with risk', d:'Review a ticker idea with position sizing + TP/SL.', p:'I\'ll give you a ticker and my thesis. Analyze the setup, then give me position sizing, take-profit and stop-loss levels for a defined risk per trade. Remind me you are not a financial advisor.' },
-        { t:'Draft a Pine Script', d:'Turn a strategy idea into TradingView code.', p:'Help me write a TradingView Pine Script strategy. Ask me for the entry/exit rules and risk parameters, then produce clean, commented Pine v5 code.' },
-        { t:'Market brief for my watchlist', d:'Summarize what moved and why.', p:'Give me a short market brief for my watchlist. Ask me the tickers, then summarize recent moves and any news that matters, with sources.' },
-      ],
-    },
-  ],
-  life: [
-    {
-      key:'health', title:'Health', sub:'Rebuild', color:'#1D9E75',
-      cards:[
-        { t:'Plan this week\'s workouts', d:'Post-surgery-safe home training, paced conservatively.', p:'Plan a home workout week for me. I\'m rebuilding post-surgery and pacing conservatively, waking at 5am with a long commute. Keep it safe, progressive, and realistic around a busy schedule with three kids.' },
-        { t:'One change for better energy', d:'Review sleep/energy and suggest a single fix.', p:'Ask me a few questions about my sleep, energy, and routine, then suggest ONE evidence-based change that would help most. Keep it conservative and doable.' },
-        { t:'Weekly meal plan', d:'Simple meals aligned to my goals.', p:'Help me plan simple, healthy meals for the week that fit a busy family of five. Ask me any dietary preferences first.' },
-      ],
-    },
-    {
-      key:'family', title:'Family', sub:'Sara and the kids', color:'#D4537E',
-      cards:[
-        { t:'Plan family weekend time', d:'A protected activity with Sara and the kids.', p:'Help me plan a weekend activity the whole family would enjoy — Sara, Salah (15), Seela (11), and Yousef (5), in Milton, Ontario. Keep it realistic for my energy and budget.' },
-        { t:'Plan time with Sara', d:'A thoughtful date or gesture.', p:'Help me plan a thoughtful date or gesture for Sara. Ask me what she\'s been enjoying lately and give me a couple of realistic ideas.' },
-        { t:'Help with the kids\' learning', d:'Explain a school topic simply.', p:'Help me explain a school topic to one of my kids in an age-appropriate way. Ask me which child and the topic first.' },
-        { t:'Protect family time', d:'Block it and keep it from being crowded out.', p:'Help me protect family time this week. Ask me my commitments, then suggest specific blocks to guard family time given my 5am wake and long commute.' },
-      ],
-    },
-    {
-      key:'ai', title:'AI tools', sub:'AIOS and Hermes', color:'#D85A30',
-      cards:[
-        { t:'Find opportunities in my vault', d:'Surface a use case, a monetization angle, and a gap.', p:'Analyze my knowledge vault and give me exactly three things: the single best new use case, the best monetization angle, and my biggest knowledge gap — based on what\'s actually in my notes.' },
-        { t:'Turn a clipping into action', d:'Distill something I saved into next steps.', p:'I\'ll point you to a clipping or note. Summarize the key idea and give me 2-3 concrete actions I could take from it, tied to my goals (job search, FieldBridge, or trading).' },
-        { t:'Draft a doc or email in my voice', d:'Everyday admin, written cleanly.', p:'Help me draft a document or email. Ask me the purpose, audience, and key points, then write it in a clear, professional voice.' },
-      ],
-    },
-  ],
+const AREA_META = {
+  fieldbridge:  { label: 'FieldBridge',  sub: 'The consultancy' },
+  career:       { label: 'Career',       sub: 'Job search' },
+  construction: { label: 'Construction', sub: 'Your expertise' },
+  trading:      { label: 'Trading',      sub: 'Prop trading' },
+  health:       { label: 'Health',       sub: 'Rebuild' },
+  family:       { label: 'Family',       sub: 'Sara and the kids' },
+  knowledge:    { label: 'AI tools',     sub: 'AIOS and Hermes' },
+  admin:        { label: 'Admin',        sub: '' },
 };
+const AREA_ORDER = ['fieldbridge', 'career', 'construction', 'trading', 'health', 'family', 'knowledge', 'admin'];
+const TIER_META = { income: 'Income engines', life: 'Life and system' };
+const TIER_ORDER = ['income', 'life'];
 
-function runInHermes(prompt) {
+function areaColorVar(area) {
+  return `var(--area-${AREA_META[area] ? area : 'admin'})`;
+}
+
+function firstLine(text) {
+  return (text || '').split('\n')[0].trim();
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function runInHermes(key, prompt) {
   try { sessionStorage.setItem('hermes-prefill', prompt); } catch(e) {}
+  // Best-effort usage log — never blocks the handoff to chat.html below.
+  fetch('/api/playbook/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  }).catch(() => {});
   window.location.href = 'chat.html';
 }
 
-function renderPlaybook() {
+async function loadPlaybook() {
   const body = document.getElementById('playbook-body');
-  const tierMeta = { income: 'Income engines', life: 'Life and system' };
+  try {
+    const res = await fetch('/api/playbook');
+    if (!res.ok) {
+      body.innerHTML = `<div class="pb-placeholder"><div style="margin-bottom:8px;"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-zap"/></svg></div>Playbook backend isn't deployed yet (GET /api/playbook returned ${res.status}). Once it's live, your plays show up here automatically.</div>`;
+      return;
+    }
+    const json = await res.json();
+    const plays = json.data || [];
+    if (!plays.length) {
+      body.innerHTML = `<div class="pb-placeholder"><div style="margin-bottom:8px;"><svg class="icon" width="24" height="24"><use href="assets/lucide-sprite.svg#icon-zap"/></svg></div>No plays found yet in the vault (_system/playbook/*.md).</div>`;
+      return;
+    }
+    renderPlaybook(plays);
+  } catch (e) {
+    body.innerHTML = `<div class="pb-placeholder">Failed to load the playbook: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderPlaybook(plays) {
+  const body = document.getElementById('playbook-body');
   let html = '';
-  Object.keys(PLAYBOOK).forEach(tier => {
-    html += `<div class="tier-label">${tierMeta[tier]}</div>`;
-    PLAYBOOK[tier].forEach(area => {
+  TIER_ORDER.forEach(tier => {
+    const tierPlays = plays.filter(p => p.tier === tier);
+    if (!tierPlays.length) return;
+    html += `<div class="tier-label">${TIER_META[tier] || tier}</div>`;
+    AREA_ORDER.forEach(area => {
+      const areaPlays = tierPlays.filter(p => p.area === area);
+      if (!areaPlays.length) return;
+      const meta = AREA_META[area] || { label: area, sub: '' };
+      const colorVar = areaColorVar(area);
       html += `
         <div class="area">
           <div class="area-head">
-            <span class="area-dot" style="color:${area.color};background:${area.color};"></span>
-            <span class="area-title" style="color:${area.color};">${area.title}</span>
-            <span class="area-sub">${area.sub}</span>
+            <span class="area-dot" style="color:${colorVar};background:${colorVar};"></span>
+            <span class="area-title" style="color:${colorVar};">${meta.label}</span>
+            <span class="area-sub">${meta.sub}</span>
           </div>
           <div class="card-grid">
-            ${area.cards.map(c => `
-              <div class="pb-card" style="border-left-color:${area.color};">
-                <div class="pb-card-title">${c.t}</div>
-                <div class="pb-card-desc">${c.d}</div>
-                <button class="pb-run" style="background:${area.color};" onclick='runInHermes(${JSON.stringify(c.p)})'>▶ Run in Hermes</button>
+            ${areaPlays.map(p => `
+              <div class="pb-card" style="border-left-color:${colorVar};">
+                <div class="pb-card-title">${escapeHtml(p.title)}</div>
+                <div class="pb-card-desc">${escapeHtml(firstLine(p.prompt))}</div>
+                ${p.run_count ? `<div class="pb-usage">used ${p.run_count}× · last ${timeAgo(p.last_run)}</div>` : ''}
+                <button class="pb-run" style="background:${colorVar};" onclick='runInHermes(${JSON.stringify(p.key)}, ${JSON.stringify(p.prompt)})'>▶ Run in Hermes</button>
               </div>
             `).join('')}
           </div>
         </div>`;
     });
   });
-  body.innerHTML = html;
+  body.innerHTML = html || '<div class="pb-placeholder">No plays to show.</div>';
 }
 
 function showTab(tab, btn) {
@@ -249,7 +254,7 @@ async function extractPrompts() {
   }
 }
 
-renderPlaybook();
+loadPlaybook();
 </script>
 </body>
 </html>
