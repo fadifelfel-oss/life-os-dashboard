@@ -68,7 +68,8 @@ remain gated exactly as before; nothing gated was touched this pass.
     wiring the front-end final pass.
 
 **BUILD NOW (added by Fable 2026-07-11 evening — Playbook/Saved-Prompts enrichment):**
-11. **Saved Prompts tab upgrade (use-cases.html).** Content note: the vault playbook grew to
+11. ~~**Saved Prompts tab upgrade (use-cases.html).**~~ DONE 2026-07-11 (Sonnet) — see session
+    write-up below. Content note: the vault playbook grew to
     24 plays (10 FieldBridge — deliberate revenue weighting); /api/playbook should now return 24
     after Fadi's vault push. Build, dashboard-side only:
     (a) Each saved-prompt card gets a **Copy** button (clipboard) and shows when it was captured
@@ -108,6 +109,88 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-11 session #4 (Sonnet, Second Brain project) — Saved Prompts tab upgrade (item 11)
+
+Executed queue item 11 only, per session instruction. Did not touch items 4–8 (still gated).
+
+**Probe first:** read `use-cases.html` in full (260 lines — small enough for one Read) to find
+the existing Playbook/Saved-Prompts render functions and area-color helpers, then read
+`server.py`'s `_handle_extract_prompts`/`_serve_prompts_library` to see the actual shape of
+`/api/wiki/prompts` data. Found candidates carry only `{text, source_session, source_title}` —
+no dedicated capture timestamp field. Item 11(a) says "date from the extraction data **if
+present**" and the item's own build note says dashboard-side only — so no `server.py` change to
+add a real timestamp field. Instead: `server.py`'s chat-session save path (`_handle_chat_sessions`
+area, ~line 3573) defaults `session_id` to `sess_YYYYMMDDHHMMSSffffff` when chat.html doesn't
+supply one, and `source_session` is exactly that session id — so the capture time is already
+latently present in the existing data for sessions that used the fallback id shape. Also checked
+`shared.js` for existing reusable primitives before building new ones: found `copyToClipboard(text)`
+(already used elsewhere, wraps `navigator.clipboard` + the `Notify` toast system) and confirmed
+`assets/lucide-sprite.svg` has `icon-copy` and `icon-rocket` symbols.
+
+**Built (use-cases.html only — dashboard-side, no backend/vault change, per the item's own scope):**
+- (a) New `parseCapturedDate(sourceSession)` — regexes the `sess_<14-digit>` prefix out of
+  `source_session` and parses it into a `Date`; returns `null` if the session id doesn't match that
+  shape (older/irregular ids), so the UI only shows a captured date "if present" instead of
+  fabricating one. `renderPrompts()` now sorts newest-first by that parsed date, with
+  undated entries sorted to the end (stable, no crash on a fully-undated list). Cards with a
+  parseable date show a muted "captured Xh/d ago" line (reuses the existing `timeAgo()` helper
+  already used by the Playbook tab, avoids adding a second date-formatting function).
+- (a) Copy button — reuses `shared.js`'s existing `copyToClipboard()` (already wired to the
+  `Notify` toast system as "Copied to clipboard!"), so no new clipboard/toast plumbing needed for
+  this one.
+- (b) "Promote to Playbook" button — new `promoteToPlaybook(text)`: writes to clipboard directly
+  (separate from `copyToClipboard()` because the toast copy is different) and shows
+  `Notify.success('Copied — paste into any Cowork session and say "add this to the playbook as a
+  play"', 6000)` — the exact wording from the spec, longer 6s duration since it's a longer message.
+  **No backend call at all** — confirmed no new endpoint was added anywhere in `server.py`, matching
+  "Do NOT build a write endpoint for this."
+- (c) New `#playbook-filters` chip row above the Playbook tab's card grid. `renderPlaybookFilters()`
+  builds an "All" chip plus one chip per area actually present in the live data (skips areas with
+  zero plays — no empty chips), using `areaColorVar()` (already existed, reused as-is) for
+  per-chip color via the shared `--area-*` tokens. Chip row hides itself entirely if fewer than 2
+  areas are present (not worth filtering a single-area list). `setAreaFilter()` re-renders both the
+  chip row (for the active state) and the card grid. `renderPlaybook()` now filters by
+  `activeAreaFilter` before the existing tier/area grouping loop — tier grouping within the
+  filtered view is unchanged, per spec. Added a filter-aware empty state ("No plays yet in
+  <Area>.") distinct from the original all-plays empty state.
+- (d) Trivial, so done: `renderPlaybook()`'s per-area play list now sorts by `run_count` (desc)
+  before rendering, so earned/used plays float to the top of their area/tier group.
+- Did not touch tool roles / writer lanes / data stores — every change is client-side rendering
+  logic in `use-cases.html` against data already served by the existing `/api/playbook` and
+  `/api/wiki/prompts` endpoints; no new endpoint, no new write path, no vault write.
+
+**Verification done (Read/Grep only, not bash — standing gotcha for this repo):**
+- Full `use-cases.html` re-read via Read tool after all edits — well-formed HTML, tags balanced,
+  new `<div>`/`<button>` blocks all properly closed.
+- Full `<script>` block copied to the sandbox outputs folder (functionally identical, cosmetic-only
+  string trims to sidestep heredoc/emoji quoting) and run through `node --check` — `SYNTAX_OK`.
+- NUL-scanned the whole file via Grep — clean, 0 matches.
+- **Not eyeballed live** — Fadi opens `use-cases.html` after deploy: Saved Prompts tab shows Copy +
+  Promote buttons on every card, newest-captured prompts (if any have a `sess_<timestamp>` sourced
+  id) sort first with a "captured X ago" line, clicking Promote copies the prompt and shows the
+  exact toast wording; Playbook tab shows area filter chips above the grid, clicking one narrows
+  the grid to that area only, and within any area/tier group the most-used plays now appear first.
+
+**Not touched:** items 4–8 (still gated), any tool-role/writer-lane/data-store change (none —
+pure front-end rendering against existing read-only endpoints).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add use-cases.html NEXT-SESSION-UI.md
+git commit -m "Saved Prompts tab upgrade (item 11): Copy + Promote-to-Playbook buttons per card (promote is clipboard+toast only, no vault write, no new endpoint), captured-date parsing from sess_<timestamp> session ids with newest-first sort; Playbook tab gets an area filter chip row (--area-* colors, hides itself under 2 areas) and within-area sort by run_count desc"
+git push origin main
+# auto-pull deploys within ~1 min — open use-cases.html, Saved Prompts tab: confirm Copy button
+# copies the prompt text, Promote button copies + shows the "paste into any Cowork session..."
+# toast, and any prompt with a sess_<timestamp>-shaped source shows "captured X ago" with newest
+# first. Then check the Playbook tab: confirm area filter chips appear above the grid, clicking
+# one narrows to that area, and a play with run_count > 0 sits above lower-usage plays in the
+# same area.
+```
 
 ## 2026-07-11 session #3 (Sonnet, Second Brain project) — Chat default model kept drifting (bug fix, not a queue item)
 
