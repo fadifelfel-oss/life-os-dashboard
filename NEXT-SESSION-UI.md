@@ -82,6 +82,27 @@ remain gated exactly as before; nothing gated was touched this pass.
         — 24 cards benefits from filtering; keep tier grouping within the filtered view.
     (d) OPTIONAL if trivial: sort plays within an area by run_count desc so earned plays rise.
 
+**BUILD NOW (added by Fable 2026-07-12 — Fadi decisions on Voice + Meetings):**
+12. **Retire Voice, redefine Meetings.** Decisions made with Fadi (2026-07-12):
+    (a) **voice.html RETIRED** — its transcription was a mock, and every voice job has a real
+        owner (Wispr Flow, phone capture → 000 Inbox, Fireflies, chat voice). Remove the sidebar
+        nav button (index.html, data-page="voice") and the 'voice' entries from BOTH moduleFiles
+        maps in shared.js. Do NOT touch voice-chat.js (that's chat.html's voice feature) and do
+        NOT delete voice.html itself — dead file stays until the close-out sweep, like tasks.html.
+    (b) **meetings.html = "Meeting Workbench: pre-call prep + ad-hoc transcripts".** Its ONE role:
+        meetings Fireflies does NOT catch (phone calls, WhatsApp voice notes, site conversations)
+        plus pre-call prep. Build:
+        - Banner stating the role: Fireflies meetings flow to the vault automatically via the
+          nightly — never duplicate them here; this page is working copies only (DATA_DIR lane).
+        - **"Prep brief" button**: dropdown of prospects from /api/wiki/crm → renders a one-screen
+          brief from the mirror (stage, pains, last interactions, next/next_date fields) + an
+          "Open in Hermes" button that prefills chat (sessionStorage 'hermes-prefill') with a
+          prep prompt embedding that CRM context.
+        - Keep upload + /api/meetings/process for ad-hoc transcripts; after processing, add a
+          "Copy for Cowork" button (clipboard + toast, promote-pattern) so decisions/actions/CRM
+          impact reach the vault through its writer. NO vault writes from this page.
+        - Page title "Meeting Assistant" → "Meeting Workbench".
+
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
    (roadmap 3.4) and names which pages look wrong. Was explicitly deferred as too risky blind.
