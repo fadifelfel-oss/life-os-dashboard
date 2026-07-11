@@ -67,6 +67,20 @@ remain gated exactly as before; nothing gated was touched this pass.
     Requires Fadi's vault push first (the 16 play files) — verify /api/playbook returns 16 before
     wiring the front-end final pass.
 
+**BUILD NOW (added by Fable 2026-07-11 evening — Playbook/Saved-Prompts enrichment):**
+11. **Saved Prompts tab upgrade (use-cases.html).** Content note: the vault playbook grew to
+    24 plays (10 FieldBridge — deliberate revenue weighting); /api/playbook should now return 24
+    after Fadi's vault push. Build, dashboard-side only:
+    (a) Each saved-prompt card gets a **Copy** button (clipboard) and shows when it was captured
+        (date from the extraction data if present) — sort newest first.
+    (b) **"Promote to Playbook" button** per card: copies the prompt to clipboard AND shows a
+        toast: "Copied — paste into any Cowork session and say 'add this to the playbook as a
+        play'". NO vault writes from the dashboard (read-only mirror rule) — promotion happens
+        through Cowork, the vault's only writer. Do NOT build a write endpoint for this.
+    (c) Playbook tab: add a small area filter row (All / per-area chips using --area-* colors)
+        — 24 cards benefits from filtering; keep tier grouping within the filtered view.
+    (d) OPTIONAL if trivial: sort plays within an area by run_count desc so earned plays rise.
+
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
    (roadmap 3.4) and names which pages look wrong. Was explicitly deferred as too risky blind.
