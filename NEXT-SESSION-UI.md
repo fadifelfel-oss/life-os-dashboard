@@ -95,6 +95,79 @@ anything on UI-MASTER-PLAN already marked done.
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
 
+## 2026-07-11 session #3 (Sonnet, Second Brain project) — Chat default model kept drifting (bug fix, not a queue item)
+
+Fadi flagged (outside the queue): "why does the default model keep changing... we said we
+will lock it to nemotron... why does the model selection in chat not persist." Investigated
+and found three independent, compounding bugs in chat.html + model-catalog.js:
+
+1. **`setModel()` never persisted anything.** Picking a model in the chat toolbar dropdown only
+   set the in-memory `currentModel` JS variable for that page view — it never wrote to
+   `localStorage`. Reload chat.html (or navigate away and back) and the pick was gone.
+2. **The silent fallback wasn't actually Nemotron.** `loadChatModels()` derived its computed
+   default from the `'everyday'` job category's `rec` pick in `model-catalog.js` — which is
+   **Claude Haiku**, a legitimate recommendation for admin writing on models.html, but never
+   the model anyone decided should be the chat page's silent default. The actual "lock to
+   Nemotron" decision was already recorded in the file — under the `'agent'` job's `rec` pick,
+   with a 2026-07-10 comment saying so — but chat.html was reading the wrong job entry.
+3. **Even the correct pick would have failed to resolve.** All 4 occurrences of the nemotron
+   `match` fragment across `model-catalog.js` were `'nemotron-3-ultra-550b:free'` — stale. The
+   real live/fallback model id (confirmed against `server.py`'s `_FALLBACK_MODELS` and
+   `_call_hermes`'s own default) is `'nvidia/nemotron-3-ultra-550b-a55b:free'` — note the
+   `-a55b` segment sitting between `550b` and `:free`. `lifeosResolvePick()`'s substring match
+   never found the stale fragment inside the real id, so every nemotron pick, in every job
+   category, silently resolved to `null` and fell through to whatever `models[0]` happened to
+   be that day — an arbitrary, unstable pick from the live OpenRouter response. Verified with a
+   standalone repro: old fragment → `null`, fixed fragment → the real id.
+
+**Built:**
+- `chat.html` — `setModel()` now calls `window.lifeosSetDefaultModel(model)` on every change,
+  writing to the same `localStorage['lifeos-default-model']` key models.html's "Set default"
+  button already uses, so a pick made in either page sticks everywhere.
+- `chat.html` — `loadChatModels()`'s locked-default computation now reads the `'agent'` job's
+  `rec` pick (Nemotron, already correctly documented there) instead of `'everyday'`'s. Priority
+  order is unchanged in spirit: an explicit saved choice (`lifeos-default-model`) still wins if
+  it's live-resolvable, then the locked Nemotron default, then `models[0]`, then the hardcoded
+  literal string as a last resort.
+- `model-catalog.js` — fixed all 4 stale `'nemotron-3-ultra-550b:free'` match fragments to
+  `'nemotron-3-ultra-550b'` (drops the trailing `:free`, which IS a valid contiguous substring
+  of the real id). Added a dated header comment explaining the fix for future sessions, per the
+  file's own "verify match fragments resolve live" instruction.
+- Did not touch tool roles / writer lanes / data stores — this is a client-side persistence +
+  catalog-data fix, no new backend surface.
+
+**Verification done (Read/Grep only, not bash — standing gotcha for this repo):**
+- Standalone repro of `lifeosResolvePick` against the real fallback model list (mirroring
+  `server.py::_FALLBACK_MODELS`): old fragment → `null` (confirmed broken), fixed fragment →
+  `nvidia/nemotron-3-ultra-550b-a55b:free` (confirmed fixed).
+- Standalone repro of the `'agent'` job's `rec` pick resolving end-to-end against a fake live
+  `/api/models` response — resolves to the correct nemotron id.
+- Full `chat.html` `<script>` block (lines 1329–2401) re-read via Read tool, then copied to
+  the sandbox outputs folder (with browser globals stubbed) and run through `node --check` —
+  `SYNTAX_OK`. `model-catalog.js` re-read in full via Read tool (well-formed) and separately
+  syntax-checked the same way — `SYNTAX_OK`.
+- Both files NUL-scanned via Grep — clean.
+- **Not eyeballed live** — Fadi picks a model in chat.html, reloads the page, and confirms it's
+  still selected; then clears `localStorage['lifeos-default-model']` (or opens a private window)
+  and confirms a fresh load lands on Nemotron 3 Ultra, not Claude Haiku or something else.
+
+**Not touched:** the actual queue in this file (items 4–8 still gated, item 10 already shipped
+in session #2 above) — this was an out-of-band bug report, not a queue item.
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add chat.html model-catalog.js NEXT-SESSION-UI.md
+git commit -m "Fix chat default model drift: setModel() now persists to localStorage (was in-memory only), loadChatModels()'s locked default now reads the 'agent' job's rec pick (Nemotron, already documented there) instead of 'everyday' (Claude Haiku), and all 4 stale nemotron match fragments in model-catalog.js fixed to actually resolve against the real live/fallback model id"
+git push origin main
+# auto-pull deploys within ~1 min — open chat.html, pick a model, reload the page, confirm it
+# stuck; then clear localStorage['lifeos-default-model'] and reload again, confirm it lands on
+# Nemotron 3 Ultra by default.
+```
+
 ## 2026-07-11 session #2 (Sonnet, Second Brain project) — Playbook goes live (item 10)
 
 Executed queue item 10 only, per session instruction. Confirmed the vault push landed first

@@ -1745,6 +1745,12 @@ function setModel(model) {
   if (select) {
     select.value = model;
   }
+  // Persist the choice (bug fix 2026-07-11: this used to only update the
+  // in-memory currentModel var, so a manual pick here never survived a
+  // reload/navigation — the page silently recomputed a fallback default on
+  // every load instead). Same localStorage key models.html's "Set default"
+  // button writes to, so either page's choice sticks everywhere.
+  if (window.lifeosSetDefaultModel) window.lifeosSetDefaultModel(model);
   // Show visual feedback
   const btn = document.querySelector('.toolbar-select');
   if (btn) {
@@ -2366,18 +2372,27 @@ async function loadChatModels() {
       select.appendChild(og);
     }
 
-    // Default = the Everyday "best" pick, matching the models page's everyday recommendation.
-    const everyday = jobs.find(j => j.key === 'everyday');
-    let def = null;
-    if (everyday) {
-      const p = everyday.picks.find(x => x.role === 'rec');
+    // Locked default = Nemotron 3 Ultra, Hermes's own default (model-catalog.js
+    // 'agent' job, 2026-07-10 note). Bug fix 2026-07-11: this used to be derived
+    // from the 'everyday' job's "rec" pick instead — that's Claude Haiku, a
+    // legitimate recommendation for admin writing on the models page, but never
+    // the model anyone decided should be the chat page's silent default. That
+    // mismatch (plus setModel() not persisting — see above) is why the default
+    // kept drifting. Resolved live against /api/models so it tracks the real
+    // OpenRouter id rather than a hand-typed one going stale.
+    const agentJob = jobs.find(j => j.key === 'agent');
+    let lockedDefault = null;
+    if (agentJob) {
+      const p = agentJob.picks.find(x => x.role === 'rec');
       const m = p ? window.lifeosResolvePick(models, p.match) : null;
-      if (m) def = m.id;
+      if (m) lockedDefault = m.id;
     }
-    // Honor a default model chosen on the models page, if it's available live.
+    // Highest priority: a default Fadi actually chose — via models.html's
+    // "Set default" or by picking a model in this chat dropdown (setModel()
+    // now persists it here too).
     const saved = window.lifeosGetDefaultModel ? window.lifeosGetDefaultModel() : '';
     currentModel = (saved && models.some(m => m.id === saved)) ? saved
-                 : (def || (models[0] && models[0].id) || 'nvidia/nemotron-3-ultra-550b-a55b:free');
+                 : (lockedDefault || (models[0] && models[0].id) || 'nvidia/nemotron-3-ultra-550b-a55b:free');
     select.value = currentModel;
   } catch(e) {
     console.log('Chat models fallback:', e);
