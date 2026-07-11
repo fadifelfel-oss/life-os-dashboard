@@ -39,10 +39,32 @@ remain gated exactly as before; nothing gated was touched this pass.
    see session write-up below. Real client-side vault-search stages + a real server-side
    elapsed-time heartbeat while Hermes is in flight, via an SSE-lite stream (`stream_ui:true`
    opt-in on `/api/chat`). Collapses into a "▸ activity" toggle on the finished message.
-   (b) STILL GATED on Hermes cooperation — Hermes tool-call trace. Exact Telegram message for
-   Fadi to send Hermes is in the session write-up below (not sent by this session — Fadi sends
-   it). Do NOT build the dashboard-side endpoint/panel until Hermes confirms back what it can
-   actually emit — no fabricated traces: if the log doesn't exist, the panel doesn't render.
+   (b) ~~STILL GATED on Hermes cooperation~~ GATE CLEARED 2026-07-11 (Hermes confirmed via
+   Telegram) and DONE same day — see session write-up below. Read-only `/api/hermes/activity`
+   endpoint + a global "Hermes Activity" toolbar panel in chat.html (deliberately NOT
+   per-message — see write-up for why).
+
+**BUILD NOW (added by Fable 2026-07-11 — Fadi feature request, approved):**
+10. **Playbook goes live (use-cases.html).** The hardcoded `PLAYBOOK` object is stale (job-search-
+    era). The play library now lives in the vault: **`_system/playbook/*.md`** — 16 files, one per
+    play, frontmatter `title / area / tier / status` + body = the prompt (Cowork owns content).
+    Build:
+    (a) `server.py`: `GET /api/playbook` — read `_system/playbook/*.md` from the vault mirror
+        (same defensive frontmatter pattern as `/api/logs`), return plays incl. body as `prompt`.
+        Skip `status: retired`.
+    (b) `server.py`: `POST /api/playbook/run` `{key}` → append `{ts, key}` JSON line to
+        `DATA_DIR/playbook-usage.jsonl` (dashboard's own data lane, NOT the vault). `GET
+        /api/playbook` merges usage: per play `run_count` + `last_run`.
+    (c) `use-cases.html`: delete the hardcoded PLAYBOOK; render from `/api/playbook` grouped by
+        tier (income/life) then area. Area colors from the shared `--area-*` tokens (fieldbridge,
+        career, construction, trading, health, family, knowledge) — kill the hardcoded hex.
+        Each card: title, first line of prompt as desc, "▶ Run in Hermes" (keeps the existing
+        sessionStorage 'hermes-prefill' handoff, and now ALSO fires POST /api/playbook/run),
+        plus a muted "used N× · last X ago" line when usage exists. Honest empty state if the
+        endpoint 404s (backend not deployed yet).
+    (d) Saved Prompts tab: unchanged.
+    Requires Fadi's vault push first (the 16 play files) — verify /api/playbook returns 16 before
+    wiring the front-end final pass.
 
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
@@ -71,6 +93,87 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-11 session (Sonnet, Second Brain project) — Hermes Activity panel (9b, gate cleared)
+
+Continuation of the same-day 9(a) session — Fadi sent the Telegram message from the write-up
+below and Hermes confirmed back. Gate cleared, built same session.
+
+**Hermes's confirmation (Telegram):** writes one JSON line per tool call to
+`/root/.hermes/activity_log.md` (JSONL despite the `.md` extension — Hermes's own choice).
+Append-only, always `patch`/`mode='replace'` targeting the end-of-file marker, never a
+rewrite. Lives in Hermes's own fixed-profile filesystem (`~/.hermes/`) — no rotation needed;
+Hermes's own estimate is ~200 bytes/turn, ~100KB/day worst case (500 turns/day). Sample lines
+confirmed real, e.g. `{"ts": "2026-07-11T13:45:12.123Z", "action": "search_files", "detail":
+"Searched fadi-vault for..."}`.
+
+**Design question resolved before building the front-end (see AskUserQuestion in this
+session):** the original queue wording ("activity panel under Hermes replies") implied a
+per-message trace. But probing 9(a) already established that `server.py`'s `/api/chat` sends
+Hermes's gateway a plain completion request with **no `tools` schema** — so a dashboard chat
+reply structurally cannot itself trigger a tool call. `/root/.hermes/activity_log.md` is
+Hermes's **global** trace across every channel it works in (Telegram, cron, etc.). Attaching
+its tail under one specific chat reply would visually imply "this is what happened for your
+message," which isn't true and would violate the "no fabricated traces" rule in spirit even
+though the data itself is real. Asked Fadi; he picked **global toolbar toggle**, not
+per-message.
+
+**Built:**
+- `server.py` — `HERMES_ACTIVITY_LOG = Path("/root/.hermes/activity_log.md")` constant
+  (module-level, next to `HERMES_CHAT_PROXY_URL`) and new `_serve_hermes_activity(query)`:
+  `GET /api/hermes/activity?tail=N` (N clamped 1–200, default 20). Reads the log directly
+  (server.py already runs on the same VPS Hermes does), parses JSONL defensively (skips
+  malformed/partial lines, never 500s), returns `{data, available, count}`. `available:false`
+  (not just an empty array) when the file doesn't exist yet, so the front-end can render an
+  honest "hasn't written a log yet" state instead of a bare empty list. Read-only — never
+  writes to this path, respecting the two-agent single-writer-lane boundary (Hermes writes
+  its own lane; this dashboard only reads it). Wired into the GET dispatch table next to
+  `/api/hermes/morning-brief`.
+- `chat.html` — new toolbar button "Hermes Activity" (wrench icon, next to Think), opening a
+  slide-in panel reusing the existing `.artifacts-panel` chrome (`#hermesActivityPanel`,
+  `toggleHermesActivity()` / `loadHermesActivityPanel()`). Fetches fresh every time it opens
+  (never cached, never stale). Copy is explicit that this is global, cross-channel activity,
+  not scoped to the current conversation — both in the toolbar button's title tooltip and the
+  panel's subhead. Three honest states: log missing (`available:false`), log exists but empty,
+  and real entries (newest first, timestamp + action + detail). New `.hermes-activity-row`
+  CSS block (mono timestamp, bold action, muted detail) added near the 9(a) `.activity-*`
+  rules.
+- Did not touch tool roles / writer lanes / data stores — new endpoint is read-only against a
+  path Hermes itself already owns and writes to; no new writer, no new data store on the
+  dashboard side.
+
+**Verification done (bash mount was stale again this session — including, newly, on the
+sandbox `outputs` scratch folder itself for one Edit-tool write; retried under a fresh
+filename and it checked out clean — worth noting as a slightly broader instance of the
+existing gotcha, not just C:\Dev):**
+- `server.py`: new constant + `_serve_hermes_activity` + dispatch wiring all read back clean
+  via Read/Grep; copied into a dummy-class scratch file and ran `python3 -m py_compile` —
+  `SYNTAX_OK`.
+- `chat.html`: full `<script>` block (now ~1059 lines) re-read via Read tool and copied to a
+  fresh outputs scratch file; `node --check` — `SYNTAX_OK`. New HTML (toolbar button + panel
+  markup) and CSS block confirmed well-formed by direct read.
+- Both files re-NUL-scanned via Grep — clean.
+- **Not eyeballed live** — Fadi opens chat.html, clicks "Hermes Activity" in the toolbar,
+  confirms real entries render (or an honest empty state if Hermes hasn't written anything
+  since the confirmation message), and confirms the panel does NOT appear under any individual
+  chat reply (by design).
+
+**Not touched:** items 4–8 (still gated), item 10 (new Playbook item added to the queue after
+9a shipped — out of scope for this pass, next session's to pick up).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py chat.html NEXT-SESSION-UI.md
+git commit -m "Hermes Activity panel (9b): read-only GET /api/hermes/activity tails /root/.hermes/activity_log.md (Hermes's own JSONL lane, server.py already runs on the same VPS); chat.html gets a global toolbar toggle + slide-in panel, deliberately NOT per-message since dashboard chat can't itself trigger tool calls"
+git push origin main
+# auto-pull deploys within ~1 min — open chat.html, click "Hermes Activity" in the toolbar,
+# confirm real entries render (or the honest empty state), confirm it's global (not attached
+# to any single reply).
+```
 
 ## 2026-07-10 session #2 (Sonnet, Second Brain project) — Chat activity trace (9a) + Hermes tool-trace ask (9b, gated)
 
