@@ -2621,15 +2621,24 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         if content_length == 0:
             self._json_error(400, "No data provided")
             return
-        
+
         try:
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
-            
+
             # Transform to OpenAI format if needed
             messages = data.get('messages', [])
             model = data.get('model', 'nvidia/nemotron-3-ultra-550b-a55b:free')
-            
+
+            # NEXT-SESSION-UI queue item 9(a), 2026-07-10: chat.html can opt into
+            # an SSE-lite activity trace (real connecting/elapsed-time/done events,
+            # replacing the old silent 150s wait) by setting stream_ui:true. Default
+            # (flag absent) is the original single-blocking-JSON-response behavior,
+            # unchanged, for backward compat with any other /api/chat caller.
+            if data.get('stream_ui'):
+                self._handle_chat_proxy_stream_ui(model, messages, data)
+                return
+
             # Build OpenAI-compatible request
             openai_request = {
                 'model': model,
@@ -2684,7 +2693,107 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_error(400, "Invalid JSON")
         except Exception as e:
             self._json_error(500, f"Failed to handle chat request: {str(e)}")
-    
+
+    def _handle_chat_proxy_stream_ui(self, model, messages, data):
+        """SSE-lite activity trace for /api/chat (queue item 9a, 2026-07-10).
+
+        Every event emitted is a real signal, never fabricated: a connecting
+        line, a live elapsed-second heartbeat while the blocking Hermes call
+        is in flight on a background thread, then a done/error event carrying
+        Hermes's actual response. No token-level model streaming — Hermes's
+        own gateway call is still a single blocking request (stream:False) —
+        this only replaces the previous silent up-to-150s wait with a live
+        status line. Uses Connection: close instead of chunked framing: the
+        simplest way for BaseHTTPRequestHandler to push incremental writes
+        that a browser's fetch() streaming reader picks up without needing
+        hand-rolled chunk-size framing.
+        """
+        import urllib.request  # local import matches this file's existing style; also binds urllib.error
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "close")
+            self.end_headers()
+        except Exception:
+            return  # client already gone
+
+        def emit(stage, text, extra=None):
+            payload = {"stage": stage, "text": text}
+            if extra:
+                payload.update(extra)
+            try:
+                self.wfile.write(("data: " + json.dumps(payload) + "\n\n").encode('utf-8'))
+                self.wfile.flush()
+            except Exception:
+                pass  # client disconnected mid-stream — worker thread still finishes quietly
+
+        emit("connecting", "Connecting to Hermes…")
+
+        openai_request = {
+            'model': model,
+            'messages': messages,
+            'stream': False,
+            'temperature': data.get('temperature', 0.7),
+            'max_tokens': data.get('max_tokens', 4000)
+        }
+
+        result = {}
+
+        def worker():
+            req = urllib.request.Request(
+                f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions",
+                data=json.dumps(openai_request).encode('utf-8'),
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer life-os-dashboard-2026',
+                },
+                method='POST'
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=150) as response:
+                    result['status'] = response.status
+                    result['body'] = response.read()
+            except urllib.error.HTTPError as e:
+                try:
+                    detail = e.read().decode('utf-8', errors='replace')[:500]
+                except Exception:
+                    detail = ""
+                result['error'] = f"Hermes responded with an error (HTTP {e.code}): {detail or str(e)}"
+                result['error_code'] = e.code
+            except urllib.error.URLError as e:
+                result['error'] = f"Could not reach Hermes API Server at {HERMES_CHAT_PROXY_URL} (connection-level failure): {str(e.reason)}"
+                result['error_code'] = 502
+            except Exception as e:
+                result['error'] = f"Error proxying to Hermes: {str(e)}"
+                result['error_code'] = 500
+
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        start = time.time()
+        emit("asking", f"Asking {model}…")
+        last_tick = 0
+        while t.is_alive():
+            t.join(timeout=1.0)
+            elapsed = int(time.time() - start)
+            if elapsed != last_tick and elapsed > 0:
+                last_tick = elapsed
+                emit("waiting", f"Asking {model}… ({elapsed}s)")
+
+        if 'error' in result:
+            emit("error", result['error'], {"code": result.get('error_code', 500)})
+        else:
+            try:
+                parsed = json.loads(result.get('body', b'{}').decode('utf-8'))
+            except Exception:
+                parsed = {"raw": result.get('body', b'').decode('utf-8', errors='replace')}
+            emit("done", "Done.", {"result": parsed})
+
+        try:
+            self.wfile.flush()
+        except Exception:
+            pass
+
     def _handle_file_upload(self):
         """Handle file uploads to 10_Sources/uploads/"""
         content_length = int(self.headers.get('Content-Length', 0))

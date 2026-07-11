@@ -35,19 +35,14 @@ remain gated exactly as before; nothing gated was touched this pass.
 
 **BUILD NOW (added by Fable 2026-07-10 — Fadi feature request, approved):**
 9. **Chat activity trace (replaces the thinking dots).** Two parts:
-   (a) UNBLOCKED — server-side stage streaming for dashboard chat: while a request runs, show a
-   live status line in the message area — "Searching vault…" → "Found N files: <names>" →
-   "Asking <model>…" → streaming. Implement with SSE or chunked responses from chat_proxy/server
-   (probe which path chat.html actually uses first); fall back to polling a per-request status
-   endpoint if streaming is awkward. Render as a muted mono-font activity line that collapses
-   into a small "▸ activity" toggle once the reply lands. 18px body text rule doesn't apply to
-   this chrome (12px mono fine), but keep contrast high.
-   (b) GATED on Hermes cooperation — Hermes tool-call trace: give Hermes a standing rule (its
-   lane, via Fadi on Telegram or hermes config) to append each tool/command it uses to an
-   activity log file in its own workspace as it works; add a read-only endpoint + collapsible
-   "Activity" panel under Hermes replies that tails it. Verify what Hermes's loop can actually
-   emit BEFORE building the panel — no fabricated traces: if the log doesn't exist, the panel
-   doesn't render.
+   (a) ~~UNBLOCKED — server-side stage streaming for dashboard chat~~ DONE 2026-07-10 (Sonnet) —
+   see session write-up below. Real client-side vault-search stages + a real server-side
+   elapsed-time heartbeat while Hermes is in flight, via an SSE-lite stream (`stream_ui:true`
+   opt-in on `/api/chat`). Collapses into a "▸ activity" toggle on the finished message.
+   (b) STILL GATED on Hermes cooperation — Hermes tool-call trace. Exact Telegram message for
+   Fadi to send Hermes is in the session write-up below (not sent by this session — Fadi sends
+   it). Do NOT build the dashboard-side endpoint/panel until Hermes confirms back what it can
+   actually emit — no fabricated traces: if the log doesn't exist, the panel doesn't render.
 
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
@@ -76,6 +71,115 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-10 session #2 (Sonnet, Second Brain project) — Chat activity trace (9a) + Hermes tool-trace ask (9b, gated)
+
+Executed queue item 9(a) only, per session instruction. Did not touch item 9(b) beyond
+drafting the Telegram message below — no dashboard endpoint/panel built for it.
+
+**Probe first (before choosing SSE vs polling):** read chat.html's actual send path.
+Found `chat_proxy.py` (port 8091, standalone OpenRouter proxy) is dead code — already
+flagged deprecated in its own file header, not wired to anything. The real path is
+`chat.html` → `fetch('/api/chat')` → `server.py`'s `_handle_chat_proxy` → a single
+blocking `urlopen()` to Hermes's own gateway (`HERMES_CHAT_PROXY_URL`, :8642), timeout
+150s, `stream:False`. Also found the "Searching vault…" / "Found N files" stages the
+brief described are NOT server-side at all — `chat.html` already does its own KB search
+client-side (`/api/kb/search`) *before* ever calling `/api/chat`. So the only genuinely
+server-side stage is the Hermes round-trip itself, and `server.py` runs on
+`ThreadingHTTPServer` (confirmed — each request gets its own thread), which makes a
+held-open streaming response practical without touching any other request.
+
+**Built (9a):**
+- `server.py` — new `_handle_chat_proxy_stream_ui(model, messages, data)`, called from
+  `_handle_chat_proxy` only when the POST body sets `stream_ui:true` (opt-in; default
+  behavior for any other `/api/chat` caller is byte-for-byte unchanged). Sends
+  `Content-Type: text/event-stream` immediately, then real events only — never
+  fabricated: `connecting` → `asking` → a `waiting` heartbeat every real elapsed second
+  while the actual Hermes call runs on a background thread (`threading.Thread`, already
+  imported module-level) → `done` (carries Hermes's real parsed JSON reply) or `error`
+  (carries the real HTTPError/URLError detail, same messages as the non-streaming path).
+  Uses `Connection: close` instead of hand-rolled chunked framing — simplest way for
+  `BaseHTTPRequestHandler` to push incremental writes that a browser's `fetch()`
+  streaming reader picks up.
+- `chat.html` — replaced `addTyping()`/`removeTyping()` (the plain 3-dot indicator) with
+  `addActivity()`/`updateActivity()`/`removeActivity()`: a muted 12px mono status line
+  (`.activity-trace`, new CSS block after `.typing-indicator`) that updates through the
+  real stages — "Searching vault…" → "Found N files: <names>" (or "No relevant vault
+  notes found.") → "Asking `<model>`…" → "Asking `<model>`… (Ns)" ticking → "Done.".
+  `sendMessage()` now posts `stream_ui:true` and parses the SSE-lite stream itself
+  (`resp.body.getReader()`, manual `data: {...}\n\n` framing — no library). On completion,
+  `addMessage()` (new optional 3rd `activityLines` param) folds the captured stage log
+  into a collapsed `▸ activity` toggle above the reply — click to expand, never shown
+  expanded by default so it doesn't compete with the actual answer. Old `.typing-indicator`
+  CSS rule is now unused dead code (left in place, harmless — not part of this task's scope
+  to remove).
+- No token-level model streaming — Hermes's own gateway call is still one blocking
+  `stream:False` request. This only replaces the previous silent up-to-150s wait with a
+  live, honest status line. A true token stream would need Hermes's gateway itself to
+  support `stream:True` SSE passthrough — bigger change, not attempted tonight.
+- Did not touch tool roles / writer lanes / data stores — this is a transport/presentation
+  change on an existing proxy endpoint, opt-in via a new flag, backward compatible.
+
+**Verification done (bash mount of this repo was confirmed stale again this session —
+see below — verified via Read/Grep only, per the standing gotcha):**
+- `server.py`: `bash`'s own `py_compile` on the live mount failed with a truncated file
+  (cut off mid-line at `with open(tmp_p`, ~65 lines short of the real EOF) — cross-checked
+  with Grep, which showed the real content at that exact location fully-formed and correct.
+  This is the documented stale-bash-mount gotcha, not a real bug. Copied the two new/changed
+  methods (`_handle_chat_proxy`, `_handle_chat_proxy_stream_ui`) via Read into the sandbox
+  outputs scratch folder wrapped in a dummy class and ran `python3 -m py_compile` there —
+  `SYNTAX_OK`.
+- `chat.html`: copied the full `<script>` block (lines 1284–2295, ~1000 lines) via Read into
+  the outputs scratch folder and ran `node --check` — `SYNTAX_OK`.
+- Both files NUL-scanned via Grep (not bash) — clean.
+- CSS block eyeballed (every new rule opens/closes); a whole-file brace-count via Grep is
+  noisy on this file (JS destructuring `{ done, value }` and template literals throw off
+  naive `{`/`}` counts) — not a reliable check here, consistent with what prior sessions
+  already noted for this repo.
+- **Not eyeballed live** — Fadi walks chat.html after deploy: send a message with KB on,
+  watch the activity line go Searching vault → Found N files → Asking `<model>` → ticking
+  seconds → Done, then click "▸ activity" on the finished reply to confirm the log folds in
+  correctly. Also worth testing one error path (e.g. temporarily wrong model name) to see
+  the `error` stage render in red.
+
+**Item 9(b) — NOT built, per gate.** Exact Telegram message for Fadi to send Hermes:
+
+> Feature request for the dashboard: I want a live "Activity" trace under your replies
+> showing what you actually did (tools used, files touched, commands run) while working —
+> no more black box.
+>
+> New standing rule for your lane: every time you use a tool or run a command while
+> processing a request, append one line to an activity log file in your own workspace
+> (not the life-os-dashboard repo — keep this in your lane). Suggested format, one JSON
+> line per action:
+> `{"ts": "<ISO8601>", "action": "<tool or command name>", "detail": "<short description>"}`
+>
+> Pick whatever path makes sense in your own workspace — your call. Reply back with:
+> 1. The exact file path you're writing to
+> 2. A sample of 3–5 real lines it's produced
+> 3. Whether you can keep it append-only and bounded (rotate or cap old entries) so a
+>    dashboard endpoint could later tail just the last N lines
+>
+> I won't build the dashboard-side reader or panel until a real log file exists with real
+> content — no fabricated traces. Once you confirm, I'll wire a read-only endpoint +
+> collapsible panel to it.
+
+**Not touched:** items 4–8 (still gated), any tool-role/writer-lane/data-store change
+(none of this session's work qualifies).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py chat.html NEXT-SESSION-UI.md
+git commit -m "Chat activity trace (9a): SSE-lite stream_ui opt-in on /api/chat (server.py) with real connecting/asking/elapsed-heartbeat/done events; chat.html renders a live mono status line replacing the plain typing dots, folds into a collapsed activity toggle on the finished reply"
+git push origin main
+# auto-pull deploys within ~1 min — open chat.html, send a message with KB on, confirm the
+# activity line goes Searching vault -> Found N files -> Asking <model> -> ticking -> Done,
+# then click "activity" on the finished reply to confirm the log expands correctly.
+```
 
 ## 2026-07-10 session (Sonnet, Second Brain project) — Registry hygiene + Skills Hub side panel + back-button sweep
 
