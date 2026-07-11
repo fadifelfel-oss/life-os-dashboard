@@ -560,6 +560,30 @@ html, body { height: 100%; margin: 0; font-family: var(--chat-font); background:
 .activity-log.open { display: block; }
 .activity-log div { padding: 1px 0; }
 
+/* === HERMES ACTIVITY PANEL rows (queue item 9b) === */
+.hermes-activity-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--chat-border);
+  font-size: 12px;
+}
+
+.hermes-activity-row .ha-time {
+  font-family: var(--font-mono);
+  color: var(--chat-text-muted);
+  font-size: 11px;
+}
+
+.hermes-activity-row .ha-action {
+  font-weight: 600;
+  color: var(--chat-text);
+  margin: 2px 0;
+}
+
+.hermes-activity-row .ha-detail {
+  color: var(--chat-text-muted);
+  word-break: break-word;
+}
+
 /* === INPUT AREA === */
 .chat-input-wrap {
   border-top: 1px solid var(--chat-border);
@@ -1182,6 +1206,9 @@ pre:hover .copy-btn {
       <button class="toolbar-btn" id="thinkingToggle" onclick="toggleThinking()" title="Ask Hermes to reason step-by-step before answering">
         <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-lightbulb"/></svg> <span style="font-size:11px;">Think</span>
       </button>
+      <button class="toolbar-btn" id="hermesActivityToggle" onclick="toggleHermesActivity()" title="Hermes's own recent tool-call activity across ALL channels (Telegram, cron, etc.) — global, not scoped to this conversation">
+        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> <span style="font-size:11px;">Hermes Activity</span>
+      </button>
       <div class="toolbar-spacer"></div>
       <button class="toolbar-btn" id="artifactsToggle" onclick="toggleArtifacts()" title="Code blocks detected in this conversation (separate from the Live Artifacts library)">
         <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-code"/></svg> <span style="font-size:11px;">Code Blocks</span>
@@ -1277,6 +1304,23 @@ pre:hover .copy-btn {
   <p style="padding:0 16px;margin:8px 0 0;font-size:11px;color:var(--chat-text-muted);">Code blocks Hermes writes in this conversation. For your saved artifact library, use Live Artifacts in the main menu.</p>
   <div class="artifacts-list" id="artifactsList">
     <div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">No code blocks yet in this conversation.</div>
+  </div>
+</div>
+
+<!-- HERMES ACTIVITY PANEL (NEXT-SESSION-UI queue item 9b, gate cleared 2026-07-11) —
+     reuses the artifacts-panel slide-in chrome. This is Hermes's GLOBAL tool-call trace
+     across every channel it works in (Telegram, cron, etc.) — deliberately NOT attached
+     to individual chat replies, since this dashboard's /api/chat sends no tools schema
+     to Hermes's gateway and so cannot itself trigger tool calls. Labeling stays explicit
+     about that so it's never misread as "what happened in this conversation." -->
+<div class="artifacts-panel" id="hermesActivityPanel">
+  <div class="artifacts-header">
+    <h2><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-wrench"/></svg> Hermes Activity</h2>
+    <button class="artifacts-close" onclick="toggleHermesActivity()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-x"/></svg></button>
+  </div>
+  <p style="padding:0 16px;margin:8px 0 0;font-size:11px;color:var(--chat-text-muted);">Hermes's own most recent tool calls across ALL of its work (Telegram, cron jobs, etc.) — global, not scoped to this conversation. This dashboard chat can't trigger tool calls itself.</p>
+  <div class="artifacts-list" id="hermesActivityList">
+    <div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">Loading…</div>
   </div>
 </div>
 
@@ -1645,6 +1689,54 @@ function toggleArtifacts() {
   artifactsOpen = !artifactsOpen;
   document.getElementById('artifactsPanel').classList.toggle('open', artifactsOpen);
   document.getElementById('artifactsToggle').classList.toggle('active', artifactsOpen);
+}
+
+// === HERMES ACTIVITY PANEL (queue item 9b, gate cleared 2026-07-11) ===
+// Global trace of Hermes's own tool calls across all its work — NOT scoped to
+// this conversation (this dashboard's /api/chat sends no tools schema, so it
+// can't itself trigger a tool call). Fetched fresh every time the panel opens
+// so it's never stale; honest empty states if the log is missing/empty —
+// never fabricates entries.
+let hermesActivityOpen = false;
+
+function toggleHermesActivity() {
+  hermesActivityOpen = !hermesActivityOpen;
+  document.getElementById('hermesActivityPanel').classList.toggle('open', hermesActivityOpen);
+  document.getElementById('hermesActivityToggle').classList.toggle('active', hermesActivityOpen);
+  if (hermesActivityOpen) loadHermesActivityPanel();
+}
+
+async function loadHermesActivityPanel() {
+  const list = document.getElementById('hermesActivityList');
+  list.innerHTML = '<div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">Loading…</div>';
+  try {
+    const resp = await fetch('/api/hermes/activity?tail=25');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!data.available) {
+      list.innerHTML = '<div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">Hermes hasn\'t written an activity log yet.</div>';
+      return;
+    }
+    const entries = (data.data || []).slice().reverse(); // newest first
+    if (!entries.length) {
+      list.innerHTML = '<div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">Log exists but has no entries yet.</div>';
+      return;
+    }
+    list.innerHTML = entries.map(e => {
+      const t = e.ts ? new Date(e.ts).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '(no timestamp)';
+      const action = escapeHtml(e.action || 'action');
+      const detail = e.detail ? escapeHtml(e.detail) : '';
+      return `
+        <div class="hermes-activity-row">
+          <div class="ha-time">${t}</div>
+          <div class="ha-action">${action}</div>
+          ${detail ? `<div class="ha-detail">${detail}</div>` : ''}
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.warn('Hermes activity fetch failed:', e);
+    list.innerHTML = '<div class="artifacts-empty" style="padding:24px 12px;text-align:center;font-size:12px;color:var(--chat-text-muted);">Could not load Hermes\'s activity log.</div>';
+  }
 }
 
 function setModel(model) {

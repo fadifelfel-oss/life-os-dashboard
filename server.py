@@ -25,6 +25,12 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 (DATA_DIR / "clippings").mkdir(exist_ok=True)
 PORT = 8090
 HERMES_CHAT_PROXY_URL = "http://127.0.0.1:8642"  # Hermes API Server
+# Queue item 9(b), gate cleared 2026-07-11: Hermes confirmed via Telegram it appends one
+# JSON line per tool call here (JSONL despite the .md extension — Hermes's own choice),
+# append-only, in its own fixed-profile filesystem (no rotation needed at stated volume,
+# ~100KB/day worst case). This dashboard NEVER writes to this path — Hermes's lane, per
+# the two-agent single-writer-lane boundary (see vault STANDARD — System Architecture.md).
+HERMES_ACTIVITY_LOG = Path("/root/.hermes/activity_log.md")
 
 # Live OpenRouter model catalog cache — avoids hitting OpenRouter on every
 # page load. 6h TTL; falls back to the small curated list below on any
@@ -360,6 +366,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_crm_snapshot()
         elif path == "/api/hermes/morning-brief":
             self._serve_morning_brief()
+        elif path == "/api/hermes/activity":
+            self._serve_hermes_activity(query)
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -525,6 +533,48 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_response({"data": None})
         except Exception as e:
             self._json_error(500, f"Failed to serve morning brief: {str(e)}")
+
+    def _serve_hermes_activity(self, query):
+        """GET /api/hermes/activity?tail=N — tails Hermes's own tool-call
+        activity log (queue item 9b; gate cleared 2026-07-11 — Hermes confirmed
+        via Telegram it writes JSONL lines to HERMES_ACTIVITY_LOG, one per tool
+        call: {"ts","action","detail"}). Read-only — this dashboard never
+        writes here. Defensive: missing file or malformed lines never 500;
+        "available" tells the front-end honestly whether real data exists so
+        it never renders a fabricated trace."""
+        try:
+            tail_raw = (query.get("tail") or ["20"])[0]
+            tail = max(1, min(int(tail_raw), 200))
+        except (ValueError, TypeError):
+            tail = 20
+
+        if not HERMES_ACTIVITY_LOG.exists():
+            self._json_response({"data": [], "available": False, "count": 0})
+            return
+
+        try:
+            # Over-read a chunk of raw lines in case some are malformed/partial
+            # (e.g. Hermes mid-write) — parse what's valid, keep only the last
+            # `tail` real entries.
+            raw_lines = HERMES_ACTIVITY_LOG.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception as e:
+            self._json_error(500, f"Failed to read Hermes activity log: {str(e)}")
+            return
+
+        entries = []
+        for line in raw_lines[-(tail * 3 + 20):]:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                evt = json.loads(line)
+            except Exception:
+                continue
+            if isinstance(evt, dict):
+                entries.append(evt)
+
+        entries = entries[-tail:]
+        self._json_response({"data": entries, "available": True, "count": len(entries)})
 
     def _get_env_var(self, var_name):
         """Generic reader for any NAME=value line in ~/.hermes/.env — shared
