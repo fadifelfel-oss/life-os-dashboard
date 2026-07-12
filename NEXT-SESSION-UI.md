@@ -158,6 +158,90 @@ anything on UI-MASTER-PLAN already marked done.
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
 
+## 2026-07-11 session #8 (Opus, life-os-dashboard session) — Global voice brain-dump → tasks (Fadi request, not a queue item)
+
+Fadi request (outside the queue): "can the quick capture button everywhere have a voice input
+option for brain dumps, then summarize and change into tasks." Chose flow = **review, then
+create** (MC question, recommended option). Not a queue item; items 4–8 untouched.
+
+**Probe first (Read/Grep):** found the plumbing already mostly exists, just unwired —
+- Global capture already runs on every page: `QuickCapture` in `shared.js` (the `+` FAB / Ctrl+N)
+  — but text-only, saved to `localStorage['fb-captures']`, no voice, no tasks.
+- Voice already works: the Today capture hits `POST /api/transcribe` (local Whisper) — that mic
+  just wasn't on the global FAB.
+- Task creation already works: kanban cards are created by `POST /api/task` → `_handle_task_save`
+  → upsert to `DATA_DIR/.kanban_store.json`. Card shape: `{id,title,description,priority,tag,
+  column,source,created}`; columns `backlog/progress/review/done`; tags `project/fieldbridge/
+  career/trading/personal/urgent`.
+- Summarize-into-structure already works: the meeting processor's `_generate_summary` Hermes
+  pattern (`HERMES_CHAT_PROXY_URL` + `Bearer life-os-dashboard-2026`, model gemma-2.5-flash).
+So the build was three wires, no new architecture: mic on the global FAB, an extract endpoint,
+and a review step that reuses the existing `/api/task` write path.
+
+**Built:**
+- `server.py` — new `POST /api/braindump` (`_handle_braindump`, wired in `do_POST` next to
+  `/api/task`). Takes `{text}`, calls Hermes with a constrained prompt, returns
+  `{tasks:[{title,tag,priority}], available}`. Defensive: strips ``` fences, coerces any tag
+  outside the 6-tag set → `project`, any priority outside high/medium/low → `medium`, drops empty
+  titles, returns `available:false` with an honest error on unparseable output. **Read/compute
+  only — it does NOT write any store**; the front-end creates the approved cards via the existing
+  `/api/task` lane. No new data store, no new writer lane (STANDARD respected — reuses the kanban
+  DATA_DIR lane).
+- `shared.js` — upgraded the global `QuickCapture` modal (so this works on EVERY page, not just
+  Today): (1) a **Speak** mic button — MediaRecorder → `/api/transcribe` → appends the transcript
+  to the textarea (borrowed from the Today capture's proven pattern; idle/recording/busy states).
+  (2) a **Summarize into tasks** button → `POST /api/braindump` → renders a **review panel**: one
+  row per extracted task with a checkbox (checked), an editable title input, a tag `<select>`, and
+  a remove ✕. (3) **Add to board** → for each checked row, `POST /api/task` as a card in the
+  `backlog` column, `source:'Brain dump'`, carrying the Hermes-suggested priority; toast with the
+  count; refreshes the board via `loadTasks()` if we're on kanban. Kept **Save to Inbox** intact
+  (still `localStorage['fb-captures']`). Nothing hits the board without an explicit click.
+- `shared.css` — mic recording-state style (`.cap-mic.recording`, pulse) + the review-panel styles
+  (`.capture-review*` rows, tag select, add button) using existing shared tokens.
+- Did not touch tool roles / writer lanes / data stores — the only write is via the pre-existing
+  `/api/task` endpoint into the existing kanban store; `/api/braindump` is compute-only.
+
+**Note — capture fragmentation (not fixed this pass, worth a future cleanup):** there are still
+two capture surfaces with two different localStorage inboxes — the global FAB (`fb-captures`) and
+the Today-tab capture (`cmd-inbox`). This pass added voice+tasks to the global FAB only. A later
+pass could consolidate the Today capture onto the same `QuickCapture` so there's one inbox and one
+voice/brain-dump path. Flagging, not doing (out of this request's scope).
+
+**Verification (Read/Grep + sandbox, never bash-edit on C:\Dev):**
+- `shared.js`: copied from the mount, `node --check` → `SHAREDJS_SYNTAX_OK`; mount fresh (7 hits
+  for the new methods/endpoint).
+- `server.py`: full-file `py_compile` on the bash mount FAILED with a truncated-file IndentationError
+  at L4474 — but the Read tool shows that exact line well-formed with content continuing past it, so
+  it's the **documented stale/truncated-mount gotcha**, not a real error (the mount serves a cut-off
+  copy after file-tool edits). Verified the real change instead: extracted `_handle_braindump` into
+  a dummy-class scratch and ran it — `PY_SYNTAX_OK` AND a behavior test passed (fenced JSON parsed;
+  bad tag `nonsense`→`project`; bad priority `urgent`→`medium`; empty title dropped). The route add
+  is a one-line `elif`; the file was valid pre-edit.
+- NUL scan (python `bytes.count`) on all three touched files → 0 / 0 / 0.
+- **Not eyeballed live** — after deploy, Fadi: open any page, click the `+` (or Ctrl+N), hit
+  **Speak** and talk a brain dump (or type one), click **Summarize into tasks**, confirm the review
+  rows appear, uncheck/edit a couple, click **Add to board**, then open Kanban and confirm the new
+  cards are in Backlog tagged as expected. Also confirm plain **Save to Inbox** still works. One
+  live dependency to watch: `/api/transcribe` (Whisper) and Hermes must be up on the VPS — if either
+  is down the UI shows an honest toast/empty-state rather than fabricating tasks.
+
+**Not touched:** items 4–8 (gated), the Today-tab `cmd-inbox` capture (fragmentation noted above),
+any server data store / writer lane (none changed — braindump is compute-only, tasks use the
+existing `/api/task` lane).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py shared.js shared.css NEXT-SESSION-UI.md
+git commit -m "Global voice brain-dump -> tasks: add Speak mic (->/api/transcribe) and Summarize-into-tasks to the everywhere QuickCapture modal (shared.js/css); new compute-only POST /api/braindump (server.py) extracts discrete tasks via Hermes with tag/priority coercion; review panel lets you edit/uncheck before Add-to-board creates kanban cards in Backlog via the existing /api/task lane (no new store/writer). Save-to-Inbox unchanged"
+git push origin main
+# auto-pull deploys within ~1 min — open any page, hit + (or Ctrl+N), Speak or type a brain dump,
+# Summarize into tasks, review, Add to board, then check Kanban Backlog for the new cards.
+```
+
 ## 2026-07-11 session #7 (Opus, life-os-dashboard session) — Today tab task-card restyle (Fadi request, not a queue item)
 
 Out-of-band UI request from Fadi (outside the queue): "the font and the card style on the Today

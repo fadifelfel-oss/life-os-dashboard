@@ -1182,20 +1182,27 @@ const QuickCapture = {
       overlay.innerHTML = `
         <div class="capture-modal">
           <h3><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Quick Capture</h3>
-          <textarea id="captureInput" placeholder="Idea, task, note, reminder... anything that just came to mind." autofocus></textarea>
+          <textarea id="captureInput" placeholder="Idea, task, note, brain dump... type, or hit Speak and just talk." autofocus></textarea>
           <div class="capture-modal-actions">
+            <button class="btn-ghost cap-mic" id="captureMic" onclick="QuickCapture.toggleMic()" title="Voice brain dump — click to start/stop"><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Speak</button>
+            <span style="flex:1"></span>
             <button class="btn-ghost" onclick="QuickCapture.closeModal()">Cancel</button>
+            <button class="btn-ghost" onclick="QuickCapture.summarizeToTasks()">Summarize into tasks</button>
             <button class="btn-primary" onclick="QuickCapture.save()">Save to Inbox</button>
           </div>
+          <div id="captureReview" class="capture-review" style="display:none"></div>
         </div>
       `;
       document.body.appendChild(overlay);
     }
+    const box = document.getElementById('captureReview');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
     overlay.classList.add('open');
     setTimeout(() => document.getElementById('captureInput')?.focus(), 100);
   },
 
   closeModal() {
+    if (this._recording) this._stopRec();
     const overlay = document.getElementById('captureModal');
     if (overlay) overlay.classList.remove('open');
   },
@@ -1216,6 +1223,161 @@ const QuickCapture = {
       ShipToday.add(text);
     }
     Notify.success('✅ Saved to your inbox!');
+  },
+
+  // ---- Voice brain dump (records -> /api/transcribe -> appends to the textarea) ----
+  _MIC_IDLE: '<svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Speak',
+  _MIC_REC: '<svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Stop',
+  _MIC_BUSY: '<svg class="icon icon-sm icon-spin" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> …',
+
+  async toggleMic() {
+    if (this._recording) { this._stopRec(); return; }
+    const btn = document.getElementById('captureMic');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this._stream = stream;
+      this._chunks = [];
+      this._rec = new MediaRecorder(stream);
+      this._rec.ondataavailable = (e) => { if (e.data.size > 0) this._chunks.push(e.data); };
+      this._rec.onstop = async () => {
+        const blob = new Blob(this._chunks, { type: 'audio/webm' });
+        try { this._stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+        await this._transcribe(blob);
+      };
+      this._rec.start();
+      this._recording = true;
+      if (btn) { btn.classList.add('recording'); btn.innerHTML = this._MIC_REC; }
+    } catch(e) {
+      if (typeof Notify !== 'undefined') Notify.error('Microphone access denied.');
+    }
+  },
+
+  _stopRec() {
+    try { if (this._rec && this._rec.state !== 'inactive') this._rec.stop(); } catch(e) {}
+    this._recording = false;
+    const btn = document.getElementById('captureMic');
+    if (btn) { btn.classList.remove('recording'); btn.innerHTML = this._MIC_IDLE; }
+  },
+
+  async _transcribe(blob) {
+    const input = document.getElementById('captureInput');
+    const btn = document.getElementById('captureMic');
+    if (btn) btn.innerHTML = this._MIC_BUSY;
+    try {
+      const fd = new FormData();
+      fd.append('audio', blob, 'voice-capture.webm');
+      const resp = await fetch('/api/transcribe', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (data.success && data.text) {
+        input.value = (input.value ? input.value.trim() + ' ' : '') + data.text;
+      } else if (typeof Notify !== 'undefined') {
+        Notify.error('Transcription failed — type it instead.');
+      }
+    } catch(e) {
+      if (typeof Notify !== 'undefined') Notify.error('Transcription error.');
+    }
+    if (btn) btn.innerHTML = this._MIC_IDLE;
+  },
+
+  // ---- Brain dump -> tasks (Hermes extracts, you review, then create as kanban cards) ----
+  async summarizeToTasks() {
+    const input = document.getElementById('captureInput');
+    const text = (input && input.value.trim()) || '';
+    const box = document.getElementById('captureReview');
+    if (!text) { if (typeof Notify !== 'undefined') Notify.error('Type or record a brain dump first.'); return; }
+    if (box) { box.style.display = 'block'; box.innerHTML = '<div class="capture-review-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Summarizing into tasks…</div>'; }
+    try {
+      const resp = await fetch('/api/braindump', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
+      const data = await resp.json();
+      if (data.available === false) {
+        if (box) { const d = document.createElement('div'); d.className = 'capture-review-empty'; d.textContent = data.error || 'Could not extract tasks.'; box.innerHTML = ''; box.appendChild(d); }
+        return;
+      }
+      this.renderReview(data.tasks || []);
+    } catch(e) {
+      if (box) box.innerHTML = '<div class="capture-review-empty">Could not reach the summarizer. Save to Inbox instead.</div>';
+    }
+  },
+
+  renderReview(tasks) {
+    const box = document.getElementById('captureReview');
+    if (!box) return;
+    box.style.display = 'block';
+    box.innerHTML = '';
+    if (!tasks.length) {
+      const d = document.createElement('div');
+      d.className = 'capture-review-empty';
+      d.textContent = 'No clear tasks in that dump. Edit the text and try again, or Save to Inbox.';
+      box.appendChild(d);
+      return;
+    }
+    const head = document.createElement('div');
+    head.className = 'capture-review-head';
+    head.textContent = 'Review — uncheck any you don’t want, edit titles or tags, then add to the board:';
+    box.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'capture-review-list';
+    const TAGS = ['project','fieldbridge','career','trading','personal','urgent'];
+    tasks.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'capture-review-row';
+      row.dataset.pri = (t.priority || 'medium');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = true; cb.className = 'cap-rev-check';
+      const title = document.createElement('input');
+      title.type = 'text'; title.className = 'cap-rev-title'; title.value = t.title || '';
+      const sel = document.createElement('select');
+      sel.className = 'cap-rev-tag';
+      TAGS.forEach(tg => { const o = document.createElement('option'); o.value = tg; o.textContent = tg; if (tg === (t.tag || 'project')) o.selected = true; sel.appendChild(o); });
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'cap-rev-remove'; rm.title = 'Remove'; rm.textContent = '✕';
+      rm.onclick = () => row.remove();
+      row.appendChild(cb); row.appendChild(title); row.appendChild(sel); row.appendChild(rm);
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+
+    const add = document.createElement('button');
+    add.type = 'button'; add.className = 'btn-primary cap-rev-add';
+    add.textContent = 'Add to board';
+    add.onclick = () => this.addApprovedToBoard();
+    box.appendChild(add);
+  },
+
+  async addApprovedToBoard() {
+    const rows = document.querySelectorAll('#captureReview .capture-review-row');
+    const picked = [];
+    rows.forEach(row => {
+      const cb = row.querySelector('.cap-rev-check');
+      if (!cb || !cb.checked) return;
+      const title = row.querySelector('.cap-rev-title').value.trim();
+      if (!title) return;
+      picked.push({ title, tag: row.querySelector('.cap-rev-tag').value, priority: row.dataset.pri || 'medium' });
+    });
+    if (!picked.length) { if (typeof Notify !== 'undefined') Notify.error('Nothing selected to add.'); return; }
+    let ok = 0;
+    for (const p of picked) {
+      const task = {
+        id: 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        title: p.title,
+        description: '',
+        priority: p.priority,
+        tag: p.tag,
+        column: 'backlog',
+        source: 'Brain dump',
+        created: new Date().toISOString()
+      };
+      try {
+        await fetch('/api/task', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(task) });
+        ok++;
+      } catch(e) {}
+    }
+    const input = document.getElementById('captureInput');
+    if (input) input.value = '';
+    this.closeModal();
+    if (typeof Notify !== 'undefined') Notify.success(`Added ${ok} task${ok === 1 ? '' : 's'} to your board (Backlog).`);
+    if (typeof loadTasks === 'function') { try { loadTasks(); } catch(e) {} }
   }
 };
 

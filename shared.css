@@ -558,6 +558,24 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
 }
 .capture-modal-actions .btn-ghost:hover { background: var(--bg-tertiary); }
+.capture-modal-actions .cap-mic { display:flex; align-items:center; gap:6px; }
+.capture-modal-actions .cap-mic.recording { background: var(--red-bg); border-color: var(--red); color: var(--red); animation: cap-mic-pulse 1.4s infinite; }
+@keyframes cap-mic-pulse { 0%,100%{ opacity:1; } 50%{ opacity:.6; } }
+
+/* Brain-dump -> tasks review panel */
+.capture-review { margin-top: var(--space-4); border-top: 1px solid var(--border-primary); padding-top: var(--space-3); }
+.capture-review-loading, .capture-review-empty { font-size: var(--font-size-sm); color: var(--text-muted); display:flex; align-items:center; gap:6px; padding: 6px 0; }
+.capture-review-head { font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: var(--space-3); }
+.capture-review-list { display:flex; flex-direction:column; gap: 8px; max-height: 260px; overflow-y:auto; }
+.capture-review-row { display:flex; align-items:center; gap: 8px; }
+.capture-review-row .cap-rev-check { width:16px; height:16px; flex-shrink:0; accent-color: var(--accent); cursor:pointer; }
+.capture-review-row .cap-rev-title { flex:1; min-width:0; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--font-size-sm); padding: 6px 10px; }
+.capture-review-row .cap-rev-title:focus { outline:none; border-color: var(--accent); }
+.capture-review-row .cap-rev-tag { flex-shrink:0; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--font-size-xs); padding: 6px 8px; cursor:pointer; }
+.capture-review-row .cap-rev-remove { flex-shrink:0; background: transparent; border:none; color: var(--text-muted); cursor:pointer; font-size: 14px; padding: 4px 6px; border-radius: var(--radius-sm); }
+.capture-review-row .cap-rev-remove:hover { color: var(--red); background: var(--red-bg); }
+.capture-review .cap-rev-add { margin-top: var(--space-3); background: var(--accent); color: var(--on-accent); border:none; padding: 8px 20px; border-radius: var(--radius-md); font-weight:600; cursor:pointer; }
+.capture-review .cap-rev-add:hover { background: var(--accent-hover); }
 .capture-toast {
   position: fixed;
   bottom: 90px;

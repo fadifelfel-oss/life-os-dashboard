@@ -243,6 +243,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_process_clip()
         elif path == "/api/task":
             self._handle_task_save()
+        elif path == "/api/braindump":
+            self._handle_braindump()
         elif path == "/api/meetings":
             self._handle_meetings_post()
         elif path == "/api/meetings/process":
@@ -3567,6 +3569,90 @@ tags: {data.get('tags', [])}
             self._json_response({"ok": True, "path": str(dst.relative_to(VAULT_DIR))})
         except Exception as e:
             self._json_error(500, f"Failed to process clip: {str(e)}")
+
+    def _handle_braindump(self):
+        """POST /api/braindump {text} -> Hermes extracts discrete actionable tasks ->
+        {tasks:[{title,tag,priority}], available}. Read/compute only — the front-end creates the
+        approved cards via the existing /api/task write path (no store write here, no new lane)."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self._json_error(400, "No data provided")
+                return
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            text = (data.get('text') or '').strip()
+            if not text:
+                self._json_error(400, "No text provided")
+                return
+
+            allowed_tags = ["project", "fieldbridge", "career", "trading", "personal", "urgent"]
+            prompt = (
+                "You turn a raw brain dump into a clean list of discrete, actionable tasks.\n"
+                "Rules:\n"
+                "- One task per distinct action. Split compound thoughts; drop filler and vague musings.\n"
+                "- Each title is a short imperative starting with a verb (max ~12 words).\n"
+                "- tag must be EXACTLY one of: " + ", ".join(allowed_tags) + " (use 'project' if unsure).\n"
+                "- priority is one of: high, medium, low.\n"
+                "- If the dump contains no real tasks, return an empty array [].\n"
+                'Output ONLY a JSON array, no prose, no markdown fences. Shape: '
+                '[{"title":"...","tag":"...","priority":"..."}]\n\n'
+                "BRAIN DUMP:\n" + text
+            )
+
+            import urllib.request
+            payload = json.dumps({
+                "model": "google/gemma-2.5-flash-preview",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 1500,
+                "temperature": 0.2
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer life-os-dashboard-2026"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                hd = json.loads(resp.read().decode('utf-8'))
+
+            tasks = []
+            if 'choices' in hd and hd['choices']:
+                content = hd['choices'][0]['message']['content'].strip()
+                if content.startswith('```'):
+                    content = content.split('\n', 1)[1] if '\n' in content else content[3:]
+                    if content.endswith('```'):
+                        content = content[:-3]
+                content = content.strip()
+                try:
+                    parsed = json.loads(content)
+                except json.JSONDecodeError:
+                    self._json_response({"tasks": [], "available": False,
+                                         "error": "Could not parse tasks from the dump — try rephrasing."})
+                    return
+                if isinstance(parsed, dict):
+                    parsed = parsed.get('tasks', [])
+                for it in (parsed or []):
+                    if isinstance(it, dict):
+                        title = (it.get('title') or '').strip()
+                        tag = (it.get('tag') or 'project').strip().lower()
+                        pri = (it.get('priority') or 'medium').strip().lower()
+                    else:
+                        title, tag, pri = str(it).strip(), 'project', 'medium'
+                    if not title:
+                        continue
+                    if tag not in allowed_tags:
+                        tag = 'project'
+                    if pri not in ('high', 'medium', 'low'):
+                        pri = 'medium'
+                    tasks.append({"title": title, "tag": tag, "priority": pri})
+
+            self._json_response({"tasks": tasks, "available": True})
+        except Exception as e:
+            print(f"Braindump error: {e}")
+            self._json_error(500, f"Brain dump failed: {str(e)}")
 
     def _handle_task_save(self):
         """Save a kanban card (create or update)"""
