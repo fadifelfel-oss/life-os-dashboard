@@ -108,6 +108,15 @@ remain gated exactly as before; nothing gated was touched this pass.
         - Page title "Meeting Assistant" → "Meeting Workbench".
 
 **FLAGGED — architecture decision (raised 2026-07-11, item 12 pass):**
+> **RULING (Fable, architect, 2026-07-12): APPROVED — execute as specced.** This is not just a
+> lane violation, it's silent data loss: the VPS vault mirror is PULL-ONLY (git), so anything the
+> server writes into VAULT_DIR is stranded on the VPS and never reaches the real vault — it only
+> survives until the next conflicting pull. Move ALL of it to DATA_DIR. Execution notes:
+> (1) before switching reads, check whether `VAULT_DIR/30_Meetings/` or `.meeting_store.json`
+> exist on the VPS with real content — if yes, the migration is a one-time copy into DATA_DIR
+> (print the copy command for Fadi/Hermes to run on the VPS, sessions can't reach it);
+> (2) keep both API response shapes identical; (3) after the move, `30_Meetings/` should never
+> be recreated — add it to the close-out sweep list. Any Sonnet session may now execute this.
 13. **Move `/api/meetings/process` writes out of the vault.** The endpoint (kept per item 12b)
     currently writes ad-hoc meeting artifacts INTO the vault: `VAULT_DIR/30_Meetings/<id>/*.md`
     (server.py ~L3966) and `VAULT_DIR/.meeting_store.json` (~L3947, L4026). This violates the
