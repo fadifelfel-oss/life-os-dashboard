@@ -158,6 +158,72 @@ anything on UI-MASTER-PLAN already marked done.
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
 
+## 2026-07-11 session #7 (Opus, life-os-dashboard session) — Today tab task-card restyle (Fadi request, not a queue item)
+
+Out-of-band UI request from Fadi (outside the queue): "the font and the card style on the Today
+tab don't look as presentable as the kanban card tab." Not a queue item; items 4–8 untouched.
+
+**Diagnosis (Read only):** `dashboard.html`'s Today data cards rendered their items as flat
+`.hub-row` list rows — a tiny 8px dot + oversized 18px text + plain grey `.r-meta` text for the
+tag. `kanban.html`'s `.card` is a contained mini-card: darker surface, 1px border, 10px radius,
+a 3px colored priority spine (`::before`), 14px/600 title, hover-lift, and filled uppercase pill
+tags (`.card-tag` + `.tag-*`). That whole gap was the "not presentable" complaint.
+
+**Decision (asked Fadi, one MC question):** scope = **task cards only** — apply the kanban card
+language to the four task-like cards (Due Today / In progress / High signals / Open wagers) and
+**leave Power 3 as its numbered 1-2-3 list** (a deliberately distinct pattern). Confirmed live via
+a before/after mockup in the true blueprint-theme colors before touching code.
+
+**Built (dashboard.html only — client-side render + CSS, no server/response/data change):**
+- New `.hub-tcard` CSS block (mirrors kanban `.card`): `background: var(--bg-primary)` (the darker
+  page surface, same trick as `.hub-launch-btn`), `1px solid var(--border-primary)`, 10px radius,
+  `::before` 3px spine, hover border-accent + `translateY(-1px)` + accent shadow. Spine modifiers:
+  `.sp-due` (status-stale), `.sp-overdue` (status-failed), `.sp-wip` (accent-2), `.sp-fieldbridge`
+  (area-fieldbridge), `.sp-trading` (area-trading). Title `.hub-tcard-title` 14px/600. Pill classes
+  `.hub-tag` + `.tg-<area>` colored from the SHARED `--area-*` / `--area-*-bg` tokens
+  (fieldbridge/career/construction/trading/health/family/knowledge, admin as neutral default) so
+  Today pills match CRM/kanban/graph area colors and auto-adapt across all three themes; plus
+  `.tg-overdue` and a muted `.hub-tag-muted` for non-tag meta (signal action text, wager age).
+- Two JS helpers: `tagPill(tag)` (slugs the tag, maps to `tg-<area>` only if it's a known area,
+  else neutral pill — escapes the label) and `tcard(spineCls, title, metaHtml)` (escapes title,
+  omits the meta row entirely when empty so there's no dangling gap).
+- Rewrote `renderDue` / `renderSignals` / `renderWip` / `renderWagers` to emit `tcard(...)` instead
+  of `.hub-row`. Info parity kept: Due shows tag pill + overdue pill; WIP shows tag pill; Signals
+  shows the fieldbridge spine + action as muted meta; Wagers shows the trading spine + "Nd open"
+  muted meta. `renderPower3` untouched (still `.hub-row` + `.r-num`).
+- `.hub-row` CSS retained (Power 3 still uses it); the now-unused `.r-dot.due/.overdue` rules left
+  as harmless dead CSS (tight diff, no behavior change).
+- Did not touch tool roles / writer lanes / data stores — pure front-end rendering against the
+  existing `/api/today` payload; no endpoint, no write path changed.
+
+**Verification (Read/Grep + sandbox, never bash-edit on C:\Dev):**
+- Bash mount FRESH this pass — grep confirmed 11 `hub-tcard` refs, 4 `tcard(` call sites, both
+  helpers present. Extracted the main `<script>` block to `/tmp` and `node --check` → `JS_SYNTAX_OK`.
+- NUL scan: ripgrep `\x00` → 0 matches; python `bytes.count(b'\x00')` → 0. (Note: a bash
+  `grep -c $'\x00'` false-positived at 428 = the file's line count, because bash can't hold a NUL
+  in `$'\x00'` so the pattern degrades to empty/match-all — use ripgrep or python for NUL scans,
+  not bash `grep`, on this repo. Adds to the standing verification-gotcha notes.)
+- Grep confirmed the only remaining `.hub-row` render is Power 3 (intended).
+- **Not eyeballed live** — Fadi opens the Today home after deploy: confirm Due/WIP/Signals/Wagers
+  render as mini-cards with a colored left spine + pill tags matching the kanban board, hover lifts
+  them, and Power 3 still shows the 1-2-3 numbered list. Spine/pill palette is easy to re-tune if
+  he wants Due colored by area instead of by due/overdue status.
+
+**Not touched:** items 4–8 (gated), item 13 (shipped session #6 above), any server/data change.
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add dashboard.html NEXT-SESSION-UI.md
+git commit -m "Today tab: restyle Due/WIP/Signals/Wagers as kanban-matched task cards (contained card + colored priority spine + 14px title + area-tinted pill tags from shared --area-* tokens, hover-lift), replacing the flat 18px dot-rows; Power 3 left as the numbered list"
+git push origin main
+# auto-pull deploys within ~1 min — open the Today home, confirm the four data cards now render as
+# mini-cards matching the Kanban board and Power 3 still shows the 1-2-3 numbered list.
+```
+
 ## 2026-07-11 session #6 (Opus, life-os-dashboard session) — Move meeting writes off the vault (item 13)
 
 Executed queue item 13 only, per session instruction. The architect's RULING above item 13
