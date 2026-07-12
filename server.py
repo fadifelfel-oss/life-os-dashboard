@@ -3778,7 +3778,7 @@ tags: {data.get('tags', [])}
 
     def _serve_meetings_get(self, query):
         """GET /api/meetings — return current meeting state"""
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         if meeting_store.exists():
             with open(meeting_store, 'r') as f:
                 data = json.load(f)
@@ -3878,7 +3878,7 @@ tags: {data.get('tags', [])}
                 pass
         
         # Save to store
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         meeting_data = {
             "meeting": meeting,
             "agenda": agenda,
@@ -3901,7 +3901,7 @@ tags: {data.get('tags', [])}
 
     def _handle_meeting_confirm(self, data):
         """Confirm agenda and prepare for meeting"""
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         if meeting_store.exists():
             with open(meeting_store, 'r') as f:
                 meeting_data = json.load(f)
@@ -3921,7 +3921,7 @@ tags: {data.get('tags', [])}
 
     def _handle_start_recording(self, data):
         """Mark recording as started"""
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         if meeting_store.exists():
             with open(meeting_store, 'r') as f:
                 meeting_data = json.load(f)
@@ -3938,7 +3938,7 @@ tags: {data.get('tags', [])}
 
     def _handle_stop_recording(self, data):
         """Process stop recording — transcribe and generate outputs"""
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         if meeting_store.exists():
             with open(meeting_store, 'r') as f:
                 meeting_data = json.load(f)
@@ -3962,7 +3962,7 @@ tags: {data.get('tags', [])}
 
     def _handle_regenerate_brief(self, data):
         """Regenerate the meeting brief from the document"""
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         if meeting_store.exists():
             with open(meeting_store, 'r') as f:
                 meeting_data = json.load(f)
@@ -4020,7 +4020,7 @@ tags: {data.get('tags', [])}
             return
         
         # Save audio to temp file
-        tmp_path = VAULT_DIR / "temp_uploads" / audio_filename
+        tmp_path = DATA_DIR / "temp_uploads" / audio_filename
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
         with open(tmp_path, 'wb') as f:
             f.write(audio_data)
@@ -4033,7 +4033,7 @@ tags: {data.get('tags', [])}
             transcript = [{"time": "00:00", "speaker": "", "text": "(No speech detected in audio)"}]
         
         # Step 2: Load meeting context
-        meeting_store = VAULT_DIR / ".meeting_store.json"
+        meeting_store = DATA_DIR / ".meeting_store.json"
         if meeting_store.exists():
             with open(meeting_store, 'r') as f:
                 meeting_data = json.load(f)
@@ -4052,7 +4052,7 @@ tags: {data.get('tags', [])}
         
         # Step 6: Save everything to vault
         meeting_id = meeting_data.get('meeting', {}).get('id', datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
-        meeting_dir = VAULT_DIR / "30_Meetings" / meeting_id
+        meeting_dir = DATA_DIR / "30_Meetings" / meeting_id
         meeting_dir.mkdir(parents=True, exist_ok=True)
         
         # Save transcript
@@ -4212,7 +4212,7 @@ tags: {data.get('tags', [])}
             return
         
         # Save audio to temp file
-        tmp_path = VAULT_DIR / "temp_uploads" / audio_filename
+        tmp_path = DATA_DIR / "temp_uploads" / audio_filename
         tmp_path.parent.mkdir(parents=True, exist_ok=True)
         with open(tmp_path, 'wb') as f:
             f.write(audio_data)
@@ -4422,7 +4422,7 @@ Output ONLY a JSON array. No markdown fences. Example:
         fileitem = form['file'] if 'file' in form else None
         if fileitem and fileitem.filename:
             fn = os.path.basename(fileitem.filename)
-            upload_path = VAULT_DIR / "temp_uploads" / fn
+            upload_path = DATA_DIR / "temp_uploads" / fn
             upload_path.parent.mkdir(parents=True, exist_ok=True)
             with open(upload_path, 'wb') as f:
                 f.write(fileitem.file.read())
@@ -4460,7 +4460,7 @@ Output ONLY a JSON array. No markdown fences. Example:
                 "source_file": str(upload_path)
             }
             
-            meeting_store = VAULT_DIR / ".meeting_store.json"
+            meeting_store = DATA_DIR / ".meeting_store.json"
             meeting_data = {
                 "meeting": meeting,
                 "agenda": agenda,

@@ -117,7 +117,9 @@ remain gated exactly as before; nothing gated was touched this pass.
 > (print the copy command for Fadi/Hermes to run on the VPS, sessions can't reach it);
 > (2) keep both API response shapes identical; (3) after the move, `30_Meetings/` should never
 > be recreated — add it to the close-out sweep list. Any Sonnet session may now execute this.
-13. **Move `/api/meetings/process` writes out of the vault.** The endpoint (kept per item 12b)
+13. ~~**Move `/api/meetings/process` writes out of the vault.**~~ DONE 2026-07-11 (Opus,
+    life-os-dashboard session) — see session #6 write-up below. All meeting writes redirected
+    `VAULT_DIR` → `DATA_DIR`; read path follows; close-out sweep note recorded (see below). The endpoint (kept per item 12b)
     currently writes ad-hoc meeting artifacts INTO the vault: `VAULT_DIR/30_Meetings/<id>/*.md`
     (server.py ~L3966) and `VAULT_DIR/.meeting_store.json` (~L3947, L4026). This violates the
     read-only-mirror STANDARD (dashboard = reader; Cowork = the vault's only writer) and is why
@@ -155,6 +157,102 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-11 session #6 (Opus, life-os-dashboard session) — Move meeting writes off the vault (item 13)
+
+Executed queue item 13 only, per session instruction. The architect's RULING above item 13
+(Fable, 2026-07-12) explicitly APPROVED execution as specced with three execution notes and
+stated "Any Sonnet session may now execute this" — so the STOP-and-flag writer-lane gate was
+already cleared by the architect; this pass is authorized execution, not a blind design change.
+Did not touch any gated item (4–8).
+
+**Probe first (Read/Grep, never bash on C:\Dev):** grepped every `meeting_store` / `30_Meetings`
+/ `meetings` reference in `server.py`. The item's line estimates had drifted; the real write
+surface is larger than the two sites it named:
+- `.meeting_store.json` — **8** sites (read in `_serve_meetings_get`; read+write across
+  `_handle_meeting_upload` / `_confirm` / `_start_recording` / `_stop_recording` / `_regenerate_brief`
+  / `_handle_meeting_process` / `_handle_meeting_file_upload`), all `VAULT_DIR / ".meeting_store.json"`.
+- `30_Meetings/<id>/*.md` — **1** site (`_handle_meeting_process`, transcript/summary/action-items/
+  coverage `.md` files).
+- `temp_uploads/` audio+doc scratch — **3** sites (two audio process handlers + the doc file-upload
+  handler), also written into `VAULT_DIR` — same pull-only-mirror data-loss class, so moved too.
+Confirmed via full-file grep that **no other reader anywhere in `server.py` reads any of these
+paths** — the only consumer is `_serve_meetings_get` (`.meeting_store.json`), which was moved in
+lockstep. The nightly Fireflies→vault sync is Cowork-side against the REAL vault, not this VPS
+pull-only mirror, so it does not depend on the server's mirror writes (GATE satisfied).
+
+**Built (server.py only — mechanical constant redirect, no logic/response-shape change):**
+- All `VAULT_DIR / ".meeting_store.json"` → `DATA_DIR / ".meeting_store.json"` (8 sites).
+- `VAULT_DIR / "30_Meetings"` → `DATA_DIR / "30_Meetings"` (1 site).
+- `VAULT_DIR / "temp_uploads"` → `DATA_DIR / "temp_uploads"` (3 sites).
+- `DATA_DIR` is the dashboard's existing own write lane (`/root/life-os-data`, same class as
+  `.skill_usage.json` / `.kanban_store.json` / `playbook-usage.jsonl`), `.mkdir(exist_ok=True)` at
+  module load — so no new data store was introduced; the writes just stop landing in the pull-only
+  vault mirror where they were silently stranded.
+- **Note 2 honored — response shapes byte-identical.** Only the path constant changed. The
+  `_handle_meeting_process` response still returns a `vault_path` key (now a DATA_DIR path); the key
+  NAME was deliberately left as-is to preserve the exact response contract per the ruling, even
+  though it's now a mild misnomer. Every `_json_response({...})` body is otherwise untouched.
+
+**Note 1 — VPS migration (sessions can't reach the VPS; command for Fadi/Hermes below).** The
+old server wrote ad-hoc meetings into `VAULT_DIR` on the VPS. Because the mirror is pull-only,
+anything there is stranded, but any real ad-hoc meeting content already captured should be
+copied once into `DATA_DIR` so the moved read path still sees it. Copy-only, guarded, idempotent
+(`cp -n`) — no deletion of vault content in this command (that's the close-out sweep's job, and
+`30_Meetings/` in the real vault may legitimately hold Fireflies-synced content that a blind `rm`
+must not touch). See the VPS block in the Git section below.
+
+**Note 3 — close-out sweep.** There is no single formal "close-out sweep list" file in the repo
+(the sweep is tracked as a concept — dead files like `tasks.html` / `voice.html`). Recording the
+addition here so the next sweep picks it up: **after this move, `VAULT_DIR/30_Meetings/`,
+`VAULT_DIR/.meeting_store.json`, and `VAULT_DIR/temp_uploads/` must never be recreated by the
+dashboard** — the server no longer writes them; if they reappear on the VPS mirror they are stale
+and should be removed during the close-out sweep (checking first that `30_Meetings/` doesn't hold
+git-tracked Fireflies vault content).
+
+**Verification (Read/Grep + sandbox py_compile — never bash-edit on C:\Dev):**
+- Post-edit grep of `server.py`: **0** remaining `VAULT_DIR /` references to `.meeting_store.json`
+  / `30_Meetings` / `temp_uploads`; DATA_DIR counts confirmed 8 / 1 / 3.
+- Bash mount was FRESH this pass (grep of the mounted `server.py` showed the new DATA_DIR refs and
+  zero old VAULT_DIR meeting refs) — copied to `/tmp` and `python3 py_compile(doraise=True)` →
+  `PY_SYNTAX_OK`.
+- `server.py` NUL-scanned via Grep — clean (0).
+- **Not eyeballed live** — after deploy + the VPS migration command, Fadi opens meetings.html,
+  Ad-hoc tab, processes a short audio, and confirms the working copy still renders (proving the
+  moved read/write round-trips through DATA_DIR), then confirms `git status` on the VPS vault
+  mirror no longer shows new `30_Meetings/` or `.meeting_store.json` churn after processing.
+
+**Not touched:** items 4–8 (gated), any response-shape/tool-role change (none — pure write-lane
+relocation on the already-approved item), `voice.html` / `voice-chat.js`.
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py NEXT-SESSION-UI.md
+git commit -m "Item 13 — move /api/meetings writes off the pull-only vault mirror into DATA_DIR: all .meeting_store.json (8 sites), 30_Meetings/<id>/*.md, and temp_uploads/ scratch (3 sites) now write to DATA_DIR (dashboard's own lane, same class as .skill_usage.json), _serve_meetings_get reads from there; response shapes byte-identical (vault_path key name kept per architect note 2). Closes the silent-data-loss lane violation flagged in item 13"
+git push origin main
+# auto-pull deploys within ~1 min
+```
+
+### VPS — one-time migration (run ON the VPS; sessions can't reach it):
+
+```
+# Copy any already-captured ad-hoc meeting data out of the stranded pull-only mirror
+# into the dashboard's real write lane. Guarded + idempotent (cp -n) — safe to run even
+# if nothing was ever captured (the guards just skip). NO deletion here (see close-out sweep).
+mkdir -p /root/life-os-data
+if [ -f /root/second-brain/.meeting_store.json ]; then
+  cp -n /root/second-brain/.meeting_store.json /root/life-os-data/.meeting_store.json && echo "copied .meeting_store.json"
+fi
+if [ -d /root/second-brain/30_Meetings ]; then
+  mkdir -p /root/life-os-data/30_Meetings
+  cp -rn /root/second-brain/30_Meetings/. /root/life-os-data/30_Meetings/ && echo "copied 30_Meetings/"
+fi
+# (temp_uploads is disposable scratch — nothing to migrate.)
+```
 
 ## 2026-07-11 session #5 (Opus, life-os-dashboard session) — Retire Voice + Meeting Workbench (item 12)
 
