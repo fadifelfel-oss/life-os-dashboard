@@ -142,6 +142,28 @@
 .hub-chip { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space:nowrap; align-self:flex-start; margin-top:3px; }
 .hub-chip.overdue { color: var(--status-failed); border-color: var(--status-failed); }
 
+/* task cards — kanban-matched card language for Due / WIP / Signals / Wagers */
+.hub-tcard { position:relative; overflow:hidden; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 11px 12px 11px 16px; transition: all .2s; }
+.hub-tcard:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 15%, transparent); }
+.hub-tcard::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background: var(--area-admin); }
+.hub-tcard.sp-due::before { background: var(--status-stale); }
+.hub-tcard.sp-overdue::before { background: var(--status-failed); }
+.hub-tcard.sp-wip::before { background: var(--accent-2); }
+.hub-tcard.sp-fieldbridge::before { background: var(--area-fieldbridge); }
+.hub-tcard.sp-trading::before { background: var(--area-trading); }
+.hub-tcard-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-bottom: 6px; }
+.hub-tcard-meta { display:flex; flex-wrap:wrap; align-items:center; gap: 6px; }
+.hub-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; background: var(--area-admin-bg); color: var(--area-admin); }
+.hub-tag.tg-fieldbridge { background: var(--area-fieldbridge-bg); color: var(--area-fieldbridge); }
+.hub-tag.tg-career { background: var(--area-career-bg); color: var(--area-career); }
+.hub-tag.tg-construction { background: var(--area-construction-bg); color: var(--area-construction); }
+.hub-tag.tg-trading { background: var(--area-trading-bg); color: var(--area-trading); }
+.hub-tag.tg-health { background: var(--area-health-bg); color: var(--area-health); }
+.hub-tag.tg-family { background: var(--area-family-bg); color: var(--area-family); }
+.hub-tag.tg-knowledge { background: var(--area-knowledge-bg); color: var(--area-knowledge); }
+.hub-tag.tg-overdue { background: color-mix(in srgb, var(--status-failed) 18%, transparent); color: var(--status-failed); }
+.hub-tag-muted { font-size: 11px; color: var(--text-tertiary); }
+
 .hub-empty { display:flex; flex-direction:column; align-items:flex-start; gap:6px; color: var(--text-muted); font-size: 14px; padding: 6px 0; }
 .hub-empty a { color: var(--accent); text-decoration:none; font-size: 13px; }
 .hub-empty a:hover { text-decoration: underline; }
@@ -216,6 +238,18 @@ function emptyState(text, linkHref, linkText) {
   return `<div class="hub-empty"><span>${escHtml(text)}</span>${linkHref ? `<a href="${escHtml(linkHref)}">${escHtml(linkText)}</a>` : ''}</div>`;
 }
 
+// Task-card helpers (kanban-matched look for Due / WIP / Signals / Wagers)
+const HUB_KNOWN_AREAS = ['fieldbridge','career','construction','trading','health','family','knowledge'];
+function tagPill(tag) {
+  if (!tag) return '';
+  const slug = String(tag).toLowerCase().replace(/[^a-z]/g, '');
+  const cls = HUB_KNOWN_AREAS.includes(slug) ? 'tg-' + slug : '';
+  return `<span class="hub-tag ${cls}">${escHtml(tag)}</span>`;
+}
+function tcard(spineCls, title, metaHtml) {
+  return `<div class="hub-tcard ${spineCls}"><div class="hub-tcard-title">${escHtml(title)}</div>${metaHtml ? `<div class="hub-tcard-meta">${metaHtml}</div>` : ''}</div>`;
+}
+
 function renderPower3(items) {
   const el = document.getElementById('cardPower3');
   if (!items.length) {
@@ -236,7 +270,8 @@ function renderDue(items) {
   const today = new Date().toISOString().slice(0,10);
   el.innerHTML = items.map(c => {
     const overdue = c.due && String(c.due).slice(0,10) < today;
-    return `<div class="hub-row"><span class="r-dot ${overdue ? 'overdue' : 'due'}"></span><span class="r-text">${escHtml(c.title)}${c.tag ? `<span class="r-meta">${escHtml(c.tag)}</span>` : ''}</span>${overdue ? '<span class="hub-chip overdue">overdue</span>' : ''}</div>`;
+    const meta = (c.tag ? tagPill(c.tag) : '') + (overdue ? '<span class="hub-tag tg-overdue">overdue</span>' : '');
+    return tcard(overdue ? 'sp-overdue' : 'sp-due', c.title, meta);
   }).join('');
 }
 
@@ -246,7 +281,7 @@ function renderSignals(items) {
   if (count) count.textContent = items.length ? '(' + items.length + ')' : '';
   if (!items.length) { el.innerHTML = emptyState('No high-confidence signals.'); return; }
   el.innerHTML = items.slice(0,5).map(s =>
-    `<div class="hub-row"><span class="r-dot" style="background:var(--area-fieldbridge);"></span><span class="r-text">${escHtml(s.title)}${s.action ? `<span class="r-meta">${escHtml(s.action)}</span>` : ''}</span></div>`
+    tcard('sp-fieldbridge', s.title, s.action ? `<span class="hub-tag-muted">${escHtml(s.action)}</span>` : '')
   ).join('');
 }
 
@@ -268,7 +303,7 @@ function renderWip(items) {
   if (count) count.textContent = items.length ? '(' + items.length + ')' : '';
   if (!items.length) { el.innerHTML = emptyState('Nothing in progress.'); return; }
   el.innerHTML = items.map(c =>
-    `<div class="hub-row"><span class="r-dot" style="background:var(--accent-2);"></span><span class="r-text">${escHtml(c.title)}${c.tag ? `<span class="r-meta">${escHtml(c.tag)}</span>` : ''}</span></div>`
+    tcard('sp-wip', c.title, c.tag ? tagPill(c.tag) : '')
   ).join('');
 }
 
@@ -279,7 +314,7 @@ function renderWagers(items) {
   if (!items.length) { el.innerHTML = emptyState('No open wagers.'); return; }
   el.innerHTML = items.map(w => {
     const age = daysAgo(w.date);
-    return `<div class="hub-row"><span class="r-dot" style="background:var(--area-trading);"></span><span class="r-text">${escHtml(w.text)}${age !== null ? `<span class="r-meta">${age}d open</span>` : ''}</span></div>`;
+    return tcard('sp-trading', w.text, age !== null ? `<span class="hub-tag-muted">${age}d open</span>` : '');
   }).join('');
 }
 
