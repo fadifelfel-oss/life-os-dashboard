@@ -3,1073 +3,506 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meeting Assistant — Life OS</title>
+<title>Meeting Workbench — Life OS</title>
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
-:root {
-  --bg: var(--bg-primary);
-  --bg-card: var(--bg-secondary);
-  --accent-light: var(--accent-hover);
-  --text: var(--text-primary);
-  --text-muted: var(--text-secondary);
-  --border: var(--border-primary);
-  --amber: var(--orange);
-  --blue: var(--accent-2);
-  --col-backlog: color-mix(in srgb, var(--area-construction) 22%, var(--bg-secondary));
-  --col-progress: color-mix(in srgb, var(--accent) 22%, var(--bg-secondary));
-  --col-review: color-mix(in srgb, var(--area-knowledge) 22%, var(--bg-secondary));
-  --col-done: color-mix(in srgb, var(--status-live) 18%, var(--bg-secondary));
-}
-
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'Inter', -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
   padding: 16px;
 }
 
 .header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-primary);
 }
-.header h1 {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-.header-actions {
+.header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+
+/* Role banner */
+.role-banner {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--accent-2) 8%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 30%, var(--border-primary));
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
+.role-banner strong { color: var(--text-primary); }
+.role-banner .icon { flex-shrink: 0; color: var(--accent-2); margin-top: 1px; }
+
+/* Buttons */
 .btn {
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 8px 16px;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  transition: all 0.2s;
-}
-.btn:hover { background: var(--accent); border-color: var(--accent); }
-.btn-primary { background: var(--accent); border-color: var(--accent); }
-.btn-primary:hover { background: var(--accent-light); }
-.btn-sm { padding: 5px 10px; font-size: 12px; }
-.btn-danger { border-color: var(--red); color: var(--red); }
-.btn-danger:hover { background: var(--red); color: var(--on-accent); }
-.btn-success { border-color: var(--green); color: var(--green); }
-.btn-success:hover { background: var(--green); color: var(--on-accent); }
-
-/* Status bar */
-.status-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.status-pill {
-  display: flex;
+  transition: all 0.15s;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
 }
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.status-dot.idle { background: var(--text-muted); }
-.status-dot.recording { background: var(--red); animation: pulse 1.5s infinite; }
-.status-dot.processing { background: var(--amber); animation: pulse 1s infinite; }
-.status-dot.ready { background: var(--green); }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* Meeting layout */
-.meeting-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 900px) {
-  .meeting-layout { grid-template-columns: 1fr; }
-}
-
-.panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-}
-.panel-title {
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.panel-title .icon { font-size: 16px; }
-
-/* Agenda items */
-.agenda-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.agenda-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  transition: all 0.2s;
-}
-.agenda-item:hover { border-color: var(--accent); }
-.agenda-item.covered { border-left: 3px solid var(--green); }
-.agenda-item.partial { border-left: 3px solid var(--amber); }
-.agenda-item.missed { border-left: 3px solid var(--red); }
-
-.agenda-checkbox {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 2px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 1px;
-}
-.agenda-checkbox.checked { background: var(--green); border-color: var(--green); }
-.agenda-checkbox.checked::after { content: '✓'; color: var(--on-accent); font-size: 12px; font-weight: 700; }
-.agenda-checkbox.partial { background: var(--amber); border-color: var(--amber); }
-.agenda-checkbox.partial::after { content: '!'; color: var(--on-accent); font-size: 12px; font-weight: 700; }
-.agenda-checkbox.missed { background: var(--red); border-color: var(--red); }
-.agenda-checkbox.missed::after { content: '×'; color: var(--on-accent); font-size: 12px; font-weight: 700; }
-
-.agenda-content { flex: 1; }
-.agenda-item-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-.agenda-item-question {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 3px;
-}
-.agenda-item-source {
-  font-size: 11px;
-  color: var(--accent-light);
-  margin-top: 4px;
-}
-
-/* Coverage stats */
-.coverage-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.coverage-stat {
-  text-align: center;
-  padding: 12px 8px;
-  background: var(--bg);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-.coverage-stat-number {
-  font-size: 28px;
-  font-weight: 800;
-}
-.coverage-stat-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-.coverage-stat.covered .coverage-stat-number { color: var(--green); }
-.coverage-stat.partial .coverage-stat-number { color: var(--amber); }
-.coverage-stat.missed .coverage-stat-number { color: var(--red); }
-
-/* Progress bar */
-.progress-bar {
-  height: 6px;
-  background: var(--bg);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--green), var(--accent));
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
-/* Transcript */
-.transcript-container {
-  max-height: 400px;
-  overflow-y: auto;
-  background: var(--bg);
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-.transcript-segment {
-  margin-bottom: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-}
-.transcript-segment:hover { background: var(--bg-elevated); }
-.transcript-time {
-  font-size: 11px;
-  color: var(--accent-light);
-  font-weight: 600;
-}
-.transcript-speaker {
-  font-size: 11px;
-  color: var(--amber);
-  font-weight: 600;
-  margin-right: 6px;
-}
-.transcript-text { color: var(--text); }
-.transcript-text.arabic { direction: rtl; display: inline-block; }
-
-/* Summary */
-.summary-section {
-  margin-bottom: 12px;
-}
-.summary-section h4 {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent-light);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-}
-.summary-section p, .summary-section li {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text);
-}
-.summary-section ul {
-  padding-left: 16px;
-}
-
-/* Action items table */
-.action-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.action-table th {
-  text-align: left;
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-}
-.action-table td {
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--border);
-}
-.action-table tr:last-child td { border-bottom: none; }
-.action-table tr:hover td { background: var(--bg-elevated); }
-
-/* Upload area */
-.upload-area {
-  border: 2px dashed var(--border);
-  border-radius: 12px;
-  padding: 24px;
-  text-align: center;
-  transition: all 0.2s;
-  cursor: pointer;
-  margin-bottom: 16px;
-}
-.upload-area:hover, .upload-area.dragover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-}
-.upload-icon { font-size: 32px; margin-bottom: 8px; }
-.upload-text { font-size: 13px; color: var(--text-muted); }
-.upload-text strong { color: var(--text); }
-.upload-formats { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-
-/* Meeting brief */
-.brief-container {
-  background: var(--bg);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-}
-.brief-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.brief-title { font-size: 16px; font-weight: 700; }
-.brief-meta { font-size: 12px; color: var(--text-muted); }
-
-/* Empty state */
-.empty-state {
-  text-align: center;
-  padding: 32px 16px;
-  color: var(--text-muted);
-}
-.empty-state-icon { font-size: 40px; margin-bottom: 8px; }
-.empty-state-text { font-size: 13px; }
+.btn:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:hover .icon { color: var(--on-accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn-primary .icon { color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
 
 /* Tabs */
 .tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0;
+  border-bottom: 1px solid var(--border-primary);
 }
 .tab {
-  padding: 8px 16px;
+  padding: 9px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: all 0.2s;
-}
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--accent-light); border-bottom-color: var(--accent); }
-
-/* Modal */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: var(--bg-overlay);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-}
-.modal-overlay.active { display: flex; }
-.modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.modal-title { font-size: 18px; font-weight: 700; }
-.modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
-.modal-close:hover { color: var(--text); }
-
-/* Recording indicator */
-.recording-indicator {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: color-mix(in srgb, var(--red) 10%, transparent);
-  border: 1px solid var(--red);
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-.recording-indicator.active { display: flex; }
-.recording-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--red);
-  animation: pulse 1.5s infinite;
-}
-.recording-text { font-size: 13px; font-weight: 600; color: var(--red); }
-.recording-time { font-size: 13px; color: var(--text-muted); margin-left: auto; }
-
-/* Back button */
-.back-btn {
+  transition: all 0.15s;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-  text-decoration: none;
+  gap: 7px;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Panels */
+.panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
   margin-bottom: 12px;
+}
+
+/* Prep controls */
+.prep-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+select.prospect-select {
+  flex: 1;
+  min-width: 220px;
+  padding: 9px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+/* Brief card */
+.brief {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 16px;
+}
+.brief-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.brief-name { font-size: 17px; font-weight: 700; }
+.brief-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--area-fieldbridge) 18%, var(--bg-secondary));
+  color: var(--text-primary);
+  border: 1px solid color-mix(in srgb, var(--area-fieldbridge) 35%, var(--border-primary));
+  white-space: nowrap;
+}
+.brief-field { margin-bottom: 11px; }
+.brief-field:last-child { margin-bottom: 0; }
+.brief-field .lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.brief-field .val { font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+.brief-field .val.muted { color: var(--text-muted); font-style: italic; }
+.brief-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Upload */
+.upload-area {
+  border: 2px dashed var(--border-primary);
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  transition: all 0.15s;
   cursor: pointer;
 }
-.back-btn:hover { color: var(--accent-light); }
+.upload-area:hover, .upload-area.dragover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.upload-icon { color: var(--text-secondary); margin-bottom: 8px; }
+.upload-text { font-size: 13px; color: var(--text-secondary); }
+.upload-text strong { color: var(--text-primary); }
+.upload-formats { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.process-status { margin-top: 12px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+/* Results */
+.result-section { margin-bottom: 16px; }
+.result-section h4 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 7px;
+}
+.result-section ul { padding-left: 18px; }
+.result-section li, .result-section p { font-size: 13px; line-height: 1.55; color: var(--text-primary); }
+.transcript-box {
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.t-seg { margin-bottom: 7px; }
+.t-time { font-size: 11px; color: var(--accent-2); font-weight: 600; margin-right: 6px; }
+.t-speaker { font-size: 11px; color: var(--orange); font-weight: 600; margin-right: 5px; }
+.t-text.arabic { direction: rtl; display: inline-block; }
+.action-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.action-table th {
+  text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border-primary);
+  color: var(--text-muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase;
+}
+.action-table td { padding: 7px 6px; border-bottom: 1px solid var(--border-primary); }
+.action-table tr:last-child td { border-bottom: none; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 28px 16px; color: var(--text-muted); }
+.empty-state .icon { color: var(--text-muted); margin-bottom: 8px; }
+.empty-state-text { font-size: 13px; }
+.note-inline { font-size: 11.5px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div style="display:flex;align-items:center;gap:12px;">
-    <a href="index.html" class="header-back">← Life OS</a>
-    <h1><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Meeting Assistant</h1>
-  </div>
-  <div class="header-actions">
-    <div class="header-actions">
-      <button class="btn btn-primary" onclick="showUploadModal()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Upload Agenda</button>
-      <button class="btn" onclick="showProcessModal()"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Process Audio</button>
-      <button class="btn btn-success" onclick="toggleRecording()" id="recordBtn"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Record</button>
-    </div>
-  </div>
+  <a href="index.html" class="header-back">← Life OS</a>
+  <h1><svg class="icon" width="22" height="22"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Meeting Workbench</h1>
 </div>
 
-<div class="recording-indicator" id="recordingIndicator">
-  <div class="recording-dot"></div>
-  <span class="recording-text">Recording in progress</span>
-  <span class="recording-time" id="recordingTime">00:00:00</span>
-</div>
-
-<div class="status-bar" id="statusBar">
-  <div class="status-pill">
-    <div class="status-dot idle" id="statusDot"></div>
-    <span id="statusText">Ready</span>
-  </div>
-  <div class="status-pill" id="meetingInfoPill" style="display:none;">
-    <span><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg></span>
-    <span id="meetingDate"></span>
-  </div>
-  <div class="status-pill" id="attendeesPill" style="display:none;">
-    <span><svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-users"/></svg></span>
-    <span id="attendeesCount"></span>
+<div class="role-banner">
+  <svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-target"/></svg>
+  <div>
+    <strong>One job: the meetings Fireflies doesn't catch — plus pre-call prep.</strong>
+    Fireflies-captured meetings flow into the vault automatically via the nightly sync — don't duplicate them here.
+    Use this page for phone calls, WhatsApp voice notes, and site conversations, and to prep before a call.
+    <strong>Nothing you do in the browser writes to your vault</strong> — anything worth keeping goes back through Cowork via the Copy buttons.
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="brief" onclick="switchTab('brief')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Brief</div>
-  <div class="tab" data-tab="coverage" onclick="switchTab('coverage')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg> Coverage</div>
-  <div class="tab" data-tab="transcript" onclick="switchTab('transcript')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Transcript</div>
-  <div class="tab" data-tab="summary" onclick="switchTab('summary')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Summary</div>
-  <div class="tab" data-tab="actions" onclick="switchTab('actions')"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Actions</div>
+  <div class="tab active" data-tab="prep" onclick="switchTab('prep')"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Prep brief</div>
+  <div class="tab" data-tab="adhoc" onclick="switchTab('adhoc')"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Ad-hoc transcript</div>
 </div>
 
-<div class="meeting-layout">
-  <!-- Left: Main content area -->
-  <div class="panel" id="mainPanel">
-    <div id="emptyState" class="empty-state">
-      <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-mic"/></svg></div>
-      <div class="empty-state-text">
-        <strong>No meeting loaded</strong><br>
-        Upload a PDF, Google Doc, or voice memo to get started
-      </div>
+<!-- PREP BRIEF TAB -->
+<div id="tab-prep" class="tab-content active">
+  <div class="panel">
+    <div class="panel-title">Pre-call prep — pull a prospect from your CRM</div>
+    <div class="prep-row">
+      <select class="prospect-select" id="prospectSelect" onchange="renderPrepBrief()">
+        <option value="">Select a prospect…</option>
+      </select>
+      <button class="btn btn-sm" onclick="loadProspects()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
     </div>
-
-    <!-- Brief tab -->
-    <div id="tab-brief" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg></span> Meeting Brief</div>
-      <div class="brief-container" id="briefContainer" style="display:none;">
-        <div class="brief-header">
-          <div class="brief-title" id="briefTitle"></div>
-          <div class="header-actions">
-            <button class="btn btn-sm btn-primary" onclick="confirmBrief()">✓ Confirm & Start</button>
-            <button class="btn btn-sm" onclick="regenerateBrief()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Regenerate</button>
-          </div>
-        </div>
-        <div class="brief-meta" id="briefMeta"></div>
-        <div id="briefAgenda"></div>
-        <div id="briefQuestions"></div>
-      </div>
-      <div id="briefEmpty" class="empty-state">
-        <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></div>
-        <div class="empty-state-text">Upload a document to generate a meeting brief</div>
-      </div>
-    </div>
-
-    <!-- Coverage tab -->
-    <div id="tab-coverage" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg></span> Coverage Tracker</div>
-      <div id="coverageContent" style="display:none;">
-        <div class="coverage-stats">
-          <div class="coverage-stat covered">
-            <div class="coverage-stat-number" id="coveredCount">0</div>
-            <div class="coverage-stat-label">Covered</div>
-          </div>
-          <div class="coverage-stat partial">
-            <div class="coverage-stat-number" id="partialCount">0</div>
-            <div class="coverage-stat-label">Partial</div>
-          </div>
-          <div class="coverage-stat missed">
-            <div class="coverage-stat-number" id="missedCount">0</div>
-            <div class="coverage-stat-label">Missed</div>
-          </div>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="coverageProgress" style="width: 0%"></div>
-        </div>
-        <div class="agenda-list" id="coverageList"></div>
-      </div>
-      <div id="coverageEmpty" class="empty-state">
-        <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg></div>
-        <div class="empty-state-text">Start recording to track coverage</div>
-      </div>
-    </div>
-
-    <!-- Transcript tab -->
-    <div id="tab-transcript" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></span> Legal Transcript</div>
-      <div class="transcript-container" id="transcriptContainer"></div>
-    </div>
-
-    <!-- Summary tab -->
-    <div id="tab-summary" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></span> Summary & Conclusion</div>
-      <div id="summaryContent"></div>
-    </div>
-
-    <!-- Actions tab -->
-    <div id="tab-actions" class="tab-content" style="display:none;">
-      <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg></span> Action Items</div>
-      <div id="actionsContent"></div>
-    </div>
-  </div>
-
-  <!-- Right: Live coverage sidebar -->
-  <div class="panel" id="livePanel">
-    <div class="panel-title"><span class="icon"><svg class="icon" width="16" height="16"><use href="assets/lucide-sprite.svg#icon-target"/></svg></span> Live Agenda Check</div>
-    <div id="liveAgenda" class="agenda-list">
+    <div id="prepBody">
       <div class="empty-state">
-        <div class="empty-state-icon"><svg class="icon icon-lg" width="26" height="26"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg></div>
-        <div class="empty-state-text">Agenda items will appear here during the meeting</div>
+        <div class="icon"><svg width="26" height="26"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg></div>
+        <div class="empty-state-text">Pick a prospect to build a one-screen prep brief from your CRM mirror.</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Process Audio Modal -->
-<div class="modal-overlay" id="processModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Process Meeting Audio</div>
-      <button class="modal-close" onclick="hideProcessModal()">×</button>
-    </div>
+<!-- AD-HOC TRANSCRIPT TAB -->
+<div id="tab-adhoc" class="tab-content">
+  <div class="panel">
+    <div class="panel-title">Ad-hoc transcript — audio Fireflies didn't capture</div>
     <div class="upload-area" id="processArea" onclick="document.getElementById('audioInput').click()">
-      <div class="upload-icon"><svg class="icon icon-lg" width="28" height="28"><use href="assets/lucide-sprite.svg#icon-headphones"/></svg></div>
-      <div class="upload-text"><strong>Click to upload audio</strong> or drag & drop</div>
-      <div class="upload-formats">WAV, MP3, M4A — recorded from your meeting</div>
+      <div class="upload-icon"><svg class="icon" width="28" height="28"><use href="assets/lucide-sprite.svg#icon-headphones"/></svg></div>
+      <div class="upload-text"><strong>Click to upload audio</strong> or drag &amp; drop</div>
+      <div class="upload-formats">WAV, MP3, M4A, OGG, FLAC — a phone call, WhatsApp voice note, or site recording</div>
     </div>
     <input type="file" id="audioInput" accept=".wav,.mp3,.m4a,.ogg,.flac" style="display:none" onchange="handleAudioSelect(event)">
-    <div id="processStatus" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+    <div class="process-status" id="processStatus"></div>
+    <div class="note-inline">Processed transcripts are saved server-side for working reference. To get decisions, actions, and CRM impact into the vault, use <strong>Copy for Cowork</strong> below and paste into a Cowork session.</div>
+  </div>
+
+  <div class="panel" id="resultsPanel" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="panel-title" style="margin-bottom:0;">Working copy — <span id="resultTitle"></span></div>
+      <button class="btn btn-primary btn-sm" onclick="copyForCowork()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-copy"/></svg> Copy for Cowork</button>
+    </div>
+    <div id="resultTranscript" class="result-section"></div>
+    <div id="resultSummary"></div>
+    <div id="resultActions" class="result-section"></div>
   </div>
 </div>
 
-<!-- Upload Modal -->
-<div class="modal-overlay" id="uploadModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title"><svg class="icon" width="18" height="18"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> Upload Meeting Document</div>
-      <button class="modal-close" onclick="hideUploadModal()">×</button>
-    </div>
-    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-      <div class="upload-icon"><svg class="icon icon-lg" width="28" height="28"><use href="assets/lucide-sprite.svg#icon-folder"/></svg></div>
-      <div class="upload-text"><strong>Click to upload</strong> or drag & drop</div>
-      <div class="upload-formats">PDF, Google Doc link, or voice memo</div>
-    </div>
-    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.mp3,.m4a,.wav" style="display:none" onchange="handleFileSelect(event)">
-    <div style="margin-top:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">Or paste a Google Doc link:</label>
-      <input type="text" id="docLink" placeholder="https://docs.google.com/document/d/..." style="width:100%;margin-top:4px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
-      <button class="btn btn-sm btn-primary" style="margin-top:8px;" onclick="handleDocLink()">Process Link</button>
-    </div>
-    <div style="margin-top:16px;">
-      <label style="font-size:12px;color:var(--text-muted);">Or describe the meeting (voice memo style):</label>
-      <textarea id="meetingDescription" rows="3" placeholder="e.g. KOC follow-up meeting — need to discuss payment terms, timeline extension, and variation pricing..." style="width:100%;margin-top:4px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical;"></textarea>
-      <button class="btn btn-sm btn-primary" style="margin-top:8px;" onclick="handleDescription()">Generate Brief</button>
-    </div>
-  </div>
-</div>
-
+<script src="shared.js"></script>
 <script>
-// State
-let state = {
-  phase: 'idle', // idle, uploaded, confirmed, recording, transcribing, complete
-  meeting: null,
-  agenda: [],
-  transcript: null,
-  summary: null,
-  actionItems: [],
-  coverage: [],
-  recordingStartTime: null,
-  recordingInterval: null
-};
+// ── State ───────────────────────────────────────────────────────────
+let prospects = [];
+let adhoc = { meeting: null, transcript: null, summary: null, actionItems: [] };
 
-// Tab switching
+// ── Tabs ────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
-  document.getElementById(`tab-${tab}`).style.display = 'block';
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
 }
 
-// Modal
-function showUploadModal() {
-  document.getElementById('uploadModal').classList.add('active');
-}
-function hideUploadModal() {
-  document.getElementById('uploadModal').classList.remove('active');
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// File upload
-function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  uploadFile(file);
-}
-
-function uploadFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('action', 'upload');
-  
-  setStatus('processing', 'Processing document...');
-  hideUploadModal();
-  
-  fetch('/api/meetings', {
-    method: 'POST',
-    body: formData
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      state.meeting = data.meeting;
-      state.agenda = data.agenda;
-      state.phase = 'uploaded';
-      renderBrief(data);
-      setStatus('ready', 'Brief ready — confirm to start');
-      switchTab('brief');
-    } else {
-      setStatus('idle', 'Error: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(err => {
-    setStatus('idle', 'Error processing file: ' + err.message);
-  });
-}
-
-function handleDocLink() {
-  const link = document.getElementById('docLink').value.trim();
-  if (!link) return;
-  
-  setStatus('processing', 'Fetching document...');
-  hideUploadModal();
-  
-  fetch('/api/meetings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({doc_link: link, action: 'upload'})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      state.meeting = data.meeting;
-      state.agenda = data.agenda;
-      state.phase = 'uploaded';
-      renderBrief(data);
-      setStatus('ready', 'Brief ready — confirm to start');
-      switchTab('brief');
-    } else {
-      setStatus('idle', 'Error: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(err => {
-    setStatus('idle', 'Error: ' + err.message);
-  });
-}
-
-function handleDescription() {
-  const desc = document.getElementById('meetingDescription').value.trim();
-  if (!desc) return;
-  
-  setStatus('processing', 'Generating brief...');
-  hideUploadModal();
-  
-  fetch('/api/meetings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({description: desc, action: 'upload'})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      state.meeting = data.meeting;
-      state.agenda = data.agenda;
-      state.phase = 'uploaded';
-      renderBrief(data);
-      setStatus('ready', 'Brief ready — confirm to start');
-      switchTab('brief');
-    } else {
-      setStatus('idle', 'Error: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(err => {
-    setStatus('idle', 'Error: ' + err.message);
-  });
-}
-
-// Brief rendering
-function renderBrief(data) {
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('briefContainer').style.display = 'block';
-  document.getElementById('briefEmpty').style.display = 'none';
-  
-  document.getElementById('briefTitle').textContent = data.meeting?.title || 'Meeting';
-  document.getElementById('briefMeta').innerHTML = `
-    <svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-calendar"/></svg> ${data.meeting?.date || new Date().toLocaleDateString()} &nbsp;|&nbsp;
-    <svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-users"/></svg> ${data.meeting?.attendees?.length || 'No attendees'} &nbsp;|&nbsp;
-    <svg class="icon icon-sm" width="12" height="12"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> ${data.agenda.length} items
-  `;
-  
-  let agendaHTML = '<div style="margin-top:12px;"><strong style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Agenda:</strong></div><ol style="padding-left:20px;margin-top:6px;">';
-  data.agenda.forEach((item, i) => {
-    agendaHTML += `<li style="margin-bottom:6px;font-size:13px;"><strong>${item.title}</strong>`;
-    if (item.question) agendaHTML += `<br><span style="font-size:12px;color:var(--text-muted);">→ ${item.question}</span>`;
-    agendaHTML += '</li>';
-  });
-  agendaHTML += '</ol>';
-  document.getElementById('briefAgenda').innerHTML = agendaHTML;
-  
-  if (data.questions && data.questions.length > 0) {
-    let qHTML = '<div style="margin-top:12px;"><strong style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Questions to Answer:</strong></div><ul style="padding-left:20px;margin-top:6px;">';
-    data.questions.forEach(q => {
-      qHTML += `<li style="margin-bottom:4px;font-size:13px;">${q}</li>`;
+// ── Prep brief ──────────────────────────────────────────────────────
+function loadProspects() {
+  const sel = document.getElementById('prospectSelect');
+  fetch('/api/wiki/crm')
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(data => {
+      // filter out the folder index note; keep everything else
+      prospects = (data.data || []).filter(r => (r.path || '').split('/').pop().toLowerCase() !== 'index.md');
+      sel.innerHTML = '<option value="">Select a prospect…</option>' +
+        prospects.map((p, i) => {
+          const label = p.name || p.company || (p.path || '').split('/').pop().replace(/\.md$/, '');
+          const stage = p.stage ? ' · ' + p.stage : '';
+          return `<option value="${i}">${esc(label)}${esc(stage)}</option>`;
+        }).join('');
+      if (!prospects.length) {
+        document.getElementById('prepBody').innerHTML =
+          '<div class="empty-state"><div class="empty-state-text">No prospects found in the CRM mirror yet.</div></div>';
+      }
+    })
+    .catch(err => {
+      document.getElementById('prepBody').innerHTML =
+        `<div class="empty-state"><div class="empty-state-text">Couldn't load CRM (${esc(err.message)}). Is the backend deployed?</div></div>`;
     });
-    qHTML += '</ul>';
-    document.getElementById('briefQuestions').innerHTML = qHTML;
+}
+
+function renderPrepBrief() {
+  const i = document.getElementById('prospectSelect').value;
+  const body = document.getElementById('prepBody');
+  if (i === '') {
+    body.innerHTML = '<div class="empty-state"><div class="empty-state-text">Pick a prospect to build a one-screen prep brief.</div></div>';
+    return;
   }
-}
+  const p = prospects[+i];
+  const name = p.name || p.company || (p.path || '').split('/').pop().replace(/\.md$/, '');
+  const sub = [p.role, p.company].filter(x => x && x !== name).join(' · ');
+  const nextLine = [p.next, p.next_date].filter(Boolean).join('  ·  ');
 
-function confirmBrief() {
-  state.phase = 'confirmed';
-  setStatus('ready', '✓ Agenda confirmed — ready to record');
-  
-  // Save confirmed agenda to server
-  fetch('/api/meetings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'confirm', agenda: state.agenda, meeting: state.meeting})
-  });
-}
+  const field = (lbl, val) => {
+    const has = val && String(val).trim();
+    return `<div class="brief-field"><div class="lbl">${lbl}</div>
+      <div class="val${has ? '' : ' muted'}">${has ? esc(val) : 'Not recorded in the CRM note.'}</div></div>`;
+  };
 
-function regenerateBrief() {
-  if (!state.meeting) return;
-  setStatus('processing', 'Regenerating brief...');
-  
-  fetch('/api/meetings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'regenerate', meeting: state.meeting})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      state.agenda = data.agenda;
-      renderBrief(data);
-      setStatus('ready', 'Brief regenerated');
-    }
-  });
-}
-
-// Recording
-function toggleRecording() {
-  if (state.phase === 'recording') {
-    stopRecording();
-  } else {
-    startRecording();
-  }
-}
-
-function startRecording() {
-  state.phase = 'recording';
-  state.recordingStartTime = Date.now();
-  document.getElementById('recordingIndicator').classList.add('active');
-  document.getElementById('recordBtn').innerHTML = '<svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Stop';
-  document.getElementById('recordBtn').classList.remove('btn-success');
-  document.getElementById('recordBtn').classList.add('btn-danger');
-  setStatus('recording', 'Recording in progress...');
-  
-  state.recordingInterval = setInterval(updateRecordingTime, 1000);
-  
-  // Notify server
-  fetch('/api/meetings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'start_recording', meeting: state.meeting})
-  });
-}
-
-function stopRecording() {
-  state.phase = 'transcribing';
-  clearInterval(state.recordingInterval);
-  document.getElementById('recordingIndicator').classList.remove('active');
-  document.getElementById('recordBtn').innerHTML = '<svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Record';
-  document.getElementById('recordBtn').classList.add('btn-success');
-  document.getElementById('recordBtn').classList.remove('btn-danger');
-  setStatus('processing', 'Transcribing audio...');
-  
-  // Simulate transcription (in production, this sends audio to Whisper API)
-  fetch('/api/meetings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'stop_recording', meeting: state.meeting})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      loadMeetingData();
-    }
-  });
-}
-
-function updateRecordingTime() {
-  const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
-  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
-  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
-  const s = String(elapsed % 60).padStart(2, '0');
-  document.getElementById('recordingTime').textContent = `${h}:${m}:${s}`;
-}
-
-// Load meeting data
-function loadMeetingData() {
-  fetch('/api/meetings')
-  .then(r => r.json())
-  .then(data => {
-    if (data.meeting) {
-      state.meeting = data.meeting;
-      state.agenda = data.agenda || [];
-      state.transcript = data.transcript;
-      state.summary = data.summary;
-      state.actionItems = data.actionItems || [];
-      state.coverage = data.coverage || [];
-      state.phase = 'complete';
-      setStatus('ready', 'Meeting complete');
-      
-      renderAll();
-    }
-  });
-}
-
-// Render all sections
-function renderAll() {
-  renderCoverage();
-  renderTranscript();
-  renderSummary();
-  renderActionItems();
-  renderLiveAgenda();
-}
-
-function renderCoverage() {
-  if (!state.coverage || state.coverage.length === 0) return;
-  
-  const covered = state.coverage.filter(c => c.status === 'covered').length;
-  const partial = state.coverage.filter(c => c.status === 'partial').length;
-  const missed = state.coverage.filter(c => c.status === 'missed').length;
-  const total = state.coverage.length;
-  const pct = Math.round((covered / total) * 100);
-  
-  document.getElementById('coveredCount').textContent = covered;
-  document.getElementById('partialCount').textContent = partial;
-  document.getElementById('missedCount').textContent = missed;
-  document.getElementById('coverageProgress').style.width = pct + '%';
-  
-  let html = '';
-  state.coverage.forEach(item => {
-    html += `
-      <div class="agenda-item ${item.status}">
-        <div class="agenda-checkbox ${item.status}"></div>
-        <div class="agenda-content">
-          <div class="agenda-item-title">${item.title}</div>
-          ${item.question ? `<div class="agenda-item-question">${item.question}</div>` : ''}
-          ${item.snippet ? `<div class="agenda-item-source">"${item.snippet}"</div>` : ''}
+  body.innerHTML = `
+    <div class="brief">
+      <div class="brief-head">
+        <div>
+          <div class="brief-name">${esc(name)}</div>
+          ${sub ? `<div class="brief-sub">${esc(sub)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+          ${p.stage ? `<span class="chip">${esc(p.stage)}</span>` : ''}
+          ${p.geo ? `<span class="chip">${esc(p.geo)}</span>` : ''}
         </div>
       </div>
-    `;
-  });
-  document.getElementById('coverageList').innerHTML = html;
-  document.getElementById('coverageContent').style.display = 'block';
-  document.getElementById('coverageEmpty').style.display = 'none';
-}
-
-function renderTranscript() {
-  if (!state.transcript) return;
-  
-  let html = '';
-  state.transcript.forEach(seg => {
-    const isArabic = /[\u0600-\u06FF]/.test(seg.text);
-    html += `
-      <div class="transcript-segment">
-        <span class="transcript-time">${seg.time || ''}</span>
-        ${seg.speaker ? `<span class="transcript-speaker">${seg.speaker}:</span>` : ''}
-        <span class="transcript-text ${isArabic ? 'arabic' : ''}">${seg.text}</span>
+      ${field('Pain', p.pain)}
+      ${field('Last interaction', p.last_interaction)}
+      ${field('Next step', nextLine)}
+      ${field('Status', p.status)}
+      <div class="brief-actions">
+        <button class="btn btn-primary" onclick="openPrepInHermes(${+i})"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-mic"/></svg> Open in Hermes</button>
+        <button class="btn" onclick="copyPrep(${+i})"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-copy"/></svg> Copy brief</button>
       </div>
-    `;
-  });
-  document.getElementById('transcriptContainer').innerHTML = html;
+    </div>`;
 }
 
-function renderSummary() {
-  if (!state.summary) return;
-  
-  let html = '';
-  if (state.summary.decisions) {
-    html += '<div class="summary-section"><h4>Key Decisions</h4><ul>';
-    state.summary.decisions.forEach(d => { html += `<li>${d}</li>`; });
-    html += '</ul></div>';
-  }
-  if (state.summary.discussion) {
-    html += '<div class="summary-section"><h4>Discussion Points</h4><ul>';
-    state.summary.discussion.forEach(d => { html += `<li>${d}</li>`; });
-    html += '</ul></div>';
-  }
-  if (state.summary.conclusion) {
-    html += '<div class="summary-section"><h4>Conclusion</h4><p>';
-    html += state.summary.conclusion;
-    html += '</p></div>';
-  }
-  if (state.summary.nextSteps) {
-    html += '<div class="summary-section"><h4>Next Steps</h4><ul>';
-    state.summary.nextSteps.forEach(s => { html += `<li>${s}</li>`; });
-    html += '</ul></div>';
-  }
-  document.getElementById('summaryContent').innerHTML = html;
+function buildPrepPrompt(p) {
+  const name = p.name || p.company || 'this prospect';
+  const lines = [
+    `Pre-call prep for ${name}${p.company && p.company !== name ? ` (${p.company})` : ''}${p.role ? ` — ${p.role}` : ''}.`,
+    p.stage ? `Stage: ${p.stage}.` : '',
+    p.geo ? `Region: ${p.geo}.` : '',
+    p.pain ? `Known pain: ${p.pain}` : '',
+    p.last_interaction ? `Last interaction: ${p.last_interaction}` : '',
+    (p.next || p.next_date) ? `Planned next step: ${[p.next, p.next_date].filter(Boolean).join(' ')}` : '',
+    '',
+    'Prep me for this call: the one outcome to aim for, 3–5 sharp questions to ask, the objections I should expect and how I would answer them, and the FieldBridge angle that moves this forward. Keep it to one screen.'
+  ].filter(x => x !== '');
+  return lines.join('\n');
 }
 
-function renderActionItems() {
-  if (!state.actionItems || state.actionItems.length === 0) return;
-  
-  let html = '<table class="action-table"><thead><tr><th>Task</th><th>Assignee</th><th>Due</th><th>Source</th></tr></thead><tbody>';
-  state.actionItems.forEach(item => {
-    html += `<tr>
-      <td>${item.task}</td>
-      <td>${item.assignee || '—'}</td>
-      <td>${item.due || '—'}</td>
-      <td>${item.source || '—'}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('actionsContent').innerHTML = html;
+function openPrepInHermes(i) {
+  const prompt = buildPrepPrompt(prospects[+i]);
+  try { sessionStorage.setItem('hermes-prefill', prompt); } catch (e) {}
+  window.location.href = 'chat.html';
 }
 
-function renderLiveAgenda() {
-  if (!state.agenda || state.agenda.length === 0) return;
-  
-  let html = '';
-  state.agenda.forEach((item, i) => {
-    const cov = state.coverage.find(c => c.index === i);
-    const status = cov ? cov.status : '';
-    html += `
-      <div class="agenda-item ${status}">
-        <div class="agenda-checkbox ${status}"></div>
-        <div class="agenda-content">
-          <div class="agenda-item-title">${item.title}</div>
-          ${item.question ? `<div class="agenda-item-question">${item.question}</div>` : ''}
-        </div>
-      </div>
-    `;
-  });
-  document.getElementById('liveAgenda').innerHTML = html;
+function copyPrep(i) {
+  const prompt = buildPrepPrompt(prospects[+i]);
+  if (window.copyToClipboard) { copyToClipboard(prompt); }
+  else { navigator.clipboard.writeText(prompt); }
 }
 
-// Status management
-function setStatus(phase, text) {
-  state.phase = phase;
-  const dot = document.getElementById('statusDot');
-  const label = document.getElementById('statusText');
-  
-  dot.className = 'status-dot ' + phase;
-  label.textContent = text;
-}
-
-// Process Audio Modal
-function showProcessModal() {
-  document.getElementById('processModal').classList.add('active');
-}
-function hideProcessModal() {
-  document.getElementById('processModal').classList.remove('active');
-}
-
+// ── Ad-hoc transcript ───────────────────────────────────────────────
 function handleAudioSelect(event) {
   const file = event.target.files[0];
-  if (!file) return;
-  
-  const formData = new FormData();
-  formData.append('audio', file);
-  
-  document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Transcribing and processing... This may take a few minutes.';
-
-  fetch('/api/meetings/process', {
-    method: 'POST',
-    body: formData
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      document.getElementById('processStatus').innerHTML = `
-        <svg class="icon icon-sm" width="13" height="13" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> <strong>Complete!</strong><br>
-        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-file-text"/></svg> ${data.transcript_segments} transcript segments<br>
-        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> ${data.action_items_count} action items extracted<br>
-        <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-chart-column"/></svg> ${data.coverage_covered}/${data.coverage_total} agenda items covered<br>
-        <br>Results loaded in all tabs below.
-      `;
-      loadMeetingData();
-      setTimeout(hideProcessModal, 3000);
-    } else {
-      document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Error: ' + (data.error || 'Processing failed');
-    }
-  })
-  .catch(err => {
-    document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Error: ' + err.message;
-  });
+  if (file) processAudio(file);
 }
 
-// Drag & drop
-const uploadArea = document.getElementById('uploadArea');
-uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-uploadArea.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadArea.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) uploadFile(file);
-});
+function processAudio(file) {
+  const formData = new FormData();
+  formData.append('audio', file);
+  const statusEl = document.getElementById('processStatus');
+  statusEl.innerHTML = '<svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Transcribing and processing… this can take a few minutes.';
 
+  fetch('/api/meetings/process', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        statusEl.innerHTML = `<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> <strong>Done.</strong> ${data.transcript_segments} transcript segments, ${data.action_items_count} action items. Working copy below.`;
+        loadResults();
+      } else {
+        statusEl.innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Error: ' + esc(data.error || 'Processing failed');
+      }
+    })
+    .catch(err => {
+      statusEl.innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> Error: ' + esc(err.message);
+    });
+}
+
+function loadResults() {
+  fetch('/api/meetings')
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.transcript) return;
+      adhoc.meeting = data.meeting || null;
+      adhoc.transcript = data.transcript || [];
+      adhoc.summary = data.summary || null;
+      adhoc.actionItems = data.actionItems || [];
+      renderResults();
+    });
+}
+
+function renderResults() {
+  document.getElementById('resultsPanel').style.display = 'block';
+  document.getElementById('resultTitle').textContent =
+    (adhoc.meeting && adhoc.meeting.title) ? adhoc.meeting.title : 'Untitled ad-hoc meeting';
+
+  // Transcript
+  let tHtml = '<h4>Transcript</h4><div class="transcript-box">';
+  (adhoc.transcript || []).forEach(seg => {
+    const isArabic = /[؀-ۿ]/.test(seg.text || '');
+    tHtml += `<div class="t-seg">${seg.time ? `<span class="t-time">${esc(seg.time)}</span>` : ''}${seg.speaker ? `<span class="t-speaker">${esc(seg.speaker)}:</span>` : ''}<span class="t-text ${isArabic ? 'arabic' : ''}">${esc(seg.text)}</span></div>`;
+  });
+  tHtml += '</div>';
+  document.getElementById('resultTranscript').innerHTML = tHtml;
+
+  // Summary
+  let sHtml = '';
+  const s = adhoc.summary || {};
+  if (s.decisions && s.decisions.length) sHtml += '<div class="result-section"><h4>Key decisions</h4><ul>' + s.decisions.map(d => `<li>${esc(d)}</li>`).join('') + '</ul></div>';
+  if (s.discussion && s.discussion.length) sHtml += '<div class="result-section"><h4>Discussion</h4><ul>' + s.discussion.map(d => `<li>${esc(d)}</li>`).join('') + '</ul></div>';
+  if (s.conclusion) sHtml += `<div class="result-section"><h4>Conclusion</h4><p>${esc(s.conclusion)}</p></div>`;
+  if (s.next_steps && s.next_steps.length) sHtml += '<div class="result-section"><h4>Next steps</h4><ul>' + s.next_steps.map(x => `<li>${esc(x)}</li>`).join('') + '</ul></div>';
+  document.getElementById('resultSummary').innerHTML = sHtml;
+
+  // Actions
+  let aHtml = '';
+  if ((adhoc.actionItems || []).length) {
+    aHtml = '<h4>Action items</h4><table class="action-table"><thead><tr><th>Task</th><th>Assignee</th><th>Due</th></tr></thead><tbody>' +
+      adhoc.actionItems.map(it => `<tr><td>${esc(it.task)}</td><td>${esc(it.assignee || '—')}</td><td>${esc(it.due || '—')}</td></tr>`).join('') +
+      '</tbody></table>';
+  }
+  document.getElementById('resultActions').innerHTML = aHtml;
+}
+
+function copyForCowork() {
+  const m = adhoc.meeting || {};
+  const s = adhoc.summary || {};
+  const title = m.title || 'Untitled ad-hoc meeting';
+  const date = (m.date) || new Date().toISOString().slice(0, 10);
+  const L = [];
+  L.push(`# Ad-hoc meeting — ${title} (${date})`, '');
+  L.push('## Key decisions');
+  (s.decisions && s.decisions.length) ? s.decisions.forEach(d => L.push(`- ${d}`)) : L.push('- (none captured)');
+  L.push('', '## Discussion');
+  (s.discussion && s.discussion.length) ? s.discussion.forEach(d => L.push(`- ${d}`)) : L.push('- (none captured)');
+  if (s.conclusion) L.push('', '## Conclusion', s.conclusion);
+  L.push('', '## Next steps');
+  (s.next_steps && s.next_steps.length) ? s.next_steps.forEach(x => L.push(`- ${x}`)) : L.push('- (none captured)');
+  L.push('', '## Action items');
+  (adhoc.actionItems && adhoc.actionItems.length)
+    ? adhoc.actionItems.forEach(it => L.push(`- ${it.task}${it.assignee ? ` — ${it.assignee}` : ''}${it.due ? ` (due ${it.due})` : ''}`))
+    : L.push('- (none captured)');
+  L.push('', '## CRM impact', '- (which prospect/company this affects, and any stage or next-step change)');
+  L.push('', '---', 'Paste into a Cowork session and say: "record this ad-hoc meeting into the vault — decisions, actions, and CRM impact."');
+  const md = L.join('\n');
+
+  navigator.clipboard.writeText(md)
+    .then(() => { if (window.Notify) Notify.success('Copied — paste into any Cowork session and say "record this ad-hoc meeting into the vault"', 6000); })
+    .catch(() => { if (window.Notify) Notify.error('Failed to copy'); });
+}
+
+// ── Drag & drop ─────────────────────────────────────────────────────
 const processArea = document.getElementById('processArea');
 processArea.addEventListener('dragover', e => { e.preventDefault(); processArea.classList.add('dragover'); });
 processArea.addEventListener('dragleave', () => processArea.classList.remove('dragover'));
@@ -1077,26 +510,11 @@ processArea.addEventListener('drop', e => {
   e.preventDefault();
   processArea.classList.remove('dragover');
   const file = e.dataTransfer.files[0];
-  if (file) {
-    const formData = new FormData();
-    formData.append('audio', file);
-    document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Processing...';
-    fetch('/api/meetings/process', { method: 'POST', body: formData })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-live);"><use href="assets/lucide-sprite.svg#icon-circle-check"/></svg> Complete! Loading results...';
-          loadMeetingData();
-          setTimeout(hideProcessModal, 3000);
-        } else {
-          document.getElementById('processStatus').innerHTML = '<svg class="icon icon-sm" width="13" height="13" style="color:var(--status-failed);"><use href="assets/lucide-sprite.svg#icon-circle-x"/></svg> ' + (data.error || 'Failed');
-        }
-      });
-  }
+  if (file) processAudio(file);
 });
 
-// Load on page load
-loadMeetingData();
+// ── Init ────────────────────────────────────────────────────────────
+loadProspects();
 </script>
 </body>
 </html>

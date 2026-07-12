@@ -2284,26 +2284,115 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
 
     def _serve_crm_snapshot(self):
         """GET /api/wiki/crm — quick read of the CRM/ folder as JSON, for a
-        dashboard card without re-hitting Notion on every page load."""
+        dashboard card without re-hitting Notion on every page load.
+
+        Read-only projection of the vault CRM mirror (never writes). The first
+        five keys are unchanged (crm.html depends on them); the rest were added
+        for the Meeting Workbench prep brief (meetings.html) and are all parsed
+        from the same note — no new data source."""
         try:
             out_dir = VAULT_DIR / "CRM"
             rows = []
             if out_dir.exists():
                 for f in sorted(out_dir.glob("*.md")):
                     try:
-                        meta, _ = self._parse_frontmatter(f.read_text(encoding='utf-8'))
+                        meta, body = self._parse_frontmatter(f.read_text(encoding='utf-8'))
                     except Exception:
                         continue
                     rows.append({
+                        # --- existing keys (crm.html contract — do not change) ---
                         "company": meta.get('title', f.stem),
                         "stage": meta.get('stage', ''),
                         "trade": meta.get('trade', ''),
                         "region": meta.get('region', ''),
                         "path": str(f.relative_to(VAULT_DIR)),
+                        # --- added, read-only, for the prep brief ---
+                        "name": meta.get('name', ''),
+                        "role": meta.get('role', ''),
+                        "geo": meta.get('geo', ''),
+                        "status": meta.get('status', ''),
+                        "type": meta.get('type', ''),
+                        "next": meta.get('next', ''),
+                        "next_date": meta.get('next_date', ''),
+                        "pain": self._extract_crm_pain(body),
+                        "last_interaction": self._extract_crm_last_interaction(body),
                     })
             self._json_response({"data": rows})
         except Exception as e:
             self._json_error(500, f"Failed to serve CRM snapshot: {str(e)}")
+
+    @staticmethod
+    def _extract_crm_pain(body):
+        """Best-effort pull of the pain summary from a CRM note body. Prefers a
+        '## Pain...' section; falls back to an inline '**Pain:**' clause. Returns
+        '' when nothing pain-shaped is present (honest empty, never fabricated)."""
+        if not body:
+            return ''
+        lines = body.splitlines()
+        # 1) A dedicated '## Pain...' section.
+        collected = []
+        in_pain = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                heading = stripped.lstrip('#').strip().lower()
+                if in_pain:
+                    break  # next heading ends the pain section
+                if heading.startswith('pain'):
+                    in_pain = True
+                continue
+            if in_pain and stripped:
+                # strip list markers / bold / numbering
+                clean = stripped.lstrip('-*0123456789. ').replace('**', '').strip()
+                if clean:
+                    collected.append(clean)
+        if collected:
+            return ' | '.join(collected)[:400]
+        # 2) Inline '**Pain:**' or 'Pain:' clause.
+        for line in lines:
+            low = line.lower()
+            idx = low.find('pain:')
+            if idx != -1:
+                clause = line[idx + len('pain:'):].replace('**', '').strip(' *|')
+                if clause:
+                    return clause[:400]
+        return ''
+
+    @staticmethod
+    def _extract_crm_last_interaction(body):
+        """Best-effort pull of the most recent row from a CRM note's
+        '## Interaction Log' markdown table, formatted 'date — type — summary'.
+        Returns '' when there is no such table (honest empty)."""
+        if not body:
+            return ''
+        lines = body.splitlines()
+        in_log = False
+        rows = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                heading = stripped.lstrip('#').strip().lower()
+                if in_log:
+                    break
+                if 'interaction log' in heading:
+                    in_log = True
+                continue
+            if in_log and stripped.startswith('|'):
+                cells = [c.strip() for c in stripped.strip('|').split('|')]
+                # skip header row and the |---|---| separator row
+                if not cells:
+                    continue
+                joined = ''.join(cells).replace('-', '').replace(':', '').strip()
+                if not joined:
+                    continue  # separator row
+                if cells[0].lower() in ('date', 'when'):
+                    continue  # header row
+                rows.append(cells)
+        if not rows:
+            return ''
+        last = rows[-1]
+        parts = [p for p in last[:3] if p]
+        return ' — '.join(parts)[:400]
 
     # ═══════════════════════════════════════════════════════════
     # PROMPTS LIBRARY — replaces the honest placeholder on the Hermes

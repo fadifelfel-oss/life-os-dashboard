@@ -83,7 +83,11 @@ remain gated exactly as before; nothing gated was touched this pass.
     (d) OPTIONAL if trivial: sort plays within an area by run_count desc so earned plays rise.
 
 **BUILD NOW (added by Fable 2026-07-12 — Fadi decisions on Voice + Meetings):**
-12. **Retire Voice, redefine Meetings.** Decisions made with Fadi (2026-07-12):
+12. ~~**Retire Voice, redefine Meetings.**~~ DONE 2026-07-11 (Opus, life-os-dashboard session) — see
+    session write-up below. Both parts (a) + (b) shipped. One spec/code conflict surfaced and
+    resolved with Fadi (Option A): the kept `/api/meetings/process` writes into the vault, which
+    contradicted the required "DATA_DIR lane" banner — banner reworded to the truth, and the
+    write-lane fix logged as new flagged item 13. Decisions made with Fadi (2026-07-12):
     (a) **voice.html RETIRED** — its transcription was a mock, and every voice job has a real
         owner (Wispr Flow, phone capture → 000 Inbox, Fireflies, chat voice). Remove the sidebar
         nav button (index.html, data-page="voice") and the 'voice' entries from BOTH moduleFiles
@@ -102,6 +106,18 @@ remain gated exactly as before; nothing gated was touched this pass.
           "Copy for Cowork" button (clipboard + toast, promote-pattern) so decisions/actions/CRM
           impact reach the vault through its writer. NO vault writes from this page.
         - Page title "Meeting Assistant" → "Meeting Workbench".
+
+**FLAGGED — architecture decision (raised 2026-07-11, item 12 pass):**
+13. **Move `/api/meetings/process` writes out of the vault.** The endpoint (kept per item 12b)
+    currently writes ad-hoc meeting artifacts INTO the vault: `VAULT_DIR/30_Meetings/<id>/*.md`
+    (server.py ~L3966) and `VAULT_DIR/.meeting_store.json` (~L3947, L4026). This violates the
+    read-only-mirror STANDARD (dashboard = reader; Cowork = the vault's only writer) and is why
+    item 12b's banner had to be reworded rather than claim "DATA_DIR lane." FIX: redirect those
+    writes to `DATA_DIR` (same class as `.skill_usage.json` / `.kanban_store.json` / `playbook-
+    usage.jsonl`) and update `_serve_meetings_get` to read from there. GATE: this is a writer-
+    lane/data-store change → STOP-and-flag territory; confirm nothing (nightly sync, any reader of
+    `30_Meetings/`) depends on the current vault location before moving it. Fadi chose "ship now,
+    fix under review" (Option A) — do not do this blind in an execution pass.
 
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
@@ -130,6 +146,96 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-11 session #5 (Opus, life-os-dashboard session) — Retire Voice + Meeting Workbench (item 12)
+
+Executed queue item 12 only, both parts (a) + (b), per session instruction. Did not touch any
+gated item (4–8). Session opened against `C:\Dev\life-os-dashboard` directly (not the Second Brain
+folder) so the queue file and repo were reachable — the earlier scope-boundary block was because
+this repo wasn't mounted.
+
+**Conflict surfaced + resolved before shipping (Option A, Fadi's call):** item 12b says KEEP
+`/api/meetings/process` AND its banner says "working copies only (DATA_DIR lane) / NO vault writes."
+But probing `server.py` showed that endpoint writes INTO the vault (`VAULT_DIR/30_Meetings/<id>/*.md`
++ `VAULT_DIR/.meeting_store.json`). Shipping the dictated banner verbatim would have been a false
+claim, and silently moving the write lane would violate the session's own STOP rule. Asked Fadi;
+he chose "ship now, reword banner to the truth, log the write-lane fix as a flagged item" → new
+item 13 above. No writer-lane/data-store change was made this pass.
+
+**12(a) — voice.html retired from nav (not deleted):**
+- `index.html` — removed the `data-page="voice"` sidebar button (was between Meetings and Browser).
+- `shared.js` — removed the `'voice': 'voice.html'` line from BOTH `moduleFiles` maps (the
+  `navigateTo` map and the `loadModule` map). Left `voice-chat.js` untouched, left `voice.html`
+  itself on disk (dead file until the close-out sweep, like tasks.html), and deliberately left the
+  unrelated `VoiceMemo` object + the `voice`/`voiceBtn` i18n strings in shared.js alone — the spec
+  scoped 12a to the nav button + the two moduleFiles entries only.
+
+**12(b) — meetings.html rebuilt as "Meeting Workbench":**
+- Title "Meeting Assistant" → "Meeting Workbench" (page `<title>` + `<h1>`).
+- Role banner added, worded truthfully (Option A): states Fireflies meetings auto-flow to the vault
+  via the nightly and must not be duplicated here; this page is for what Fireflies misses (phone
+  calls, WhatsApp voice notes, site conversations) + pre-call prep; and that **nothing done in the
+  browser writes to the vault** — the honest claim, since the browser genuinely never writes (the
+  server-side save is what item 13 will relocate).
+- **Prep brief** (new): prospect `<select>` populated from `/api/wiki/crm` (the folder `index.md`
+  is filtered out client-side). Selecting one renders a one-screen brief — stage + geo chips, and
+  Pain / Last interaction / Next step / Status fields, each with an honest "Not recorded in the CRM
+  note." fallback when the source note lacks that field. "Open in Hermes" builds a prep prompt and
+  hands off via `sessionStorage['hermes-prefill']` → `chat.html` (identical pattern to fitness.html
+  / use-cases.html / graph3d.html). Plus a "Copy brief" convenience button.
+- **Ad-hoc transcript** (kept): the audio upload → `POST /api/meetings/process` flow is retained
+  as-is (drag-drop + click), results rendered via the existing `GET /api/meetings` read. Dropped
+  the old in-meeting "assistant" machinery (Upload-Agenda/`/api/meetings` brief, the mock Record
+  button + recording timer, Coverage tracker, Live Agenda Check) — that was the retired role and,
+  like voice.html, the Record path was a mock. Added the spec's **"Copy for Cowork"** button:
+  builds a markdown block (decisions / discussion / conclusion / next steps / action items + a CRM-
+  impact stub) and copies it with a toast telling Fadi to paste into Cowork so the vault's real
+  writer records it. No write endpoint was added — clipboard + toast only, per spec.
+- meetings.html now loads `shared.js` (it didn't before) so `Notify` + `copyToClipboard` and the
+  standard nav drawer are available — matches every other standalone page.
+
+**Server (read-only, for the prep brief):** `_serve_crm_snapshot` (`GET /api/wiki/crm`) enriched to
+also return `name, role, geo, status, type, next, next_date, pain, last_interaction`. The original
+five keys (`company, stage, trade, region, path`) are byte-for-byte unchanged so `crm.html`'s
+contract is untouched. `pain` and `last_interaction` are parsed from the note body by two new
+`@staticmethod` helpers (`_extract_crm_pain` prefers a `## Pain…` section, falls back to an inline
+`**Pain:**` clause; `_extract_crm_last_interaction` takes the last row of the `## Interaction Log`
+table). Both return `''` honestly when the note lacks the field. This is a read-only projection
+enrichment (same lane, same store) — NOT a tool-role/writer-lane/data-store change.
+
+**Verification (Read/Grep + sandbox, never bash on C:\Dev — standing staleness gotcha):**
+- meetings.html `<script>` copied to `/tmp` and `node --check` → `MEETINGS_JS_SYNTAX_OK`.
+- server.py additions copied to `/tmp` and `python3 -m py_compile` → `PY_SYNTAX_OK`; the two
+  parsers were then run against the REAL vault CRM notes: pain + last-interaction extracted
+  correctly for Atef / Bassam / Brett / Michael, honest empty for Karim / Ramy (no `## Pain`
+  section), and `index.md` → all-empty (filtered from the dropdown). Enriched method re-read in
+  server.py to confirm decorators/indentation are well-formed.
+- All four touched files (index.html, shared.js, server.py, meetings.html) NUL-scanned via Grep —
+  clean. Confirmed 0 remaining `data-page="voice"` / `'voice': 'voice.html'`, and VoiceMemo/i18n
+  left intact (3 expected matches).
+- **Not eyeballed live** — Fadi walks meetings.html after deploy: Prep-brief tab, pick a prospect,
+  confirm the brief fills from CRM and "Open in Hermes" lands on chat.html with the prep prompt
+  prefilled; Ad-hoc tab, process a short audio, confirm the working copy renders and "Copy for
+  Cowork" copies the markdown + shows the toast; and confirm the Voice item is gone from the
+  sidebar. Also confirm `/api/wiki/crm` still renders crm.html unchanged (added keys are additive).
+
+**Not touched:** items 4–8 (gated), item 13 (newly flagged — architecture decision, not this pass),
+`voice.html` / `voice-chat.js` (per spec), the `/api/meetings*` write behavior (kept, flagged).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add index.html shared.js server.py meetings.html NEXT-SESSION-UI.md
+git commit -m "Item 12 — retire Voice from nav (index.html + both shared.js moduleFiles maps; voice.html/voice-chat.js left on disk) and rebuild meetings.html as Meeting Workbench: truthful role banner, Prep-brief (prospect dropdown from /api/wiki/crm -> one-screen brief -> Open in Hermes prefill), kept /api/meetings/process ad-hoc transcript flow with a Copy-for-Cowork button (clipboard+toast, no vault write, no new endpoint); enrich GET /api/wiki/crm read-only with name/role/geo/status/next/pain/last_interaction (original 5 keys unchanged). Flagged item 13: move /api/meetings/process writes off the vault into DATA_DIR under architecture review"
+git push origin main
+# auto-pull deploys within ~1 min — open meetings.html: title reads "Meeting Workbench", Prep-brief
+# tab lists your CRM prospects, picking one fills the brief and "Open in Hermes" prefills chat;
+# Ad-hoc tab still processes audio and now shows "Copy for Cowork". Confirm the Voice button is gone
+# from the home sidebar, and that crm.html still renders unchanged.
+```
 
 ## 2026-07-11 session #4 (Sonnet, Second Brain project) — Saved Prompts tab upgrade (item 11)
 
