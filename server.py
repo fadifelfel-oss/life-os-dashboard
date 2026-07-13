@@ -374,6 +374,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_hermes_activity(query)
         elif path == "/api/playbook":
             self._serve_playbook()
+        elif path == "/api/areas":
+            self._serve_areas()
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -605,6 +607,169 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_response({"ok": True})
         except Exception as e:
             self._json_error(500, f"Failed to log playbook run: {str(e)}")
+
+    # Canonical life-area slugs (BRIEF — UI Dashboards + Knowledge Backlinking, 2026-07-13).
+    # Locked list — do not add/rename without updating the vault classification + shared.css tokens.
+    CANONICAL_AREAS = ("construction", "career", "fieldbridge", "trading", "finances",
+                        "health", "family", "knowledge", "admin")
+
+    # Folders scanned for relates_to/area classification (mirrors the Phase 1 backfill scope,
+    # plus anywhere else in the vault a note might carry the field going forward).
+    _AREAS_SCOPE_DIRS = ("10_Sources/processed", "030 Resources", "30_Context", "20_Wiki",
+                         "_system/playbook", "CRM")
+    _AREAS_SKIP_PARTS = ("_Templates", ".obsidian", ".smart-env", "040 Archive")
+
+    def _serve_areas(self):
+        """GET /api/areas — read-only index of every vault note classified into
+        one of the nine canonical life areas via `relates_to:` frontmatter
+        (fallback: `area/<slug>` tags for notes that only got the tag mirror).
+        Feeds the FieldBridge HQ and Life Areas dashboards. Parses frontmatter
+        only — note bodies never ship in this payload (they stay behind the
+        existing /api/wiki/page?path=). Defensive throughout: a missing
+        VAULT_DIR, malformed note, or absent Opportunity Radar yields an
+        honest empty result, never a 500."""
+        try:
+            areas = {slug: {"count": 0, "notes": []} for slug in self.CANONICAL_AREAS}
+            CAP = 50
+
+            if VAULT_DIR.exists():
+                for scope in self._AREAS_SCOPE_DIRS:
+                    base = VAULT_DIR / scope
+                    if not base.exists():
+                        continue
+                    for f in base.rglob("*.md"):
+                        rel = str(f.relative_to(VAULT_DIR))
+                        if any(part in rel for part in self._AREAS_SKIP_PARTS):
+                            continue
+                        try:
+                            meta, _ = self._parse_frontmatter(f.read_text(encoding="utf-8"))
+                        except Exception:
+                            continue
+                        note_areas = self._extract_note_areas(meta)
+                        if not note_areas:
+                            continue
+                        title = meta.get("title") or f.stem
+                        date = (meta.get("last_reviewed") or meta.get("date_processed")
+                                or meta.get("captured_date") or meta.get("processed_date") or "")
+                        entry = {
+                            "title": title,
+                            "path": rel,
+                            "date": date,
+                            "type": meta.get("type", ""),
+                        }
+                        for slug in note_areas:
+                            if slug not in areas:
+                                continue  # unknown slug, ignore rather than 500
+                            bucket = areas[slug]
+                            bucket["count"] += 1
+                            if len(bucket["notes"]) < CAP:
+                                bucket["notes"].append(entry)
+
+            for slug, bucket in areas.items():
+                bucket["notes"].sort(key=lambda r: str(r.get("date") or ""), reverse=True)
+                bucket["total"] = bucket["count"]
+
+            opportunities = self._parse_opportunity_radar()
+            for slug, opp_list in opportunities.items():
+                if slug in areas:
+                    areas[slug]["opportunities"] = opp_list
+            for slug in areas:
+                areas[slug].setdefault("opportunities", [])
+
+            self._json_response({"areas": areas})
+        except Exception as e:
+            self._json_error(500, f"Failed to serve areas: {str(e)}")
+
+    @staticmethod
+    def _extract_note_areas(meta):
+        """A note's canonical areas: prefer `relates_to:` (list or single
+        string), fall back to `area/<slug>` entries inside `tags:`. Returns a
+        de-duplicated list, order preserved, capped at 3 (matches the vault
+        classification schema — a note relating to more than 3 areas is a
+        sign it needs splitting, not a dashboard bug)."""
+        out = []
+        rt = meta.get("relates_to")
+        if isinstance(rt, list):
+            out.extend(str(x).strip().lower() for x in rt if str(x).strip())
+        elif isinstance(rt, str) and rt.strip():
+            out.append(rt.strip().lower())
+        if not out:
+            tags = meta.get("tags")
+            if isinstance(tags, list):
+                for t in tags:
+                    t = str(t).strip()
+                    if t.startswith("area/"):
+                        slug = t[len("area/"):].strip().lower()
+                        if slug:
+                            out.append(slug)
+        seen = []
+        for a in out:
+            if a not in seen:
+                seen.append(a)
+        return seen[:3]
+
+    def _parse_opportunity_radar(self):
+        """Parse `Opportunity Radar.md` (vault root) into {area_slug: [rows]}.
+        One file, one parser — no second opportunity store. Two shapes exist
+        in that file: the FieldBridge HIGH/MEDIUM/EMERGING signal tables (all
+        rows -> area 'fieldbridge', confidence from the section header) and
+        the cross-area 'Other Life-Area Signals' table (explicit Area column
+        per row, added 2026-07-13). Unknown/malformed rows are skipped, not
+        errored — this file is hand-maintained prose+tables, not strict data."""
+        result = {}
+        try:
+            f = VAULT_DIR / "Opportunity Radar.md"
+            if not f.exists():
+                return result
+            text = f.read_text(encoding="utf-8")
+        except Exception:
+            return result
+
+        def add(slug, text_, confidence):
+            slug = (slug or "").strip().lower()
+            if not slug:
+                return
+            result.setdefault(slug, [])
+            if len(result[slug]) < 30:
+                result[slug].append({"text": text_[:300], "confidence": confidence})
+
+        section = None  # (mode, confidence) — mode: 'fieldbridge-fixed' | 'per-row-area'
+        header_cols = None
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if line.startswith("## "):
+                low = line.lower()
+                if "high confidence signals" in low:
+                    section, header_cols = ("fieldbridge-fixed", "high"), None
+                elif "medium signals" in low:
+                    section, header_cols = ("fieldbridge-fixed", "medium"), None
+                elif "emerging patterns" in low:
+                    section, header_cols = ("fieldbridge-fixed", "emerging"), None
+                elif "other life-area signals" in low:
+                    section, header_cols = ("per-row-area", "signal"), None
+                else:
+                    section, header_cols = None, None
+                continue
+            if not section or not line.startswith("|"):
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if not cells or all(c == "" for c in cells):
+                continue
+            if set("".join(cells)) <= set("-: "):
+                continue  # markdown table separator row
+            if header_cols is None:
+                header_cols = [c.lower() for c in cells]
+                continue
+            mode, confidence = section
+            if mode == "fieldbridge-fixed":
+                first_cell = cells[0] if cells else ""
+                if first_cell:
+                    add("fieldbridge", first_cell, confidence)
+            else:  # per-row-area: columns are Area | Signal | Source | Next Step
+                row = dict(zip(header_cols, cells))
+                add(row.get("area", ""), row.get("signal", ""), "signal")
+
+        return result
 
     def _serve_morning_brief(self):
         """GET /api/hermes/morning-brief — reads Hermes's own scanner output

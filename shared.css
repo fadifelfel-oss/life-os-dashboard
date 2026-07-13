@@ -103,6 +103,8 @@
   --area-knowledge-bg: rgba(188,140,255,0.10);
   --area-admin: #8b949e;         /* Admin / Inbox — grey */
   --area-admin-bg: rgba(139,148,158,0.10);
+  --area-finances: #c9975a;      /* Finances — copper/bronze (added 2026-07-13, BRIEF — UI Dashboards + Knowledge Backlinking) */
+  --area-finances-bg: rgba(201,151,90,0.10);
   /* Status dots (always pair with a text label — never color alone) */
   --status-live: #3fb950;
   --status-stale: #d29922;
@@ -233,6 +235,8 @@
   --area-knowledge-bg: rgba(130,80,223,0.08);
   --area-admin: #656d76;
   --area-admin-bg: rgba(101,109,118,0.08);
+  --area-finances: #8a5a2e;      /* Finances — copper/bronze, darkened for light-bg contrast */
+  --area-finances-bg: rgba(138,90,46,0.08);
   --status-live: #1a7f37;
   --status-stale: #9a6700;
   --status-failed: #cf222e;

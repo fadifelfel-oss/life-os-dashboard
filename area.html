@@ -20,6 +20,7 @@
   border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
 }
 .ar-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.ar-panel h2 .ar-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; }
 .ar-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
 .ar-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--space-2) 0; }
 .ar-body th, .ar-body td { border: 1px solid var(--border-primary); padding: 6px 8px; text-align: left; }
@@ -31,6 +32,33 @@
 .ar-proj-card:hover { border-color: var(--accent); }
 .ar-proj-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .ar-proj-status { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+.ar-list { display: flex; flex-direction: column; gap: 6px; }
+.ar-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 8px 10px;
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); text-decoration: none; color: inherit;
+}
+a.ar-row:hover { border-color: var(--ar-accent, var(--accent)); }
+.ar-row-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
+.ar-row-date { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.ar-opp-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.ar-opp-pill {
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;
+  background: var(--ar-accent-bg, var(--accent-bg)); color: var(--ar-accent, var(--accent));
+}
+.ar-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-2); }
+.ar-task-card {
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 8px 10px; position: relative; padding-left: 12px;
+}
+.ar-task-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--ar-accent, var(--accent));
+}
+.ar-task-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.ar-task-col { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -45,12 +73,28 @@
 
 <div class="ar-banner">
   <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
-  Read-only reference — renders the area's real hub note straight from the vault, plus any linked projects. No tracking or logging is built for this area yet; that's a separate design step if you want one (like Trading and Fitness got).
+  Read-only reference — renders the area's real hub note straight from the vault, plus classified
+  knowledge, Opportunity Radar signals, and open tasks where a kanban tag exists for this area.
 </div>
 
 <div class="ar-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Area note</h2>
   <div class="ar-body" id="areaBody">Loading from vault…</div>
+</div>
+
+<div class="ar-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge <span class="ar-sub" id="areaKnowCount"></span></h2>
+  <div id="areaKnowledge"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+<div class="ar-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity Radar <span class="ar-sub" id="areaOppCount"></span></h2>
+  <div id="areaOpportunities"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+<div class="ar-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks</h2>
+  <div id="areaTasks"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
 </div>
 
 <div class="ar-panel">
@@ -64,15 +108,22 @@
 function escH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
 // area key -> { title, path (vault hub note), tag (matches /api/projects "area" field, best-effort) }
+// Keys match the nine canonical relates_to slugs (BRIEF — UI Dashboards + Knowledge Backlinking,
+// 2026-07-13). "work" was renamed to "construction" here to match /api/areas — life-areas.html and
+// the sidebar were updated in the same pass so no page still links to ?area=work.
 const AREAS = {
-  career:      { title: 'Career & Growth',   path: '020 Areas/02 Career & Growth.md',        tag: 'career' },
-  fieldbridge: { title: 'FieldBridge',        path: '020 Areas/03 FieldBridge.md',             tag: 'fieldbridge' },
-  work:        { title: 'Work — Active Projects', path: '020 Areas/01 Work — Active Projects.md', tag: 'work' },
-  finances:    { title: 'Finances',           path: '020 Areas/05 Finances.md',                tag: 'finances' },
-  family:      { title: 'Family',             path: '020 Areas/07 Family.md',                  tag: 'family' },
-  knowledge:   { title: 'Knowledge & Learning', path: '020 Areas/08 Knowledge & Learning.md',  tag: 'knowledge' },
-  admin:       { title: 'Personal Admin',     path: '020 Areas/09 Personal Admin.md',          tag: 'admin' },
+  career:       { title: 'Career & Growth',   path: '020 Areas/02 Career & Growth.md',        tag: 'career' },
+  construction: { title: 'Construction / Work — Active Projects', path: '020 Areas/01 Work — Active Projects.md', tag: 'construction' },
+  finances:     { title: 'Finances',          path: '020 Areas/05 Finances.md',                tag: 'finances' },
+  family:       { title: 'Family',            path: '020 Areas/07 Family.md',                  tag: 'family' },
+  knowledge:    { title: 'Knowledge & Learning', path: '020 Areas/08 Knowledge & Learning.md',  tag: 'knowledge' },
+  admin:        { title: 'Personal Admin',    path: '020 Areas/09 Personal Admin.md',           tag: 'admin' },
 };
+
+// Only these three canonical areas have a matching kanban tag today (project/fieldbridge/career/
+// trading/personal/urgent are the only tags the board writes) — everything else shows an honest
+// "no task tag mapped" message instead of a fake zero.
+const AREA_TASK_TAG = { career: 'career' }; // fieldbridge/trading have their own dedicated pages
 
 function currentArea() {
   const key = new URLSearchParams(window.location.search).get('area');
@@ -83,15 +134,24 @@ async function loadArea() {
   const key = currentArea();
   const body = document.getElementById('areaBody');
   const projBody = document.getElementById('areaProjects');
+  const knowBody = document.getElementById('areaKnowledge');
+  const oppBody = document.getElementById('areaOpportunities');
+  const taskBody = document.getElementById('areaTasks');
+
   if (!key) {
     document.getElementById('areaTitle').textContent = 'Unknown area';
     body.innerHTML = '<div class="ar-empty">No (or unrecognized) ?area= parameter. Go back to Life Areas and pick one.</div>';
     projBody.innerHTML = '';
+    knowBody.innerHTML = '';
+    oppBody.innerHTML = '';
+    taskBody.innerHTML = '';
     return;
   }
   const area = AREAS[key];
   document.getElementById('areaTitle').textContent = area.title;
   document.title = area.title + ' — Life OS';
+  document.documentElement.style.setProperty('--ar-accent', `var(--area-${key})`);
+  document.documentElement.style.setProperty('--ar-accent-bg', `var(--area-${key}-bg)`);
 
   try {
     const res = await fetch('/api/file?path=' + encodeURIComponent(area.path));
@@ -101,6 +161,57 @@ async function loadArea() {
     else body.innerHTML = '<div class="ar-empty">Hub note not found in the vault mirror yet.</div>';
   } catch (e) {
     body.innerHTML = `<div class="ar-empty">Couldn't load the area note (${escH(e.message)}).</div>`;
+  }
+
+  try {
+    const ares = await fetch('/api/areas');
+    if (!ares.ok) throw new Error('backend not deployed yet (HTTP ' + ares.status + ')');
+    const ajson = await ares.json();
+    const data = ((ajson && ajson.areas) || {})[key] || { total: 0, notes: [], opportunities: [] };
+
+    document.getElementById('areaKnowCount').textContent = data.total ? `${data.total} notes` : '';
+    knowBody.innerHTML = (data.notes || []).length
+      ? '<div class="ar-list">' + data.notes.map(n => `
+          <a class="ar-row" href="files.html?path=${encodeURIComponent(n.path || '')}">
+            <span class="ar-row-title">${escH(n.title)}</span>
+            <span class="ar-row-date">${escH(n.date || '')}</span>
+          </a>`).join('') + '</div>'
+      : '<div class="ar-empty">No knowledge classified to this area yet.</div>';
+
+    const opps = data.opportunities || [];
+    document.getElementById('areaOppCount').textContent = opps.length ? `${opps.length} signals` : '';
+    oppBody.innerHTML = opps.length
+      ? '<div class="ar-list">' + opps.map(o => `
+          <div class="ar-row" style="align-items:flex-start;">
+            <span class="ar-opp-pill">${escH((o.confidence || 'signal'))}</span>
+            <span class="ar-opp-text">${escH(o.text)}</span>
+          </div>`).join('') + '</div>'
+      : '<div class="ar-empty">No signals in the Opportunity Radar for this area yet.</div>';
+  } catch (e) {
+    const msg = `<div class="ar-empty">${escH(e.message)}</div>`;
+    knowBody.innerHTML = msg;
+    oppBody.innerHTML = msg;
+  }
+
+  const taskTag = AREA_TASK_TAG[key];
+  if (!taskTag) {
+    taskBody.innerHTML = '<div class="ar-empty">No kanban tag maps to this area yet — see the Kanban board directly.</div>';
+  } else {
+    try {
+      const tres = await fetch('/api/tasks');
+      const tjson = await tres.json();
+      const rows = ((tjson && (tjson.data || tjson.tasks)) || []).filter(t =>
+        String(t.tag || '').toLowerCase() === taskTag && t.column !== 'done' && !t.completed);
+      taskBody.innerHTML = rows.length
+        ? '<div class="ar-task-grid">' + rows.map(t => `
+            <div class="ar-task-card">
+              <div class="ar-task-title">${escH(t.title || '')}</div>
+              <div class="ar-task-col">${escH(t.column || '')}</div>
+            </div>`).join('') + '</div>'
+        : '<div class="ar-empty">No open tasks tagged ' + escH(taskTag) + '.</div>';
+    } catch (e) {
+      taskBody.innerHTML = `<div class="ar-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
+    }
   }
 
   try {

@@ -139,9 +139,13 @@ remain gated exactly as before; nothing gated was touched this pass.
 6. **3D Brain link-density bridge** (Smart Connections → real [[wikilinks]] → more edges; memory:
    life-os-ui-backlog / task 4.1) — GATE: Fadi says go. He named the 3D Brain as shiny-object
    risk vs the revenue tripwire; do not auto-run.
-7. **Remaining life-area pages** (6 of 8) — GATE: a real data source exists per area. No static
-   placeholder pages. FieldBridge area page (reads existing /api/wiki/crm + Radar) is the only
-   near-term candidate.
+7. ~~**Remaining life-area pages** (6 of 8) — GATE: a real data source exists per area.~~ GATE
+   CLEARED + DONE 2026-07-13 (Sonnet, "PROMPT — Builder Session — UI Dashboards + Knowledge
+   Backlinking") — see session write-up below. The real data source is a new `GET /api/areas`
+   endpoint reading `relates_to:` frontmatter backfilled onto 453 vault notes in the same session.
+   life-areas.html and area.html now render real per-area counts/knowledge/opportunities; no static
+   placeholders remain. FieldBridge additionally got its own dedicated `fieldbridge.html` (not just
+   the generic area.html treatment).
 8. **Capture-pipeline full strength** — GATE: Fadi enters credentials (roadmap 3.2). Nothing for
    Sonnet to build; just re-verify channel watermarks after he does.
 
@@ -157,6 +161,239 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-13 session #10 (Sonnet, Second Brain + life-os-dashboard, both folders mounted) — Knowledge Backlinking Phase 1 (vault) + UI Dashboards Phase 2 (repo), item 7 gate cleared
+
+Executed the full "PROMPT — Builder Session — UI Dashboards + Knowledge Backlinking" (vault root)
+end to end, both phases, per Fadi firing that exact prompt into a fresh session. Phase 1 (vault
+backfill) ran first and fully, per the prompt's own sequencing rule ("dashboards render the
+classification; without it they're empty shells"), before any repo code was touched.
+
+**Phase 1 — vault backfill (Second Brain folder, Cowork is the vault's only writer):**
+- Classified 453 of 454 notes across `10_Sources/processed` (306), `030 Resources` (131),
+  `30_Context` (16), `20_Wiki` (1) with a `relates_to:` frontmatter list (1-3 of the nine canonical
+  slugs) + mirrored `area/*` tags. 1 note skipped (`20_Wiki/09-Project-Register.md`, a 0-byte empty
+  stub — left untouched, flagged for Fadi to decide delete-vs-populate).
+- Hybrid method: mechanical Pass A (domain/tag/folder signal mapping, script-assisted, 217 notes)
+  + judgment Pass B (title+desc review against the digest, keyword rules + hand-classification for
+  structurally important notes, 236 notes). All edits frontmatter-only via a ruamel.yaml round-trip
+  writer (preserves comments/quote-style/existing formatting) with a raw-text fallback for 10 files
+  that had pre-existing broken YAML (unquoted `[[wikilink]]` values) — those 10 got the same two
+  fields inserted via string surgery instead of a full parse, leaving the pre-existing corruption
+  untouched rather than "fixing" something out of scope.
+- Final distribution: knowledge 234, fieldbridge 169 (175 once CRM/playbook folders are counted by
+  the new endpoint — see below), construction 69, admin 19, trading 10, career 8, health 4, family
+  4, finances 2 (notes can carry up to 3 areas).
+- Opportunity Radar.md: added a new "🌍 Other Life-Area Signals" section (7 rows: trading×3,
+  career×2, knowledge×2) — the Radar was 100% FieldBridge-only before this pass; existing
+  HIGH/MEDIUM/EMERGING FieldBridge sections were left untouched/not duplicated (the spec's worked
+  example, Claude Code + Clay lead-gen, was already a MEDIUM row from 2026-07-12's nightly ingest).
+- Forward path: `agents.md` OPERATION 1 (step 3a + revised step 4) and
+  `_Templates/Web Clip Processed.md` frontmatter updated so every future clip gets classified at
+  ingest time — no drift between backfilled and new notes going forward.
+- Discovered (not caused by this session, flagged to Fadi): `30_Context/FieldBridge/pricing-guide.md`
+  has ~7,744 trailing NUL bytes after its visible text, dating from its 2026-07-12 supersede edit —
+  low priority since the file is already marked superseded/do-not-use.
+- Full detail: `log.md` entries dated 2026-07-13 (BACKFILL / OPPORTUNITY RADAR / PERSIST / CAPTURE).
+- **Fadi action required:** run `sync-vault-to-git.bat` so the VPS mirror picks up the 453 changed
+  files — Phase 2's `/api/areas` endpoint reads the MIRROR, not the local vault, so live QA below
+  is blocked until this runs.
+
+**Phase 2 — two dashboards (life-os-dashboard repo, git read-only, session never ran git):**
+- `server.py`: new `GET /api/areas` (read-only, same defensive-frontmatter pattern as
+  `/api/playbook`/`/api/wiki/crm`, reuses the existing `_parse_frontmatter` helper — no new parser
+  dependency). Walks `10_Sources/processed`, `030 Resources`, `30_Context`, `20_Wiki`,
+  `_system/playbook`, `CRM` for `relates_to:` (fallback `area/*` tags), returns
+  `{areas: {<slug>: {count, total, notes:[{title,path,date,type}], opportunities:[{text,confidence}]}}}`,
+  newest-first, capped 50 notes/area. New `_parse_opportunity_radar()` parses `Opportunity
+  Radar.md`'s two table shapes (fixed-area FieldBridge HIGH/MEDIUM/EMERGING tables + the new
+  per-row-area "Other Life-Area Signals" table) into the same response — one file, one parser, no
+  second opportunity store. Bodies never ship in the payload (stays behind the existing
+  `/api/wiki/page?path=`).
+- `shared.css`: added `--area-finances` / `--area-finances-bg` (copper/bronze) to `:root` and
+  `[data-theme="light"]` (graphite inherits from `:root` per the file's existing convention — see
+  its own comment at the graphite block). `--area-admin` already existed from an earlier pass.
+- `fieldbridge.html` (new page): Pipeline (crm.html's board pattern against `/api/wiki/crm`),
+  Knowledge feeding FieldBridge (`/api/areas` fieldbridge bucket — explicitly labeled as the
+  cross-vault bridge per Brief §2, since Obsidian wikilinks can't cross into the FieldBridge HQ
+  vault), Opportunity Radar (same bucket's `opportunities`), Plays (`/api/playbook` filtered
+  `area===fieldbridge`, reuses the existing `hermes-prefill` Run-in-Hermes handoff + usage POST),
+  Tasks (`/api/tasks` filtered `tag===fieldbridge`, kanban.html-style mini cards). No revenue/
+  tripwire widgets — that's the FieldBridge folder's job, not this UI, per the brief.
+- `life-areas.html` (rebuilt): same two-group static grid (Income engines / Life & system) but every
+  card now pulls real counts (notes/signals/open-tasks) + 3 newest note titles from `/api/areas` +
+  `/api/tasks` client-side. Open-task count only rendered for career/fieldbridge/trading — the only
+  three canonical areas with a matching kanban tag today (`project/fieldbridge/career/trading/
+  personal/urgent`); other areas honestly omit the stat rather than showing a fake zero. FieldBridge
+  card now links straight to `fieldbridge.html` instead of the generic area template.
+- `area.html` (rebuilt): kept the existing hub-note-from-vault + related-projects panels, added
+  Knowledge and Opportunity Radar panels (same `/api/areas` bucket) and a Tasks panel (honest empty
+  state for the 5 areas with no matching kanban tag). **Renamed the `AREAS` dict key `work` →
+  `construction`** to match `/api/areas`'s canonical slug — the sidebar's `moduleFiles` hash target
+  was already `life-areas.html#construction` (not `#work`), so this was a latent mismatch between
+  the two files, now aligned; nothing else referenced `?area=work`.
+- `index.html` + `shared.js`: sidebar's existing "FieldBridge" nav item relabeled "FieldBridge HQ"
+  and repointed (`moduleFiles`, both occurrences in `shared.js`) from `life-areas.html#fieldbridge`
+  to `fieldbridge.html`. No new sidebar button added — the existing area-fieldbridge item now goes
+  to the real dashboard instead of the generic grid anchor. Trading/Health nav items untouched
+  (already route to their own dedicated pages, unaffected by this pass).
+
+**Verification (Read/Grep — never the bash mount of C:\Dev, confirmed stale again this session:
+`wc -l`/`stat` on server.py, life-areas.html and area.html all returned pre-edit byte counts/mtimes
+minutes after successful Write/Edit calls; Grep tool, which is host-side like Read/Write/Edit,
+correctly showed the new content and was used for everything below):**
+- `_serve_areas`/`_extract_note_areas`/`_parse_opportunity_radar` extracted into a standalone dummy
+  class in the sandbox (exact text of the edit, not a mount copy) — `py_compile` clean, then run
+  against synthetic fixtures (assertions passed) AND against a live copy of the real vault +
+  Opportunity Radar.md via the mounted Second Brain folder: returned correct counts (knowledge 234,
+  fieldbridge 175, construction 69, career 8, trading 10, finances 2, health 4, family 4, admin 19)
+  and correct opportunity rows (26 fieldbridge signals from the three fixed tables, 7 cross-area
+  signals matching Phase 1's new Radar section exactly).
+- server.py routing addition (`elif path == "/api/areas":`) and the full new method block re-read
+  via the Read tool (authoritative) directly in place in the real file — correct indentation,
+  correctly nested inside `LifeOSHandler`, no truncation.
+- `fieldbridge.html` / `life-areas.html` / `area.html` inline `<script>` blocks reconstructed
+  byte-for-byte from what was written (not read back through the stale mount) and run through
+  `node --check` — all three `SYNTAX_OK`.
+- NUL-scan on every touched file (server.py, shared.css, shared.js, index.html, fieldbridge.html,
+  life-areas.html, area.html) via the Grep tool with pattern `\x00` — 0 matches on all seven (the
+  bash-mount `python3 bytes.count` version falsely reported NULs on stale/cached content for two
+  files; Grep tool result is the authoritative one per the standing verification-gotcha notes).
+- Icon audit: cross-checked every `lucide-sprite.svg#icon-*` reference used in the three new/rebuilt
+  pages against the sprite's actual symbol IDs — `icon-library`, `icon-git-branch`, and
+  `icon-alert-triangle` don't exist (renamed to `icon-book-open`, `icon-zap`, `icon-triangle-alert`
+  respectively before shipping).
+- **Not eyeballed live** — blocked on Fadi's `sync-vault-to-git.bat` run (Phase 1 action item
+  above) since `/api/areas` reads the VPS mirror, not the local vault. 5-minute live-QA script once
+  that's run and the repo is deployed:
+  1. Open `fieldbridge.html` — Pipeline populated from the CRM mirror, "Knowledge feeding
+     FieldBridge" shows real note titles/dates, Opportunity Radar shows both old HIGH/MEDIUM rows
+     and confirms none of the new cross-area rows leaked in (fieldbridge-only).
+  2. Open `life-areas.html` — all 9 cards show non-zero note counts (except any genuinely-empty
+     area), 3 newest titles per card, FieldBridge card click lands on `fieldbridge.html` not the
+     generic area page.
+  3. Click into any non-FieldBridge card (e.g. Construction) → `area.html?area=construction` —
+     hub note renders, Knowledge panel lists real construction-tagged notes, Opportunity panel is
+     honestly empty (no construction rows exist yet), Career's Tasks panel shows real open
+     career-tagged kanban cards if any exist.
+  4. Confirm the sidebar's "FieldBridge HQ" nav item opens `fieldbridge.html` directly (not the old
+     `life-areas.html#fieldbridge` anchor-scroll behavior).
+
+**Not touched:** gated queue items 4-6, 8 (untouched); Notion (nothing new reads/depends on it, per
+Brief §8); the FieldBridge HQ vault; Hermes write-lane token; any new data store beyond the
+`/api/areas` read (no writer, no new DATA_DIR file); the 3D Brain; the capture inbox build.
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py shared.css shared.js index.html fieldbridge.html life-areas.html area.html NEXT-SESSION-UI.md
+git commit -m "Knowledge Backlinking Phase 2: new GET /api/areas (relates_to/area-tag index + Opportunity Radar parser, read-only), --area-finances CSS tokens, new fieldbridge.html dashboard (pipeline/knowledge/opportunities/plays/tasks), life-areas.html + area.html rebuilt with real per-area data (item 7 gate cleared), sidebar FieldBridge nav repointed to the new dashboard, area.html AREAS key work->construction rename to match canonical slugs"
+git push origin main
+# auto-pull deploys within ~1 min — but /api/areas will return all-zero counts until the vault
+# mirror has the Phase 1 classification. Run sync-vault-to-git.bat FIRST (vault change, separate
+# from this repo push), confirm the VPS mirror picks it up, THEN do the live-QA script above.
+```
+
+### Vault — reminder for Fadi (separate from the repo push above):
+
+```
+Run sync-vault-to-git.bat (pushes the Second Brain vault, which is OneDrive-sync only, no .git of
+its own, to the git repo that feeds the VPS mirror). This is what makes the 453-note relates_to
+backfill and the new Opportunity Radar section visible to /api/areas. Do this before the live-QA
+script above — without it, both new dashboards will look empty even though the code is correct.
+```
+
+## 2026-07-12 session #9 (Opus, scheduled unattended run) — Productivity Hub v1 architecture ruling + HTTPS/push prep (NO code shipped)
+
+Scheduled follow-up (queued 2026-07-11). Ran unattended — Fadi not present — so per the run rules
+this was an analysis/prep pass, **not** an execution pass. The main build (item 1, Productivity
+Hub v1) is explicitly gated on Fadi's architecture sign-off (item 1a: "state the decision
+explicitly to Fadi and confirm consistent with the STANDARD before building… Only proceed once
+confirmed"). A new server-side data store is textbook STOP-and-flag territory, so no code was
+written. What this pass produced instead:
+
+**(1) ARCHITECTURE RULING — capture inbox `DATA_DIR/.capture_inbox.json` (item 1a). APPROVE, with
+one framing condition.** Checked against `STANDARD — System Architecture.md` (vault root). The
+dashboard's ONE role is "UI hub… renders the vault mirror + Notion, read-only — Never: becoming a
+data store." The precedent that reconciles this: the dashboard already owns an OPERATIONAL lane in
+DATA_DIR (`.kanban_store.json`, `playbook-usage.jsonl`, `.skill_usage.json`, and now
+`.meeting_store.json` from item 13) — distinct from the vault's KNOWLEDGE spine. "Never a data
+store" means never a second home for knowledge/business data that belongs in the vault; it does not
+forbid the dashboard's own transient operational files.
+- **Ruling:** `.capture_inbox.json` is the same CLASS as `.kanban_store.json` — dashboard-owned,
+  single-writer, operational. Consistent with the STANDARD **provided it is framed as a TRIAGE
+  BUFFER, not a capture store.** Items must always DRAIN: → a kanban task (dashboard lane), → a
+  vault note/project via the clipboard+Cowork promote-pattern (no vault write), or → dismissed.
+  Nothing knowledge-bearing rests permanently in the inbox.
+- **The one real tension to name to Fadi:** the STANDARD's capture-flows section already routes
+  "phone quick capture → `000 Inbox/`" (the vault, the knowledge spine). The new inbox adds a
+  SECOND capture front-door (dashboard DATA_DIR). That's acceptable **only** under the triage-buffer
+  framing above — the vault's `000 Inbox/` stays the destination for anything that is knowledge;
+  DATA_DIR is the fast operational staging area that empties into either kanban or (via Cowork) the
+  vault. Single-writer preserved: dashboard is the only file writer; Hermes DROPS items via
+  `POST /api/capture` (an API call, not a cross-lane file write).
+- **Recommended addition to the STANDARD** when Fadi approves: one line under Tool roles / capture
+  flows distinguishing "capture-of-knowledge → vault 000 Inbox" from "operational triage buffer →
+  dashboard DATA_DIR, drains, never retains." Cowork writes that line (vault = Cowork's lane).
+- **Build is READY to execute the moment Fadi signs off** — spec in the scheduled-task file
+  (server.py endpoints `POST/GET /api/capture` + `POST /api/capture/update`; consolidate the two
+  localStorage silos `fb-captures`/`cmd-inbox` onto it; new `admin.html` triage page). v1 scope
+  only (no Hermes auto-triage cron, no SaaS, no vault-first routing — Fadi picked the two-tier
+  model). Deferred-by-design, logged: auto-triage cron, vault-first routing, SaaS.
+
+**(2) HTTPS via Caddy (item 2) — BLOCKED on Fadi's domain.** Cannot proceed without a domain/
+subdomain A-record'd to 45.63.19.249. Full click-by-click prepared and handed to Fadi in-session
+(get/point a domain → install Caddy → 3-line Caddyfile `reverse_proxy 127.0.0.1:8090` → reload →
+open `https://<domain>` on iPhone Safari, mic works). server.py binds `('', 8090)` — no server
+change needed. Runs ON the VPS; sessions can't reach it.
+
+**(3) Push/run reminders (item 3) — ALL CLEAR on git.** Read-only `git log origin/main..main`
+returned **empty**: local `main` is at `414f02c` (session #8) and NOT ahead of origin — so every
+#5–#8 commit (item 12 retire-voice, item 13 meeting-writes-off-vault, Today-tab restyle, global
+voice brain-dump) is **already pushed**. Nothing outstanding to push. The only remaining item-3
+action is the **one-time VPS migration copy** (session #6, still run-once on the VPS) — re-printed
+for Fadi below.
+- **Mount-artifact warning (not a real change):** the bash mount served a TRUNCATED `server.py`
+  (cut at ~L4472), so `git diff` in-session falsely showed "114 deletions." Verified with the
+  authoritative Read tool that server.py continues intact past L4472 — this is exactly the
+  stale/truncated C:\Dev mount the rules warn about, NOT a real uncommitted change. Fadi's working
+  tree is fine; **do not commit any such phantom deletion.** (`?? brain_v2_check.py` is a stray
+  untracked local file, harmless.)
+
+**Not touched:** all code (analysis-only pass); items 4–8 (gated); the Productivity Hub build
+(gated on 1a sign-off above).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status   # expect "up to date with origin/main"; if it shows server.py modified with a
+             # ~114-line DELETION, that's the mount phantom — do NOT commit it, discard with:
+             #   git checkout -- server.py
+git add NEXT-SESSION-UI.md
+git commit -m "Session #9 (scheduled, analysis-only): Productivity Hub v1 architecture ruling (capture inbox = DATA_DIR triage buffer, approved pending Fadi sign-off), Caddy HTTPS prep (blocked on domain), git push audit (all #5-#8 already on origin), mount-truncation phantom flagged"
+git push origin main
+```
+
+### VPS — one-time migration, still outstanding from session #6 (run ON the VPS; sessions can't reach it):
+
+```
+# Copy any already-captured ad-hoc meeting data out of the stranded pull-only mirror
+# into the dashboard's real write lane. Guarded + idempotent (cp -n) — safe even if nothing
+# was captured. NO deletion here (close-out sweep's job).
+mkdir -p /root/life-os-data
+if [ -f /root/second-brain/.meeting_store.json ]; then
+  cp -n /root/second-brain/.meeting_store.json /root/life-os-data/.meeting_store.json && echo "copied .meeting_store.json"
+fi
+if [ -d /root/second-brain/30_Meetings ]; then
+  mkdir -p /root/life-os-data/30_Meetings
+  cp -rn /root/second-brain/30_Meetings/. /root/life-os-data/30_Meetings/ && echo "copied 30_Meetings/"
+fi
+```
 
 ## 2026-07-11 session #8 (Opus, life-os-dashboard session) — Global voice brain-dump → tasks (Fadi request, not a queue item)
 

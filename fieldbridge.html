@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FieldBridge HQ — Life OS</title>
+<script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
+<link rel="stylesheet" href="shared.css">
+<style>
+.fb-banner {
+  font-size: 13px; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--area-fieldbridge); border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
+  display: flex; align-items: center; gap: 8px;
+}
+.fb-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+}
+.fb-panel h2 {
+  font-size: var(--font-size-md); margin: 0 0 var(--space-3);
+  display: flex; align-items: center; gap: var(--space-2); color: var(--text-primary);
+}
+.fb-panel h2 .fb-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; }
+.fb-loading, .fb-empty {
+  color: var(--text-muted); font-size: 13px; padding: var(--space-4);
+  display: flex; align-items: center; gap: 8px;
+}
+.fb-empty { justify-content: center; text-align: center; padding: var(--space-5); }
+
+/* --- Pipeline (mini crm board) --- */
+.fb-board { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); }
+.fb-col { flex: 0 0 220px; display: flex; flex-direction: column; }
+.fb-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-tertiary); padding: 0 4px var(--space-2);
+  border-bottom: 2px solid var(--area-fieldbridge); margin-bottom: var(--space-2);
+}
+.fb-col-count { color: var(--text-muted); }
+.fb-col-body { display: flex; flex-direction: column; gap: 6px; }
+.fb-mini-card {
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 8px 10px; text-decoration: none; display: block;
+  transition: border-color .15s;
+}
+.fb-mini-card:hover { border-color: var(--area-fieldbridge); }
+.fb-mini-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.fb-mini-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* --- Knowledge / Opportunity lists --- */
+.fb-list { display: flex; flex-direction: column; gap: 6px; }
+.fb-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 8px 10px;
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); text-decoration: none; color: inherit;
+}
+a.fb-row:hover { border-color: var(--area-fieldbridge); }
+.fb-row-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
+.fb-row-date { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.fb-opp-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.fb-opp-pill {
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;
+}
+.fb-opp-high { background: var(--red-bg); color: var(--red); }
+.fb-opp-medium { background: var(--orange-bg); color: var(--orange); }
+.fb-opp-emerging { background: var(--green-bg); color: var(--green); }
+.fb-opp-signal { background: var(--area-fieldbridge-bg); color: var(--area-fieldbridge); }
+
+/* --- Plays --- */
+.fb-play-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
+.fb-play-card {
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--area-fieldbridge); border-radius: var(--radius-md);
+  padding: var(--space-3); display: flex; flex-direction: column; gap: 6px;
+}
+.fb-play-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.fb-play-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; flex: 1; }
+.fb-play-usage { font-size: 10px; color: var(--text-muted); }
+.fb-play-run {
+  align-self: flex-start; font-size: 11px; font-weight: 700; color: var(--on-accent);
+  background: var(--area-fieldbridge); border: none; border-radius: var(--radius-md);
+  padding: 5px 10px; cursor: pointer;
+}
+
+/* --- Tasks --- */
+.fb-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-2); }
+.fb-task-card {
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); padding: 8px 10px; position: relative; padding-left: 12px;
+}
+.fb-task-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--area-fieldbridge);
+}
+.fb-task-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.fb-task-col { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <a href="index.html" class="header-back">← Life OS</a>
+  <div class="header-title"><svg class="icon" width="18" height="18" style="color:var(--area-fieldbridge)"><use href="assets/lucide-sprite.svg#icon-building-2"/></svg> FieldBridge HQ</div>
+  <div class="header-actions">
+    <button class="btn btn-sm" onclick="loadAll()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg> Refresh</button>
+  </div>
+</div>
+
+<div class="fb-banner">
+  <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
+  Read-only. Pipeline mirrors the vault CRM (Notion is system of record); knowledge, opportunities,
+  plays and tasks all read the vault mirror / dashboard's own stores. Nothing here writes back —
+  edits happen in Cowork or Notion.
+</div>
+
+<div class="fb-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-users"/></svg> Pipeline <a href="crm.html" class="fb-sub">full CRM →</a></h2>
+  <div id="fbPipeline"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
+</div>
+
+<div class="fb-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge feeding FieldBridge <span class="fb-sub" id="fbKnowCount"></span></h2>
+  <div class="fb-banner" style="margin:0 0 var(--space-3); border-left-color: var(--area-knowledge);">
+    <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-zap"/></svg>
+    This is the cross-vault bridge: clips and wiki notes tagged <code>relates_to: fieldbridge</code> in the
+    Second Brain vault, surfaced here because Obsidian wikilinks can't cross into the FieldBridge HQ vault directly.
+  </div>
+  <div id="fbKnowledge"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+<div class="fb-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity Radar <span class="fb-sub" id="fbOppCount"></span></h2>
+  <div id="fbOpportunities"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+<div class="fb-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-play"/></svg> Plays</h2>
+  <div id="fbPlays"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+<div class="fb-panel">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks <a href="kanban.html" class="fb-sub">board →</a></h2>
+  <div id="fbTasks"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function escH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+function stageOrder(stage){
+  const m = String(stage || '').match(/^\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : 999;
+}
+
+async function loadPipeline(){
+  const body = document.getElementById('fbPipeline');
+  try {
+    const res = await fetch('/api/wiki/crm');
+    const json = await res.json();
+    const rows = ((json && json.data) || []).filter(r => {
+      const base = String(r.path || '').split('/').pop().toLowerCase();
+      const name = String(r.company || '').toLowerCase();
+      return base !== 'index.md' && name !== 'index' && name !== 'readme';
+    });
+    if (!rows.length) {
+      body.innerHTML = '<div class="fb-empty">No clients synced yet — see the full CRM page.</div>';
+      return;
+    }
+    const groups = {};
+    rows.forEach(r => { const st = r.stage || 'Unstaged'; (groups[st] = groups[st] || []).push(r); });
+    const stages = Object.keys(groups).sort((a,b) => stageOrder(a) - stageOrder(b) || a.localeCompare(b));
+    body.innerHTML = '<div class="fb-board">' + stages.map(st => `
+      <div class="fb-col">
+        <div class="fb-col-head"><span>${escH(st)}</span><span class="fb-col-count">${groups[st].length}</span></div>
+        <div class="fb-col-body">
+          ${groups[st].map(r => `
+            <a class="fb-mini-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
+              <div class="fb-mini-name">${escH(r.company)}</div>
+              <div class="fb-mini-meta">${escH(r.trade || '')}${r.trade && r.region ? ' · ' : ''}${escH(r.region || '')}</div>
+            </a>`).join('')}
+        </div>
+      </div>`).join('') + '</div>';
+  } catch (e) {
+    body.innerHTML = `<div class="fb-empty">Couldn't load the pipeline (${escH(e.message)}).</div>`;
+  }
+}
+
+let fbAreaData = null;
+
+async function loadAreaData(){
+  const res = await fetch('/api/areas');
+  if (!res.ok) throw new Error('backend not deployed yet (HTTP ' + res.status + ')');
+  const json = await res.json();
+  fbAreaData = (json && json.areas) || {};
+  return fbAreaData.fieldbridge || { count: 0, notes: [], opportunities: [] };
+}
+
+function renderKnowledge(fb){
+  const body = document.getElementById('fbKnowledge');
+  const countEl = document.getElementById('fbKnowCount');
+  const notes = fb.notes || [];
+  countEl.textContent = fb.total ? `${fb.total} notes` : '';
+  if (!notes.length) {
+    body.innerHTML = '<div class="fb-empty">No knowledge classified to FieldBridge yet.</div>';
+    return;
+  }
+  body.innerHTML = '<div class="fb-list">' + notes.map(n => `
+    <a class="fb-row" href="files.html?path=${encodeURIComponent(n.path || '')}">
+      <span class="fb-row-title">${escH(n.title)}</span>
+      <span class="fb-row-date">${escH(n.date || '')}</span>
+    </a>`).join('') + '</div>';
+}
+
+function renderOpportunities(fb){
+  const body = document.getElementById('fbOpportunities');
+  const countEl = document.getElementById('fbOppCount');
+  const opps = fb.opportunities || [];
+  countEl.textContent = opps.length ? `${opps.length} signals` : '';
+  if (!opps.length) {
+    body.innerHTML = '<div class="fb-empty">No signals in the Opportunity Radar yet.</div>';
+    return;
+  }
+  body.innerHTML = '<div class="fb-list">' + opps.map(o => {
+    const conf = (o.confidence || 'signal').toLowerCase();
+    const cls = ['high','medium','emerging'].includes(conf) ? `fb-opp-${conf}` : 'fb-opp-signal';
+    return `<div class="fb-row" style="align-items:flex-start;">
+      <span class="fb-opp-pill ${cls}">${escH(conf)}</span>
+      <span class="fb-opp-text">${escH(o.text)}</span>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+async function loadPlays(){
+  const body = document.getElementById('fbPlays');
+  try {
+    const res = await fetch('/api/playbook');
+    const json = await res.json();
+    const plays = ((json && json.data) || []).filter(p => p.area === 'fieldbridge');
+    if (!plays.length) {
+      body.innerHTML = '<div class="fb-empty">No FieldBridge plays in the library yet — see the Playbook page.</div>';
+      return;
+    }
+    plays.sort((a,b) => (b.run_count || 0) - (a.run_count || 0));
+    body.innerHTML = '<div class="fb-play-grid">' + plays.map(p => `
+      <div class="fb-play-card">
+        <div class="fb-play-title">${escH(p.title)}</div>
+        <div class="fb-play-desc">${escH((p.prompt || '').split('\n')[0])}</div>
+        ${p.run_count ? `<div class="fb-play-usage">used ${p.run_count}×</div>` : ''}
+        <button class="fb-play-run" onclick='runInHermes(${JSON.stringify(p.key)}, ${JSON.stringify(p.prompt)})'>▶ Run in Hermes</button>
+      </div>`).join('') + '</div>';
+  } catch (e) {
+    body.innerHTML = `<div class="fb-empty">Couldn't load plays (${escH(e.message)}).</div>`;
+  }
+}
+
+function runInHermes(key, prompt) {
+  try { sessionStorage.setItem('hermes-prefill', prompt); } catch(e) {}
+  fetch('/api/playbook/run', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }),
+  }).catch(() => {});
+  window.location.href = 'chat.html';
+}
+
+async function loadTasks(){
+  const body = document.getElementById('fbTasks');
+  try {
+    const res = await fetch('/api/tasks');
+    const json = await res.json();
+    const rows = ((json && json.data) || json.tasks || []).filter(t => String(t.tag || '').toLowerCase() === 'fieldbridge');
+    if (!rows.length) {
+      body.innerHTML = '<div class="fb-empty">No open tasks tagged fieldbridge — see the Kanban board.</div>';
+      return;
+    }
+    body.innerHTML = '<div class="fb-task-grid">' + rows.map(t => `
+      <div class="fb-task-card">
+        <div class="fb-task-title">${escH(t.title || t.text || '')}</div>
+        <div class="fb-task-col">${escH(t.column || t.status || '')}</div>
+      </div>`).join('') + '</div>';
+  } catch (e) {
+    body.innerHTML = `<div class="fb-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
+  }
+}
+
+async function loadAll(){
+  loadPipeline();
+  loadPlays();
+  loadTasks();
+  document.getElementById('fbKnowledge').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
+  document.getElementById('fbOpportunities').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
+  try {
+    const fb = await loadAreaData();
+    renderKnowledge(fb);
+    renderOpportunities(fb);
+  } catch (e) {
+    const msg = `<div class="fb-empty">${escH(e.message)}</div>`;
+    document.getElementById('fbKnowledge').innerHTML = msg;
+    document.getElementById('fbOpportunities').innerHTML = msg;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadAll);
+</script>
+</body>
+</html>
