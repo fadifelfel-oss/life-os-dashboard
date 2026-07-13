@@ -133,6 +133,11 @@ remain gated exactly as before; nothing gated was touched this pass.
 **GATED — do NOT build until the named gate clears:**
 4. **Card-anatomy standardization** across ~15 pages — GATE: Fadi finishes live visual QA
    (roadmap 3.4) and names which pages look wrong. Was explicitly deferred as too risky blind.
+   **PARTIAL CLEAR 2026-07-13 (Sonnet, "PROMPT — Builder Session 3 — Area Page Hub Redesign"):**
+   Fadi named `area.html` / `fieldbridge.html` / `life-areas.html` explicitly and approved the hub
+   digest + `.hub-tcard` language for them in-session with Fable — see session write-up below and
+   `design/AREA-PAGE-SPEC.md`. The other ~12 pages remain gated exactly as before; this did not
+   open the door to touching them without Fadi naming them too.
 5. **Morning Brief card on Home** — GATE: Hermes actually produces a brief. First help Fadi set
    up Hermes's 05:15 scheduled task per vault `agent-profiles/hermes-market-scanner.md` (click-by-
    click, Hermes side), verify a real brief exists in Hermes's lane, THEN build the card.
@@ -161,6 +166,133 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-13 session #11 (Sonnet, life-os-dashboard folder mounted) — Area Page Hub Redesign, item 4 partial clear
+
+Executed "PROMPT — Builder Session 3 — Area Page Hub Redesign" (Fable design, Fadi-approved
+mockup, 2026-07-13) end to end: `area.html`, `fieldbridge.html`, `life-areas.html` touch-up, the
+new Area Brief backend, and `design/AREA-PAGE-SPEC.md`. Builds on session #10's `/api/areas` +
+Opportunity Radar work (same day, prior session) — this pass is the front-end redesign the brief
+called out as a separate build once that data source existed.
+
+**server.py (additive only, no response-shape breaks):**
+- `/api/areas`'s per-note entries gained one new key, `description` (frontmatter `description`,
+  `''` fallback) — `title/path/date/type` and the envelope are unchanged.
+- Refactored `_serve_areas`'s body into a new `_build_areas_index()` (pure builder, no
+  `_json_response` call) so the new brief endpoint can reuse it in-process instead of a self-HTTP
+  round trip. `_serve_areas` itself is now a 3-line wrapper — behavior identical, confirmed by the
+  behavior tests below.
+- New `GET /api/areas/brief?area=<slug>` — reads `DATA_DIR/.area_briefs.json`, returns
+  `{brief, generated, available}`. No cache entry → honest `available:false`. Pure read.
+- New `POST /api/areas/brief {area}` — builds a digest (10 newest notes' title+description, up to
+  10 Opportunity Radar signals, open kanban tasks for that area's tag from
+  `DATA_DIR/.kanban_store.json`; `fieldbridge` additionally folds in CRM pipeline stage counts +
+  `next` fields, CRM mirror only) and calls Hermes via the exact `HERMES_CHAT_PROXY_URL` proxy
+  pattern already proven in `/api/braindump` (same auth header, same ``` fence stripping, same
+  `google/gemma-2.5-flash-preview` model). Caches `{brief, generated}` into
+  `DATA_DIR/.area_briefs.json` and returns it. Every failure path (nothing to summarize, Hermes
+  unreachable, empty/unparseable response) returns `{available:false, error}` — never a fabricated
+  brief. Data-store note: `.area_briefs.json` is the same operational class as
+  `.kanban_store.json`/`playbook-usage.jsonl` — pre-approved by the architect in this session's
+  builder prompt (cited verbatim in `design/AREA-PAGE-SPEC.md`), not a fresh STOP-and-flag item.
+- Routing: added `/api/areas/brief` to both the GET dispatcher (`_handle_api_get`) and the POST
+  dispatcher (`do_POST`).
+
+**area.html (full rebuild):** Header (unchanged) → Area Brief card (label + generated-timestamp +
+refresh icon-button + a small "Area note ↗" link to the vault hub note, added because the mockup's
+digest has no room for the old hub-note panel — see "what this pass dropped" in the spec doc) →
+4 stat tiles (Knowledge/Opportunities/Open tasks/Projects, click-to-scroll) → two-column digest:
+Knowledge main column (search input, type filter chips hidden under 2 types, `.hub-tcard` note
+cards showing 8 newest with "Show all N →", click-to-expand-in-place via `/api/wiki/page?path=`
+through a hand-rolled minimal markdown renderer — headings/bold/lists/links, `[[wikilinks]]` as
+plain italic text not links, response bodies cached in a JS map for the page session, "Open in
+vault ↗" kept in the expanded body); side column with Opportunity radar (expand-in-place footer),
+Tasks (real link to kanban.html per spec), Projects (expand-in-place, spec didn't specify so this
+followed the Opportunity radar precedent — noted in the spec doc as an inference, not a literal
+instruction). `AREAS` dict, `AREA_TASK_TAG`, and the `?area=` routing/`--ar-accent` CSS variable
+wiring were carried over unchanged from the pre-existing file.
+
+**fieldbridge.html (full rebuild):** identical recipe — Brief → 4 stat tiles (Pipeline/Knowledge/
+Opportunities/Open tasks) → Pipeline as its own full-width module first (stage-column board kept,
+mini-cards re-skinned onto `.hub-tcard`) → two-column digest (Knowledge main, same search/chip/
+expand-in-place language as area.html; side column Opportunity radar / Plays / Tasks — Plays kept
+its `sessionStorage['hermes-prefill']` + `POST /api/playbook/run` Run-in-Hermes handoff, footer
+links to `use-cases.html`). Brief generation additionally feeds CRM stage counts + `next` fields
+per the spec (server-side, see above).
+
+**life-areas.html (touch-up only, per the brief's explicit "grid layout already works" scope):**
+its cards already had the 3px colored spine and note/signal/task counts from session #10 — the
+gap was styling (16px radius, plain-text counts) vs. the new `.hub-tcard` language (10px radius,
+pill-badge counts). Tightened `border-radius` to `10px` and converted `.area-stats` from plain
+inline text to small pill badges (`.area-stat-pill`). Grid, emoji, title, hover-lift, and the
+JS count-loading logic (`loadAreaCounts`) were untouched — only the one CSS rule + one `innerHTML`
+template string changed.
+
+**design/AREA-PAGE-SPEC.md (new):** codifies the layout recipe, `.hub-tcard` anatomy, chip
+behavior, expand-in-place pattern, and Area Brief backend contract — "any new area-like page
+follows this spec." Notes item 4 (card-anatomy standardization) is now cleared for these three
+pages only; the other ~12 stay gated until Fadi names them (recorded in the queue item 4 line
+above and in the spec doc itself).
+
+**Verification (Read/Grep — authoritative; the C:\Dev bash mount's documented staleness/truncation
+was not relied on for anything):**
+- Backend logic (`_build_areas_index`, `_serve_area_brief`, `_handle_area_brief_post`'s core digest/
+  cache/error-path logic) extracted into a dummy class in the sandbox with synthetic fixtures —
+  6 behavior tests, all passed: no-cache → `available:false`; unknown area → 400; nothing-to-
+  summarize → honest `available:false` (no fabrication); real vault note + kanban task → Hermes
+  fence-stripped, cached, `available:true`; GET reflects what POST just cached; Hermes-down path →
+  honest `available:false`. Full `server.py` re-read via the Read tool around every edit site to
+  confirm indentation/nesting (the class-level `_serve_areas`/`_build_areas_index`/brief methods
+  and the two new dispatcher lines) — no truncation, no stray indentation.
+- `area.html` and `fieldbridge.html`'s inline `<script>` blocks each extracted byte-for-byte (Read
+  tool, not the mount) into standalone `.js` files and run through `node --check` — both
+  `SYNTAX_OK`. `life-areas.html`'s one changed JS line re-read in place, no new syntax introduced.
+- NUL-scan (ripgrep `\x00`, per the standing gotcha that bash `grep`/`python3 bytes.count` on this
+  repo have both produced false positives/negatives in past sessions) on every touched file —
+  `server.py`, `area.html`, `fieldbridge.html`, `life-areas.html`, `design/AREA-PAGE-SPEC.md`,
+  `NEXT-SESSION-UI.md` — 0 matches on all six.
+- Icon audit: every `lucide-sprite.svg#icon-*` reference in the two rebuilt pages was carried over
+  from the pre-existing files (already validated against the sprite in session #10's icon audit —
+  none of the three previously-renamed IDs, `icon-library`/`icon-git-branch`/`icon-alert-triangle`,
+  were reintroduced).
+- **Not eyeballed live** — see the 5-minute QA script below. One live dependency to watch: Area
+  Brief generation requires Hermes reachable at `HERMES_CHAT_PROXY_URL`; if it's down the UI shows
+  the honest "Brief unavailable — Hermes is offline" fallback per spec, never a fake brief.
+
+**Not touched:** gated queue items 5, 6, 8; the capture-inbox build; Today tab; 3D Brain; any vault
+edit; the other ~12 ungated pages; Notion (nothing new reads/depends on it).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add server.py area.html fieldbridge.html life-areas.html design/AREA-PAGE-SPEC.md NEXT-SESSION-UI.md
+git commit -m "Area Page Hub Redesign (item 4 partial clear): area.html + fieldbridge.html rebuilt as brief -> stat tiles -> two-column digest (search/chips/expand-in-place Knowledge, compact side modules); life-areas.html card anatomy touch-up (radius + pill counts); new GET/POST /api/areas/brief (Hermes-generated area brief, cached in DATA_DIR/.area_briefs.json, same operational class as .kanban_store.json); /api/areas notes gained additive 'description' key; new design/AREA-PAGE-SPEC.md codifies the pattern for future pages"
+git push origin main
+# auto-pull deploys within ~1 min
+```
+
+### 5-minute live-QA script (once deployed):
+
+1. Open `area.html?area=knowledge` — Brief card shows "Loading…" then either a generated brief or
+   the honest "Brief unavailable" fallback; click its refresh icon to force a regeneration and
+   confirm the timestamp updates. Stat tiles show real numbers; clicking one scrolls to its module.
+   Knowledge shows 8 cards with "Show all 234 →" (or whatever the live count is); typing in the
+   search box narrows the list; clicking a card expands its body inline (markdown rendered, a
+   `[[wikilink]]` if present shows as plain italic text, "Open in vault ↗" present) and a second
+   click collapses it.
+2. Reload the same page — the Brief's timestamp should persist (read from the cache, not
+   regenerated) until the refresh icon is clicked again.
+3. Open `fieldbridge.html` — Pipeline renders first as a stage board with `.hub-tcard`-style mini
+   cards; Brief, stat tiles, and the Knowledge/Opportunities/Plays/Tasks digest follow the same
+   language as `area.html`; a Play's "Run in Hermes" still lands on `chat.html` with the prompt
+   prefilled.
+4. Open `life-areas.html` — cards look the same as before (spine, emoji, grid) but the note/
+   signal/task counts now render as small pill badges instead of plain text.
+5. Check `area.html` or `fieldbridge.html` at phone width (~375px) — stat tiles go 2×2, the
+   two-column digest stacks to one column, search/chip row wraps cleanly.
 
 ## 2026-07-13 session #10 (Sonnet, Second Brain + life-os-dashboard, both folders mounted) — Knowledge Backlinking Phase 1 (vault) + UI Dashboards Phase 2 (repo), item 7 gate cleared
 

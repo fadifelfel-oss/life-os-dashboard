@@ -7,6 +7,9 @@
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
+/* AREA PAGE HUB — fieldbridge.html applies the same recipe as area.html/life-areas.html.
+   See design/AREA-PAGE-SPEC.md. Pipeline is FieldBridge's own extra full-width module
+   (its reason to exist), inserted between the stat tiles and the two-column digest. */
 .fb-banner {
   font-size: 13px; color: var(--text-secondary);
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
@@ -14,6 +17,36 @@
   padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
   display: flex; align-items: center; gap: 8px;
 }
+
+/* --- Area Brief --- */
+.fb-brief {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+}
+.fb-brief-head {
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em;
+}
+.fb-brief-refresh {
+  background: transparent; border: 1px solid var(--border-primary); border-radius: var(--radius-md);
+  color: var(--text-secondary); cursor: pointer; padding: 3px 6px; display: inline-flex; align-items: center;
+}
+.fb-brief-refresh:hover { border-color: var(--area-fieldbridge); color: var(--area-fieldbridge); }
+.fb-brief-refresh:disabled { opacity: .5; cursor: default; }
+.fb-brief-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.fb-brief-body.fb-brief-empty { color: var(--text-muted); }
+
+/* --- Stat tile row --- */
+.fb-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+@media (max-width: 640px) { .fb-stats { grid-template-columns: repeat(2, 1fr); } }
+.fb-stat-tile {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg);
+  padding: var(--space-3); cursor: pointer; transition: border-color .15s, transform .15s; text-align: left;
+}
+.fb-stat-tile:hover { border-color: var(--area-fieldbridge); transform: translateY(-1px); }
+.fb-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.fb-stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+
 .fb-panel {
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
@@ -22,14 +55,12 @@
   font-size: var(--font-size-md); margin: 0 0 var(--space-3);
   display: flex; align-items: center; gap: var(--space-2); color: var(--text-primary);
 }
-.fb-panel h2 .fb-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; }
-.fb-loading, .fb-empty {
-  color: var(--text-muted); font-size: 13px; padding: var(--space-4);
-  display: flex; align-items: center; gap: 8px;
-}
-.fb-empty { justify-content: center; text-align: center; padding: var(--space-5); }
+.fb-side .fb-panel h2 { font-size: 12px; font-weight: 500; margin-bottom: var(--space-2); }
+.fb-panel h2 .fb-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; text-decoration: none; }
+.fb-empty { color: var(--text-muted); font-size: 13px; padding: var(--space-4); text-align: center; line-height: 1.7; }
+.fb-loading { color: var(--text-muted); font-size: 13px; padding: var(--space-3); display: flex; align-items: center; gap: 8px; }
 
-/* --- Pipeline (mini crm board) --- */
+/* --- Pipeline (full-width, hub-tcard anatomy) --- */
 .fb-board { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); }
 .fb-col { flex: 0 0 220px; display: flex; flex-direction: column; }
 .fb-col-head {
@@ -40,63 +71,78 @@
 }
 .fb-col-count { color: var(--text-muted); }
 .fb-col-body { display: flex; flex-direction: column; gap: 6px; }
-.fb-mini-card {
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); padding: 8px 10px; text-decoration: none; display: block;
-  transition: border-color .15s;
-}
-.fb-mini-card:hover { border-color: var(--area-fieldbridge); }
-.fb-mini-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.fb-mini-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
-/* --- Knowledge / Opportunity lists --- */
-.fb-list { display: flex; flex-direction: column; gap: 6px; }
-.fb-row {
-  display: flex; align-items: baseline; gap: 8px; padding: 8px 10px;
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); text-decoration: none; color: inherit;
+/* --- Two-column digest --- */
+.fb-digest { display: grid; grid-template-columns: minmax(0,62%) minmax(0,1fr); gap: var(--space-4); align-items: start; }
+@media (max-width: 640px) { .fb-digest { grid-template-columns: 1fr; } }
+
+/* Knowledge module: search + chips */
+.fb-know-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap; }
+.fb-know-head h2 { margin: 0; }
+.fb-search {
+  margin-left: auto; font-size: 12px; padding: 5px 10px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-primary);
+  min-width: 160px;
 }
-a.fb-row:hover { border-color: var(--area-fieldbridge); }
-.fb-row-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
-.fb-row-date { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.fb-opp-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
-.fb-opp-pill {
-  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
-  padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;
+.fb-search:focus { outline: none; border-color: var(--area-fieldbridge); }
+.fb-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
+.fb-chip {
+  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-secondary);
+  cursor: pointer; transition: all .15s;
 }
+.fb-chip:hover { border-color: var(--area-fieldbridge); }
+.fb-chip.active { background: var(--area-fieldbridge); border-color: var(--area-fieldbridge); color: var(--on-accent); }
+
+/* hub-tcard anatomy — shared language with dashboard.html / area.html */
+.hub-tcard { position: relative; overflow: hidden; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 11px 12px 11px 16px; transition: all .2s; cursor: pointer; }
+.hub-tcard:hover { border-color: var(--area-fieldbridge); }
+.hub-tcard::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--area-fieldbridge); }
+.hub-tcard-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-bottom: 4px; }
+.hub-tcard-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
+.hub-tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+.hub-tcard-meta .fb-expand-toggle { margin-left: auto; color: var(--area-fieldbridge); text-transform: none; letter-spacing: 0; font-size: 11px; }
+/* Pipeline mini-cards reuse the same card, no click/expand */
+.fb-mini-card { cursor: default; text-decoration: none; display: block; }
+.fb-mini-card:hover { border-color: var(--area-fieldbridge); }
+.fb-know-list { display: flex; flex-direction: column; gap: 8px; }
+.fb-know-body {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-primary);
+  font-size: 12.5px; color: var(--text-secondary); line-height: 1.7; cursor: default;
+}
+.fb-know-body h1, .fb-know-body h2, .fb-know-body h3, .fb-know-body h4 { color: var(--text-primary); font-size: 13px; margin: 8px 0 4px; }
+.fb-know-body ul { margin: 4px 0 4px 18px; }
+.fb-know-body p { margin: 0 0 6px; }
+.fb-know-body a { color: var(--accent-2); }
+.fb-wikilink { color: var(--text-tertiary); font-style: italic; }
+.fb-vault-link { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent-2); text-decoration: none; }
+.fb-vault-link:hover { text-decoration: underline; }
+.fb-show-all { margin-top: var(--space-2); font-size: 12px; font-weight: 700; color: var(--area-fieldbridge); background: transparent; border: none; cursor: pointer; padding: 4px 0; }
+
+/* Side modules */
+.fb-side-list { display: flex; flex-direction: column; gap: 6px; }
+.fb-side-item { font-size: 12px; padding: 7px 9px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); }
+.fb-opp-item { display: flex; align-items: flex-start; gap: 6px; }
+.fb-opp-pill { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: var(--radius-full); white-space: nowrap; }
 .fb-opp-high { background: var(--red-bg); color: var(--red); }
 .fb-opp-medium { background: var(--orange-bg); color: var(--orange); }
 .fb-opp-emerging { background: var(--green-bg); color: var(--green); }
 .fb-opp-signal { background: var(--area-fieldbridge-bg); color: var(--area-fieldbridge); }
+.fb-opp-text { color: var(--text-secondary); line-height: 1.4; }
+.fb-task-item { font-weight: 600; color: var(--text-primary); position: relative; padding-left: 12px; }
+.fb-task-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--area-fieldbridge); }
+.fb-side-footer { margin-top: var(--space-2); font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0; text-decoration: none; display: inline-block; }
+.fb-side-footer:hover { color: var(--area-fieldbridge); }
 
-/* --- Plays --- */
-.fb-play-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
-.fb-play-card {
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-left: 3px solid var(--area-fieldbridge); border-radius: var(--radius-md);
-  padding: var(--space-3); display: flex; flex-direction: column; gap: 6px;
-}
-.fb-play-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.fb-play-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; flex: 1; }
+/* Plays (side module, keeps Run-in-Hermes) */
+.fb-play-item { display: flex; flex-direction: column; gap: 4px; }
+.fb-play-title { font-weight: 700; color: var(--text-primary); }
 .fb-play-usage { font-size: 10px; color: var(--text-muted); }
 .fb-play-run {
-  align-self: flex-start; font-size: 11px; font-weight: 700; color: var(--on-accent);
+  align-self: flex-start; font-size: 10px; font-weight: 700; color: var(--on-accent);
   background: var(--area-fieldbridge); border: none; border-radius: var(--radius-md);
-  padding: 5px 10px; cursor: pointer;
+  padding: 4px 8px; cursor: pointer;
 }
-
-/* --- Tasks --- */
-.fb-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-2); }
-.fb-task-card {
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); padding: 8px 10px; position: relative; padding-left: 12px;
-}
-.fb-task-card::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--area-fieldbridge);
-}
-.fb-task-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.fb-task-col { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -111,39 +157,76 @@ a.fb-row:hover { border-color: var(--area-fieldbridge); }
 
 <div class="fb-banner">
   <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
-  Read-only. Pipeline mirrors the vault CRM (Notion is system of record); knowledge, opportunities,
-  plays and tasks all read the vault mirror / dashboard's own stores. Nothing here writes back —
-  edits happen in Cowork or Notion.
+  Read-only. Pipeline mirrors the vault CRM (Notion is system of record); brief, knowledge,
+  opportunities, plays and tasks all read the vault mirror / dashboard's own stores. Nothing
+  here writes back — edits happen in Cowork or Notion.
 </div>
 
-<div class="fb-panel">
+<div class="fb-brief">
+  <div class="fb-brief-head">
+    <span id="briefLabel">Area brief</span>
+    <button class="fb-brief-refresh" id="briefRefreshBtn" onclick="generateBrief()" title="Regenerate brief">
+      <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg>
+    </button>
+  </div>
+  <div class="fb-brief-body" id="briefBody">Loading…</div>
+</div>
+
+<div class="fb-stats">
+  <button class="fb-stat-tile" onclick="scrollToModule('pipelineModule')">
+    <div class="fb-stat-label">Pipeline</div>
+    <div class="fb-stat-num" id="statPipeline">—</div>
+  </button>
+  <button class="fb-stat-tile" onclick="scrollToModule('knowledgeModule')">
+    <div class="fb-stat-label">Knowledge</div>
+    <div class="fb-stat-num" id="statKnowledge">—</div>
+  </button>
+  <button class="fb-stat-tile" onclick="scrollToModule('oppModule')">
+    <div class="fb-stat-label">Opportunities</div>
+    <div class="fb-stat-num" id="statOpp">—</div>
+  </button>
+  <button class="fb-stat-tile" onclick="scrollToModule('tasksModule')">
+    <div class="fb-stat-label">Open tasks</div>
+    <div class="fb-stat-num" id="statTasks">—</div>
+  </button>
+</div>
+
+<div class="fb-panel" id="pipelineModule">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-users"/></svg> Pipeline <a href="crm.html" class="fb-sub">full CRM →</a></h2>
   <div id="fbPipeline"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
 </div>
 
-<div class="fb-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge feeding FieldBridge <span class="fb-sub" id="fbKnowCount"></span></h2>
-  <div class="fb-banner" style="margin:0 0 var(--space-3); border-left-color: var(--area-knowledge);">
-    <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-zap"/></svg>
-    This is the cross-vault bridge: clips and wiki notes tagged <code>relates_to: fieldbridge</code> in the
-    Second Brain vault, surfaced here because Obsidian wikilinks can't cross into the FieldBridge HQ vault directly.
+<div class="fb-digest">
+  <div class="fb-main">
+    <div class="fb-panel" id="knowledgeModule">
+      <div class="fb-know-head">
+        <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge feeding FieldBridge</h2>
+        <input class="fb-search" id="knowSearch" type="text" placeholder="Search notes…" oninput="renderKnowledge()">
+      </div>
+      <div class="fb-banner" style="margin:0 0 var(--space-3); border-left-color: var(--area-knowledge);">
+        <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-zap"/></svg>
+        Cross-vault bridge: clips and wiki notes tagged <code>relates_to: fieldbridge</code> in the
+        Second Brain vault, surfaced here because Obsidian wikilinks can't cross into the FieldBridge HQ vault directly.
+      </div>
+      <div class="fb-chip-row" id="knowChips" style="display:none;"></div>
+      <div id="knowledgeBody"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
   </div>
-  <div id="fbKnowledge"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
-</div>
 
-<div class="fb-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity Radar <span class="fb-sub" id="fbOppCount"></span></h2>
-  <div id="fbOpportunities"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
-</div>
-
-<div class="fb-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-play"/></svg> Plays</h2>
-  <div id="fbPlays"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
-</div>
-
-<div class="fb-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks <a href="kanban.html" class="fb-sub">board →</a></h2>
-  <div id="fbTasks"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+  <div class="fb-side">
+    <div class="fb-panel" id="oppModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity radar</h2>
+      <div id="oppBody"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+    <div class="fb-panel" id="playsModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-play"/></svg> Plays</h2>
+      <div id="fbPlays"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+    <div class="fb-panel" id="tasksModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks <a href="kanban.html" class="fb-sub">board →</a></h2>
+      <div id="fbTasks"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+  </div>
 </div>
 
 </div><!-- /container -->
@@ -151,9 +234,115 @@ a.fb-row:hover { border-color: var(--area-fieldbridge); }
 <script>
 function escH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
+function timeAgo(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.round(hrs / 24) + 'd ago';
+}
+
+// Minimal markdown -> HTML for expand-in-place note bodies (matches area.html's mdMini).
+function mdMini(raw) {
+  if (!raw) return '';
+  let t = escH(raw);
+  t = t.replace(/\[\[([^\]]+)\]\]/g, (m, inner) => `<span class="fb-wikilink">${inner.split('|').pop()}</span>`);
+  t = t.replace(/^######\s?(.*)$/gm, '<h4>$1</h4>')
+       .replace(/^#####\s?(.*)$/gm, '<h4>$1</h4>')
+       .replace(/^####\s?(.*)$/gm, '<h4>$1</h4>')
+       .replace(/^###\s?(.*)$/gm, '<h3>$1</h3>')
+       .replace(/^##\s?(.*)$/gm, '<h2>$1</h2>')
+       .replace(/^#\s?(.*)$/gm, '<h1>$1</h1>');
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const lines = t.split('\n');
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const m = line.match(/^\s*[-*]\s+(.*)$/);
+    if (m) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push('<li>' + m[1] + '</li>');
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      if (/^<h[1-4]>/.test(line)) out.push(line);
+      else if (line.trim()) out.push('<p>' + line + '</p>');
+    }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('') || '<p style="color:var(--text-muted)">(empty note)</p>';
+}
+
+function scrollToModule(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function stageOrder(stage){
   const m = String(stage || '').match(/^\s*(\d+)/);
   return m ? parseInt(m[1], 10) : 999;
+}
+
+async function loadBrief() {
+  const label = document.getElementById('briefLabel');
+  const body = document.getElementById('briefBody');
+  label.textContent = 'Area brief · loading…';
+  body.classList.remove('fb-brief-empty');
+  body.textContent = 'Loading…';
+  try {
+    const res = await fetch('/api/areas/brief?area=fieldbridge');
+    if (!res.ok) throw new Error('backend not deployed yet (HTTP ' + res.status + ')');
+    const json = await res.json();
+    if (json.available) {
+      label.textContent = 'Area brief · generated ' + timeAgo(json.generated);
+      body.classList.remove('fb-brief-empty');
+      body.textContent = json.brief;
+    } else {
+      label.textContent = 'Area brief';
+      body.classList.add('fb-brief-empty');
+      body.innerHTML = (json.error ? escH(json.error) + ' ' : 'No brief generated yet. ')
+        + 'Showing the raw panels below.';
+    }
+  } catch (e) {
+    label.textContent = 'Area brief';
+    body.classList.add('fb-brief-empty');
+    body.textContent = 'Brief unavailable — Hermes is offline. Showing the raw panels below.';
+  }
+}
+
+async function generateBrief() {
+  const btn = document.getElementById('briefRefreshBtn');
+  const label = document.getElementById('briefLabel');
+  const body = document.getElementById('briefBody');
+  btn.disabled = true;
+  label.textContent = 'Area brief · generating…';
+  try {
+    const res = await fetch('/api/areas/brief', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ area: 'fieldbridge' }),
+    });
+    const json = await res.json();
+    if (json.available) {
+      label.textContent = 'Area brief · generated just now';
+      body.classList.remove('fb-brief-empty');
+      body.textContent = json.brief;
+    } else {
+      label.textContent = 'Area brief';
+      body.classList.add('fb-brief-empty');
+      body.innerHTML = (json.error ? escH(json.error) + ' ' : 'Brief unavailable. ')
+        + 'Showing the raw panels below.';
+    }
+  } catch (e) {
+    label.textContent = 'Area brief';
+    body.classList.add('fb-brief-empty');
+    body.textContent = 'Brief unavailable — Hermes is offline. Showing the raw panels below.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function loadPipeline(){
@@ -166,6 +355,7 @@ async function loadPipeline(){
       const name = String(r.company || '').toLowerCase();
       return base !== 'index.md' && name !== 'index' && name !== 'readme';
     });
+    document.getElementById('statPipeline').textContent = rows.length;
     if (!rows.length) {
       body.innerHTML = '<div class="fb-empty">No clients synced yet — see the full CRM page.</div>';
       return;
@@ -178,60 +368,138 @@ async function loadPipeline(){
         <div class="fb-col-head"><span>${escH(st)}</span><span class="fb-col-count">${groups[st].length}</span></div>
         <div class="fb-col-body">
           ${groups[st].map(r => `
-            <a class="fb-mini-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
-              <div class="fb-mini-name">${escH(r.company)}</div>
-              <div class="fb-mini-meta">${escH(r.trade || '')}${r.trade && r.region ? ' · ' : ''}${escH(r.region || '')}</div>
+            <a class="hub-tcard fb-mini-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
+              <div class="hub-tcard-title">${escH(r.company)}</div>
+              <div class="hub-tcard-meta">${escH(r.trade || '')}${r.trade && r.region ? ' · ' : ''}${escH(r.region || '')}</div>
             </a>`).join('')}
         </div>
       </div>`).join('') + '</div>';
   } catch (e) {
     body.innerHTML = `<div class="fb-empty">Couldn't load the pipeline (${escH(e.message)}).</div>`;
+    document.getElementById('statPipeline').textContent = '0';
   }
 }
 
-let fbAreaData = null;
+let allNotes = [];
+let activeTypeChip = 'all';
+let knowExpanded = false;
+let expandedIdx = null;
+const wikiBodyCache = {};
+let lastOpportunities = [];
 
 async function loadAreaData(){
   const res = await fetch('/api/areas');
   if (!res.ok) throw new Error('backend not deployed yet (HTTP ' + res.status + ')');
   const json = await res.json();
-  fbAreaData = (json && json.areas) || {};
-  return fbAreaData.fieldbridge || { count: 0, notes: [], opportunities: [] };
+  return (json && json.areas && json.areas.fieldbridge) || { total: 0, notes: [], opportunities: [] };
 }
 
-function renderKnowledge(fb){
-  const body = document.getElementById('fbKnowledge');
-  const countEl = document.getElementById('fbKnowCount');
-  const notes = fb.notes || [];
-  countEl.textContent = fb.total ? `${fb.total} notes` : '';
-  if (!notes.length) {
-    body.innerHTML = '<div class="fb-empty">No knowledge classified to FieldBridge yet.</div>';
+function renderKnowChips() {
+  const row = document.getElementById('knowChips');
+  const types = [...new Set(allNotes.map(n => n.type).filter(Boolean))];
+  if (types.length < 2) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  row.style.display = '';
+  const chips = ['all', ...types];
+  row.innerHTML = chips.map(t => `<button class="fb-chip${t === activeTypeChip ? ' active' : ''}" onclick="setTypeChip('${escH(t).replace(/'/g, "\\'")}')">${escH(t === 'all' ? 'All' : t)}</button>`).join('');
+}
+
+function setTypeChip(t) {
+  activeTypeChip = t;
+  expandedIdx = null;
+  renderKnowChips();
+  renderKnowledge();
+}
+
+function renderKnowledge() {
+  const body = document.getElementById('knowledgeBody');
+  const q = (document.getElementById('knowSearch').value || '').trim().toLowerCase();
+  let filtered = allNotes;
+  if (activeTypeChip !== 'all') filtered = filtered.filter(n => n.type === activeTypeChip);
+  if (q) filtered = filtered.filter(n =>
+    (n.title || '').toLowerCase().includes(q) || (n.description || '').toLowerCase().includes(q));
+
+  if (!filtered.length) {
+    body.innerHTML = '<div class="fb-empty">No knowledge classified to FieldBridge yet' + (q || activeTypeChip !== 'all' ? ' matching this filter' : '') + '.</div>';
     return;
   }
-  body.innerHTML = '<div class="fb-list">' + notes.map(n => `
-    <a class="fb-row" href="files.html?path=${encodeURIComponent(n.path || '')}">
-      <span class="fb-row-title">${escH(n.title)}</span>
-      <span class="fb-row-date">${escH(n.date || '')}</span>
-    </a>`).join('') + '</div>';
+
+  const shown = knowExpanded ? filtered : filtered.slice(0, 8);
+  const rows = shown.map((n) => {
+    const idx = allNotes.indexOf(n);
+    const isOpen = expandedIdx === idx;
+    const desc = n.description ? `<div class="hub-tcard-desc">${escH(n.description)}</div>` : '';
+    const bodyHtml = isOpen ? `<div class="fb-know-body" id="knowBody${idx}">Loading…</div>` : '';
+    return `<div class="hub-tcard" data-idx="${idx}" onclick="toggleExpand(${idx})">
+      <div class="hub-tcard-title">${escH(n.title)}</div>
+      ${desc}
+      <div class="hub-tcard-meta">
+        <span>${escH(n.type || 'note')}</span>
+        ${n.date ? `<span>· ${escH(n.date)}</span>` : ''}
+        <span class="fb-expand-toggle">${isOpen ? 'collapse ▴' : 'expand ▾'}</span>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  }).join('');
+
+  const showAll = (!knowExpanded && filtered.length > 8)
+    ? `<button class="fb-show-all" onclick="event.stopPropagation(); expandKnowledgeList();">Show all ${filtered.length} →</button>` : '';
+
+  body.innerHTML = '<div class="fb-know-list">' + rows + '</div>' + showAll;
+
+  if (expandedIdx !== null) {
+    const target = allNotes[expandedIdx];
+    if (target) fetchAndRenderNoteBody(expandedIdx, target.path);
+  }
 }
 
-function renderOpportunities(fb){
-  const body = document.getElementById('fbOpportunities');
-  const countEl = document.getElementById('fbOppCount');
-  const opps = fb.opportunities || [];
-  countEl.textContent = opps.length ? `${opps.length} signals` : '';
+function expandKnowledgeList() {
+  knowExpanded = true;
+  renderKnowledge();
+}
+
+function toggleExpand(idx) {
+  expandedIdx = expandedIdx === idx ? null : idx;
+  renderKnowledge();
+}
+
+async function fetchAndRenderNoteBody(idx, path) {
+  const el = document.getElementById('knowBody' + idx);
+  if (!el) return;
+  if (wikiBodyCache[path] !== undefined) {
+    el.innerHTML = mdMini(wikiBodyCache[path]) + `<a class="fb-vault-link" href="files.html?path=${encodeURIComponent(path)}" onclick="event.stopPropagation()">Open in vault ↗</a>`;
+    return;
+  }
+  try {
+    const res = await fetch('/api/wiki/page?path=' + encodeURIComponent(path));
+    const json = await res.json();
+    const b = (json && json.data && json.data.body) || '';
+    wikiBodyCache[path] = b;
+    el.innerHTML = mdMini(b) + `<a class="fb-vault-link" href="files.html?path=${encodeURIComponent(path)}" onclick="event.stopPropagation()">Open in vault ↗</a>`;
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--text-muted)">Couldn't load this note (${escH(e.message)}).</span>`;
+  }
+}
+
+function renderOppSide(expanded){
+  const body = document.getElementById('oppBody');
+  const opps = lastOpportunities;
+  document.getElementById('statOpp').textContent = opps.length;
   if (!opps.length) {
     body.innerHTML = '<div class="fb-empty">No signals in the Opportunity Radar yet.</div>';
     return;
   }
-  body.innerHTML = '<div class="fb-list">' + opps.map(o => {
+  const shown = expanded ? opps : opps.slice(0, 3);
+  const rows = shown.map(o => {
     const conf = (o.confidence || 'signal').toLowerCase();
     const cls = ['high','medium','emerging'].includes(conf) ? `fb-opp-${conf}` : 'fb-opp-signal';
-    return `<div class="fb-row" style="align-items:flex-start;">
+    return `<div class="fb-side-item fb-opp-item">
       <span class="fb-opp-pill ${cls}">${escH(conf)}</span>
       <span class="fb-opp-text">${escH(o.text)}</span>
     </div>`;
-  }).join('') + '</div>';
+  }).join('');
+  const footer = (!expanded && opps.length > 3)
+    ? `<button class="fb-side-footer" onclick="renderOppSide(true)">All ${opps.length} →</button>` : '';
+  body.innerHTML = '<div class="fb-side-list">' + rows + '</div>' + footer;
 }
 
 async function loadPlays(){
@@ -245,13 +513,15 @@ async function loadPlays(){
       return;
     }
     plays.sort((a,b) => (b.run_count || 0) - (a.run_count || 0));
-    body.innerHTML = '<div class="fb-play-grid">' + plays.map(p => `
-      <div class="fb-play-card">
+    const shown = plays.slice(0, 3);
+    const items = shown.map(p => `
+      <div class="fb-side-item fb-play-item">
         <div class="fb-play-title">${escH(p.title)}</div>
-        <div class="fb-play-desc">${escH((p.prompt || '').split('\n')[0])}</div>
         ${p.run_count ? `<div class="fb-play-usage">used ${p.run_count}×</div>` : ''}
         <button class="fb-play-run" onclick='runInHermes(${JSON.stringify(p.key)}, ${JSON.stringify(p.prompt)})'>▶ Run in Hermes</button>
-      </div>`).join('') + '</div>';
+      </div>`).join('');
+    const footer = plays.length > 3 ? `<a class="fb-side-footer" href="use-cases.html">All ${plays.length} →</a>` : '';
+    body.innerHTML = '<div class="fb-side-list">' + items + '</div>' + footer;
   } catch (e) {
     body.innerHTML = `<div class="fb-empty">Couldn't load plays (${escH(e.message)}).</div>`;
   }
@@ -270,35 +540,47 @@ async function loadTasks(){
   try {
     const res = await fetch('/api/tasks');
     const json = await res.json();
-    const rows = ((json && json.data) || json.tasks || []).filter(t => String(t.tag || '').toLowerCase() === 'fieldbridge');
+    const rows = ((json && json.data) || json.tasks || []).filter(t => String(t.tag || '').toLowerCase() === 'fieldbridge' && t.column !== 'done');
+    document.getElementById('statTasks').textContent = rows.length;
     if (!rows.length) {
       body.innerHTML = '<div class="fb-empty">No open tasks tagged fieldbridge — see the Kanban board.</div>';
       return;
     }
-    body.innerHTML = '<div class="fb-task-grid">' + rows.map(t => `
-      <div class="fb-task-card">
-        <div class="fb-task-title">${escH(t.title || t.text || '')}</div>
-        <div class="fb-task-col">${escH(t.column || t.status || '')}</div>
-      </div>`).join('') + '</div>';
+    const shown = rows.slice(0, 3);
+    const items = shown.map(t => `<div class="fb-side-item fb-task-item">${escH(t.title || t.text || '')}</div>`).join('');
+    const footer = rows.length > 3 ? `<a class="fb-side-footer" href="kanban.html">All ${rows.length} →</a>` : '';
+    body.innerHTML = '<div class="fb-side-list">' + items + '</div>' + footer;
   } catch (e) {
     body.innerHTML = `<div class="fb-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
+    document.getElementById('statTasks').textContent = '0';
   }
 }
 
 async function loadAll(){
+  loadBrief();
   loadPipeline();
   loadPlays();
   loadTasks();
-  document.getElementById('fbKnowledge').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
-  document.getElementById('fbOpportunities').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
+  document.getElementById('knowledgeBody').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
+  document.getElementById('oppBody').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
   try {
     const fb = await loadAreaData();
-    renderKnowledge(fb);
-    renderOpportunities(fb);
+    allNotes = fb.notes || [];
+    activeTypeChip = 'all';
+    knowExpanded = false;
+    expandedIdx = null;
+    document.getElementById('statKnowledge').textContent = fb.total || 0;
+    renderKnowChips();
+    renderKnowledge();
+
+    lastOpportunities = fb.opportunities || [];
+    renderOppSide(false);
   } catch (e) {
     const msg = `<div class="fb-empty">${escH(e.message)}</div>`;
-    document.getElementById('fbKnowledge').innerHTML = msg;
-    document.getElementById('fbOpportunities').innerHTML = msg;
+    document.getElementById('knowledgeBody').innerHTML = msg;
+    document.getElementById('oppBody').innerHTML = msg;
+    document.getElementById('statKnowledge').textContent = '0';
+    document.getElementById('statOpp').textContent = '0';
   }
 }
 

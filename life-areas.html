@@ -13,7 +13,7 @@
 .area-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
 .area-card {
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl); padding: var(--space-5);
+  border-radius: 10px; padding: var(--space-5);
   transition: all var(--transition-base); text-decoration: none; color: inherit; display: block;
   border-left: 3px solid var(--area-card-color, var(--border-primary));
 }
@@ -22,7 +22,14 @@
 .area-card .area-emoji { font-size: 28px; line-height: 1; }
 .area-card h3 { font-size: 18px; font-weight: 700; margin: var(--space-3) 0 var(--space-1); }
 .area-card p { font-size: 13px; line-height: 1.5; color: var(--text-secondary); margin: 0 0 var(--space-3); }
-.area-stats { display: flex; gap: var(--space-4); font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border-primary); padding-top: var(--space-2); }
+/* Card anatomy touch-up (Area Page Hub Redesign, item 6, 2026-07-13): counts as small pill
+   badges — same chip language as hub-tag/hub-tcard elsewhere — instead of plain inline text.
+   Spine (border-left) and grid layout were already correct from session #10; untouched. */
+.area-stats { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--border-primary); padding-top: var(--space-2); }
+.area-stat-pill {
+  font-size: 10px; font-weight: 600; color: var(--text-secondary);
+  background: var(--bg-tertiary); border-radius: var(--radius-full); padding: 2px 8px;
+}
 .area-stat-num { font-weight: 800; color: var(--text-primary); }
 .area-recent { margin-top: var(--space-2); font-size: 11px; color: var(--text-tertiary); line-height: 1.6; }
 .area-recent div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -179,9 +186,9 @@ async function loadAreaCounts(){
     const taskCount = taskTag ? (tasksByTag[taskTag] || 0) : null;
 
     statsEl.innerHTML = `
-      <span><span class="area-stat-num">${data.total || 0}</span> notes</span>
-      <span><span class="area-stat-num">${(data.opportunities || []).length}</span> signals</span>
-      ${taskCount !== null ? `<span><span class="area-stat-num">${taskCount}</span> open tasks</span>` : ''}
+      <span class="area-stat-pill"><span class="area-stat-num">${data.total || 0}</span> notes</span>
+      <span class="area-stat-pill"><span class="area-stat-num">${(data.opportunities || []).length}</span> signals</span>
+      ${taskCount !== null ? `<span class="area-stat-pill"><span class="area-stat-num">${taskCount}</span> open tasks</span>` : ''}
     `;
 
     const recent = (data.notes || []).slice(0, 3);

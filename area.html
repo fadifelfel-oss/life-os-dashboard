@@ -8,57 +8,127 @@
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
-.ar-banner {
+/* AREA PAGE HUB — see design/AREA-PAGE-SPEC.md for the recipe this implements
+   (Fable + Fadi, 2026-07-13, "PROMPT — Builder Session 3 — Area Page Hub Redesign"). */
+.ah-banner {
   font-size: 13px; color: var(--text-secondary);
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
   border-left: 3px solid var(--accent); border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
   display: flex; align-items: center; gap: 8px;
 }
-.ar-panel {
+
+/* --- Area Brief --- */
+.ah-brief {
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
 }
-.ar-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
-.ar-panel h2 .ar-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; }
-.ar-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
-.ar-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--space-2) 0; }
-.ar-body th, .ar-body td { border: 1px solid var(--border-primary); padding: 6px 8px; text-align: left; }
-.ar-body th { color: var(--text-tertiary); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
-.ar-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
-.ar-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
-.ar-proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
-.ar-proj-card { background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-3); text-decoration: none; display: block; transition: border-color .15s; }
-.ar-proj-card:hover { border-color: var(--accent); }
-.ar-proj-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.ar-proj-status { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.ah-brief-head {
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em;
+}
+.ah-brief-head .ah-note-link {
+  margin-left: auto; text-transform: none; letter-spacing: 0; color: var(--text-secondary);
+  text-decoration: none; font-size: 12px;
+}
+.ah-brief-head .ah-note-link:hover { color: var(--accent); }
+.ah-brief-refresh {
+  background: transparent; border: 1px solid var(--border-primary); border-radius: var(--radius-md);
+  color: var(--text-secondary); cursor: pointer; padding: 3px 6px; display: inline-flex; align-items: center;
+}
+.ah-brief-refresh:hover { border-color: var(--accent); color: var(--accent); }
+.ah-brief-refresh:disabled { opacity: .5; cursor: default; }
+.ah-brief-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.ah-brief-body.ah-brief-empty { color: var(--text-muted); }
+.ah-brief-gen { align-self: flex-start; margin-top: var(--space-2); }
+.ah-gen-btn {
+  font-size: 11px; font-weight: 700; color: var(--on-accent); background: var(--ar-accent, var(--accent));
+  border: none; border-radius: var(--radius-md); padding: 5px 10px; cursor: pointer;
+}
+.ah-gen-btn:disabled { opacity: .6; cursor: default; }
 
-.ar-list { display: flex; flex-direction: column; gap: 6px; }
-.ar-row {
-  display: flex; align-items: baseline; gap: 8px; padding: 8px 10px;
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); text-decoration: none; color: inherit;
+/* --- Stat tile row --- */
+.ah-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+@media (max-width: 640px) { .ah-stats { grid-template-columns: repeat(2, 1fr); } }
+.ah-stat-tile {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg);
+  padding: var(--space-3); cursor: pointer; transition: border-color .15s, transform .15s; text-align: left;
 }
-a.ar-row:hover { border-color: var(--ar-accent, var(--accent)); }
-.ar-row-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
-.ar-row-date { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.ar-opp-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
-.ar-opp-pill {
-  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
-  padding: 2px 7px; border-radius: var(--radius-full); white-space: nowrap;
-  background: var(--ar-accent-bg, var(--accent-bg)); color: var(--ar-accent, var(--accent));
+.ah-stat-tile:hover { border-color: var(--ar-accent, var(--accent)); transform: translateY(-1px); }
+.ah-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.ah-stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+
+/* --- Two-column digest --- */
+.ah-digest { display: grid; grid-template-columns: minmax(0,62%) minmax(0,1fr); gap: var(--space-4); align-items: start; }
+@media (max-width: 640px) { .ah-digest { grid-template-columns: 1fr; } }
+.ah-panel {
+  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
 }
-.ar-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-2); }
-.ar-task-card {
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); padding: 8px 10px; position: relative; padding-left: 12px;
+.ah-panel h2 {
+  font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2);
+  color: var(--text-primary);
 }
-.ar-task-card::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--ar-accent, var(--accent));
+.ah-side .ah-panel h2 { font-size: 12px; font-weight: 500; margin-bottom: var(--space-2); }
+.ah-empty { color: var(--text-muted); font-size: 13px; padding: var(--space-4); text-align: center; line-height: 1.7; }
+.ah-loading { color: var(--text-muted); font-size: 13px; padding: var(--space-3); display: flex; align-items: center; gap: 8px; }
+
+/* Knowledge module: search + chips */
+.ah-know-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap; }
+.ah-know-head h2 { margin: 0; }
+.ah-search {
+  margin-left: auto; font-size: 12px; padding: 5px 10px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-primary);
+  min-width: 160px;
 }
-.ar-task-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.ar-task-col { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+.ah-search:focus { outline: none; border-color: var(--ar-accent, var(--accent)); }
+.ah-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
+.ah-chip {
+  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-secondary);
+  cursor: pointer; transition: all .15s;
+}
+.ah-chip:hover { border-color: var(--ar-accent, var(--accent)); }
+.ah-chip.active { background: var(--ar-accent, var(--accent)); border-color: var(--ar-accent, var(--accent)); color: var(--on-accent); }
+
+/* Knowledge cards (hub-tcard anatomy) */
+.ah-know-list { display: flex; flex-direction: column; gap: 8px; }
+.hub-tcard { position: relative; overflow: hidden; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 11px 12px 11px 16px; transition: all .2s; cursor: pointer; }
+.hub-tcard:hover { border-color: var(--ar-accent, var(--accent)); }
+.hub-tcard::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--ar-accent, var(--area-admin)); }
+.hub-tcard-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-bottom: 4px; }
+.hub-tcard-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
+.hub-tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+.hub-tcard-meta .ah-expand-toggle { margin-left: auto; color: var(--ar-accent, var(--accent)); text-transform: none; letter-spacing: 0; font-size: 11px; }
+.ah-know-body {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-primary);
+  font-size: 12.5px; color: var(--text-secondary); line-height: 1.7; cursor: default;
+}
+.ah-know-body h1, .ah-know-body h2, .ah-know-body h3, .ah-know-body h4 { color: var(--text-primary); font-size: 13px; margin: 8px 0 4px; }
+.ah-know-body ul { margin: 4px 0 4px 18px; }
+.ah-know-body p { margin: 0 0 6px; }
+.ah-know-body a { color: var(--accent-2); }
+.ah-wikilink { color: var(--text-tertiary); font-style: italic; }
+.ah-vault-link { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent-2); text-decoration: none; }
+.ah-vault-link:hover { text-decoration: underline; }
+.ah-show-all {
+  margin-top: var(--space-2); font-size: 12px; font-weight: 700; color: var(--ar-accent, var(--accent));
+  background: transparent; border: none; cursor: pointer; padding: 4px 0;
+}
+
+/* Side modules */
+.ah-side-list { display: flex; flex-direction: column; gap: 6px; }
+.ah-side-item { font-size: 12px; padding: 7px 9px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); }
+.ah-opp-item { display: flex; align-items: flex-start; gap: 6px; }
+.ah-opp-pill { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: var(--radius-full); white-space: nowrap; background: var(--ar-accent-bg, var(--accent-bg)); color: var(--ar-accent, var(--accent)); }
+.ah-opp-text { color: var(--text-secondary); line-height: 1.4; }
+.ah-task-item { font-weight: 600; color: var(--text-primary); position: relative; padding-left: 12px; }
+.ah-task-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--ar-accent, var(--accent)); }
+.ah-proj-item { display: block; text-decoration: none; color: inherit; }
+.ah-proj-name { font-weight: 700; color: var(--text-primary); }
+.ah-proj-status { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.ah-side-footer { margin-top: var(--space-2); font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0; text-decoration: none; display: inline-block; }
+.ah-side-footer:hover { color: var(--ar-accent, var(--accent)); }
 </style>
 </head>
 <body>
@@ -71,35 +141,68 @@ a.ar-row:hover { border-color: var(--ar-accent, var(--accent)); }
   </div>
 </div>
 
-<div class="ar-banner">
+<div class="ah-banner">
   <svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-lock"/></svg>
-  Read-only reference — renders the area's real hub note straight from the vault, plus classified
-  knowledge, Opportunity Radar signals, and open tasks where a kanban tag exists for this area.
+  Read-only. Brief is Hermes-generated from this area's real vault knowledge, opportunities, and
+  tasks — regenerate on demand. Nothing on this page writes back.
 </div>
 
-<div class="ar-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Area note</h2>
-  <div class="ar-body" id="areaBody">Loading from vault…</div>
+<div class="ah-brief">
+  <div class="ah-brief-head">
+    <span id="briefLabel">Area brief</span>
+    <button class="ah-brief-refresh" id="briefRefreshBtn" onclick="generateBrief()" title="Regenerate brief">
+      <svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-refresh-cw"/></svg>
+    </button>
+    <a class="ah-note-link" id="areaNoteLink" href="#" style="display:none;">Area note ↗</a>
+  </div>
+  <div class="ah-brief-body" id="briefBody">Loading…</div>
 </div>
 
-<div class="ar-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge <span class="ar-sub" id="areaKnowCount"></span></h2>
-  <div id="areaKnowledge"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+<div class="ah-stats">
+  <button class="ah-stat-tile" onclick="scrollToModule('knowledgeModule')">
+    <div class="ah-stat-label">Knowledge</div>
+    <div class="ah-stat-num" id="statKnowledge">—</div>
+  </button>
+  <button class="ah-stat-tile" onclick="scrollToModule('oppModule')">
+    <div class="ah-stat-label">Opportunities</div>
+    <div class="ah-stat-num" id="statOpp">—</div>
+  </button>
+  <button class="ah-stat-tile" onclick="scrollToModule('tasksModule')">
+    <div class="ah-stat-label">Open tasks</div>
+    <div class="ah-stat-num" id="statTasks">—</div>
+  </button>
+  <button class="ah-stat-tile" onclick="scrollToModule('projModule')">
+    <div class="ah-stat-label">Projects</div>
+    <div class="ah-stat-num" id="statProj">—</div>
+  </button>
 </div>
 
-<div class="ar-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity Radar <span class="ar-sub" id="areaOppCount"></span></h2>
-  <div id="areaOpportunities"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
-</div>
+<div class="ah-digest">
+  <div class="ah-main">
+    <div class="ah-panel" id="knowledgeModule">
+      <div class="ah-know-head">
+        <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge</h2>
+        <input class="ah-search" id="knowSearch" type="text" placeholder="Search notes…" oninput="renderKnowledge()">
+      </div>
+      <div class="ah-chip-row" id="knowChips" style="display:none;"></div>
+      <div id="knowledgeBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+  </div>
 
-<div class="ar-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks</h2>
-  <div id="areaTasks"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
-</div>
-
-<div class="ar-panel">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Related projects</h2>
-  <div id="areaProjects"><div class="ar-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+  <div class="ah-side">
+    <div class="ah-panel" id="oppModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity radar</h2>
+      <div id="oppBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+    <div class="ah-panel" id="tasksModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks</h2>
+      <div id="tasksBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+    <div class="ah-panel" id="projModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Projects</h2>
+      <div id="projBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    </div>
+  </div>
 </div>
 
 </div><!-- /container -->
@@ -107,10 +210,53 @@ a.ar-row:hover { border-color: var(--ar-accent, var(--accent)); }
 <script>
 function escH(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
+function timeAgo(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.round(hrs / 24) + 'd ago';
+}
+
+// Minimal markdown -> HTML for expand-in-place note bodies. Headings, bold, lists,
+// links; [[wikilinks]] render as plain styled text (not clickable — Obsidian-only syntax).
+function mdMini(raw) {
+  if (!raw) return '';
+  let t = escH(raw);
+  t = t.replace(/\[\[([^\]]+)\]\]/g, (m, inner) => `<span class="ah-wikilink">${inner.split('|').pop()}</span>`);
+  t = t.replace(/^######\s?(.*)$/gm, '<h4>$1</h4>')
+       .replace(/^#####\s?(.*)$/gm, '<h4>$1</h4>')
+       .replace(/^####\s?(.*)$/gm, '<h4>$1</h4>')
+       .replace(/^###\s?(.*)$/gm, '<h3>$1</h3>')
+       .replace(/^##\s?(.*)$/gm, '<h2>$1</h2>')
+       .replace(/^#\s?(.*)$/gm, '<h1>$1</h1>');
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const lines = t.split('\n');
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const m = line.match(/^\s*[-*]\s+(.*)$/);
+    if (m) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push('<li>' + m[1] + '</li>');
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      if (/^<h[1-4]>/.test(line)) out.push(line);
+      else if (line.trim()) out.push('<p>' + line + '</p>');
+    }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('') || '<p style="color:var(--text-muted)">(empty note)</p>';
+}
+
 // area key -> { title, path (vault hub note), tag (matches /api/projects "area" field, best-effort) }
 // Keys match the nine canonical relates_to slugs (BRIEF — UI Dashboards + Knowledge Backlinking,
-// 2026-07-13). "work" was renamed to "construction" here to match /api/areas — life-areas.html and
-// the sidebar were updated in the same pass so no page still links to ?area=work.
+// 2026-07-13). "work" was renamed to "construction" here to match /api/areas.
 const AREAS = {
   career:       { title: 'Career & Growth',   path: '020 Areas/02 Career & Growth.md',        tag: 'career' },
   construction: { title: 'Construction / Work — Active Projects', path: '020 Areas/01 Work — Active Projects.md', tag: 'construction' },
@@ -125,26 +271,29 @@ const AREAS = {
 // "no task tag mapped" message instead of a fake zero.
 const AREA_TASK_TAG = { career: 'career' }; // fieldbridge/trading have their own dedicated pages
 
+let currentKey = null;
+let allNotes = [];         // full notes list for the current area, from /api/areas
+let activeTypeChip = 'all';
+let knowExpanded = false;  // "Show all N" toggled?
+let expandedIdx = null;    // which card index has its body expanded in place
+const wikiBodyCache = {};  // path -> body markdown, session cache
+
 function currentArea() {
   const key = new URLSearchParams(window.location.search).get('area');
   return AREAS[key] ? key : null;
 }
 
+function scrollToModule(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function loadArea() {
   const key = currentArea();
-  const body = document.getElementById('areaBody');
-  const projBody = document.getElementById('areaProjects');
-  const knowBody = document.getElementById('areaKnowledge');
-  const oppBody = document.getElementById('areaOpportunities');
-  const taskBody = document.getElementById('areaTasks');
-
+  currentKey = key;
   if (!key) {
     document.getElementById('areaTitle').textContent = 'Unknown area';
-    body.innerHTML = '<div class="ar-empty">No (or unrecognized) ?area= parameter. Go back to Life Areas and pick one.</div>';
-    projBody.innerHTML = '';
-    knowBody.innerHTML = '';
-    oppBody.innerHTML = '';
-    taskBody.innerHTML = '';
+    document.getElementById('briefBody').innerHTML = 'No (or unrecognized) ?area= parameter. Go back to Life Areas and pick one.';
     return;
   }
   const area = AREAS[key];
@@ -153,83 +302,270 @@ async function loadArea() {
   document.documentElement.style.setProperty('--ar-accent', `var(--area-${key})`);
   document.documentElement.style.setProperty('--ar-accent-bg', `var(--area-${key}-bg)`);
 
-  try {
-    const res = await fetch('/api/file?path=' + encodeURIComponent(area.path));
-    const json = await res.json();
-    if (json && json.html) body.innerHTML = json.html;
-    else if (json && json.content) body.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;">' + escH(json.content) + '</pre>';
-    else body.innerHTML = '<div class="ar-empty">Hub note not found in the vault mirror yet.</div>';
-  } catch (e) {
-    body.innerHTML = `<div class="ar-empty">Couldn't load the area note (${escH(e.message)}).</div>`;
-  }
+  const noteLink = document.getElementById('areaNoteLink');
+  noteLink.href = 'files.html?path=' + encodeURIComponent(area.path);
+  noteLink.style.display = '';
 
+  loadBrief(key);
+  loadKnowledgeAndOpportunities(key);
+  loadTasksSide(key);
+  loadProjectsSide(key, area);
+}
+
+async function loadBrief(key) {
+  const label = document.getElementById('briefLabel');
+  const body = document.getElementById('briefBody');
+  label.textContent = 'Area brief · loading…';
+  body.classList.remove('ah-brief-empty');
+  body.textContent = 'Loading…';
+  try {
+    const res = await fetch('/api/areas/brief?area=' + encodeURIComponent(key));
+    if (!res.ok) throw new Error('backend not deployed yet (HTTP ' + res.status + ')');
+    const json = await res.json();
+    if (json.available) {
+      label.textContent = 'Area brief · generated ' + timeAgo(json.generated);
+      body.classList.remove('ah-brief-empty');
+      body.textContent = json.brief;
+    } else {
+      label.textContent = 'Area brief';
+      body.classList.add('ah-brief-empty');
+      body.innerHTML = (json.error ? escH(json.error) + ' ' : 'No brief generated yet. ')
+        + 'Showing the raw panels below.';
+    }
+  } catch (e) {
+    label.textContent = 'Area brief';
+    body.classList.add('ah-brief-empty');
+    body.textContent = 'Brief unavailable — Hermes is offline. Showing the raw panels below.';
+  }
+}
+
+async function generateBrief() {
+  const btn = document.getElementById('briefRefreshBtn');
+  const label = document.getElementById('briefLabel');
+  const body = document.getElementById('briefBody');
+  btn.disabled = true;
+  label.textContent = 'Area brief · generating…';
+  try {
+    const res = await fetch('/api/areas/brief', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ area: currentKey }),
+    });
+    const json = await res.json();
+    if (json.available) {
+      label.textContent = 'Area brief · generated just now';
+      body.classList.remove('ah-brief-empty');
+      body.textContent = json.brief;
+    } else {
+      label.textContent = 'Area brief';
+      body.classList.add('ah-brief-empty');
+      body.innerHTML = (json.error ? escH(json.error) + ' ' : 'Brief unavailable. ')
+        + 'Showing the raw panels below.';
+    }
+  } catch (e) {
+    label.textContent = 'Area brief';
+    body.classList.add('ah-brief-empty');
+    body.textContent = 'Brief unavailable — Hermes is offline. Showing the raw panels below.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+let lastOpportunities = [];
+
+async function loadKnowledgeAndOpportunities(key) {
+  const knowBody = document.getElementById('knowledgeBody');
+  const oppBody = document.getElementById('oppBody');
   try {
     const ares = await fetch('/api/areas');
     if (!ares.ok) throw new Error('backend not deployed yet (HTTP ' + ares.status + ')');
     const ajson = await ares.json();
     const data = ((ajson && ajson.areas) || {})[key] || { total: 0, notes: [], opportunities: [] };
 
-    document.getElementById('areaKnowCount').textContent = data.total ? `${data.total} notes` : '';
-    knowBody.innerHTML = (data.notes || []).length
-      ? '<div class="ar-list">' + data.notes.map(n => `
-          <a class="ar-row" href="files.html?path=${encodeURIComponent(n.path || '')}">
-            <span class="ar-row-title">${escH(n.title)}</span>
-            <span class="ar-row-date">${escH(n.date || '')}</span>
-          </a>`).join('') + '</div>'
-      : '<div class="ar-empty">No knowledge classified to this area yet.</div>';
+    allNotes = data.notes || [];
+    activeTypeChip = 'all';
+    knowExpanded = false;
+    expandedIdx = null;
+    document.getElementById('statKnowledge').textContent = data.total || 0;
+    renderKnowChips();
+    renderKnowledge();
 
-    const opps = data.opportunities || [];
-    document.getElementById('areaOppCount').textContent = opps.length ? `${opps.length} signals` : '';
-    oppBody.innerHTML = opps.length
-      ? '<div class="ar-list">' + opps.map(o => `
-          <div class="ar-row" style="align-items:flex-start;">
-            <span class="ar-opp-pill">${escH((o.confidence || 'signal'))}</span>
-            <span class="ar-opp-text">${escH(o.text)}</span>
-          </div>`).join('') + '</div>'
-      : '<div class="ar-empty">No signals in the Opportunity Radar for this area yet.</div>';
+    lastOpportunities = data.opportunities || [];
+    document.getElementById('statOpp').textContent = lastOpportunities.length;
+    renderOppSide(false);
   } catch (e) {
-    const msg = `<div class="ar-empty">${escH(e.message)}</div>`;
+    const msg = `<div class="ah-empty">${escH(e.message)}</div>`;
     knowBody.innerHTML = msg;
     oppBody.innerHTML = msg;
+    document.getElementById('statKnowledge').textContent = '0';
+    document.getElementById('statOpp').textContent = '0';
+  }
+}
+
+function renderKnowChips() {
+  const row = document.getElementById('knowChips');
+  const types = [...new Set(allNotes.map(n => n.type).filter(Boolean))];
+  if (types.length < 2) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  row.style.display = '';
+  const chips = ['all', ...types];
+  row.innerHTML = chips.map(t => `<button class="ah-chip${t === activeTypeChip ? ' active' : ''}" onclick="setTypeChip('${escH(t).replace(/'/g, "\\'")}')">${escH(t === 'all' ? 'All' : t)}</button>`).join('');
+}
+
+function setTypeChip(t) {
+  activeTypeChip = t;
+  expandedIdx = null;
+  renderKnowChips();
+  renderKnowledge();
+}
+
+function renderKnowledge() {
+  const body = document.getElementById('knowledgeBody');
+  const q = (document.getElementById('knowSearch').value || '').trim().toLowerCase();
+  let filtered = allNotes;
+  if (activeTypeChip !== 'all') filtered = filtered.filter(n => n.type === activeTypeChip);
+  if (q) filtered = filtered.filter(n =>
+    (n.title || '').toLowerCase().includes(q) || (n.description || '').toLowerCase().includes(q));
+
+  if (!filtered.length) {
+    body.innerHTML = '<div class="ah-empty">No knowledge classified to this area yet' + (q || activeTypeChip !== 'all' ? ' matching this filter' : '') + '.</div>';
+    return;
   }
 
+  const shown = knowExpanded ? filtered : filtered.slice(0, 8);
+  const rows = shown.map((n, i) => {
+    const idx = allNotes.indexOf(n);
+    const isOpen = expandedIdx === idx;
+    const desc = n.description ? `<div class="hub-tcard-desc">${escH(n.description)}</div>` : '';
+    const bodyHtml = isOpen ? `<div class="ah-know-body" id="knowBody${idx}">Loading…</div>` : '';
+    return `<div class="hub-tcard" data-idx="${idx}" onclick="toggleExpand(${idx})">
+      <div class="hub-tcard-title">${escH(n.title)}</div>
+      ${desc}
+      <div class="hub-tcard-meta">
+        <span>${escH(n.type || 'note')}</span>
+        ${n.date ? `<span>· ${escH(n.date)}</span>` : ''}
+        <span class="ah-expand-toggle">${isOpen ? 'collapse ▴' : 'expand ▾'}</span>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  }).join('');
+
+  const showAll = (!knowExpanded && filtered.length > 8)
+    ? `<button class="ah-show-all" onclick="event.stopPropagation(); expandKnowledgeList();">Show all ${filtered.length} →</button>` : '';
+
+  body.innerHTML = '<div class="ah-know-list">' + rows + '</div>' + showAll;
+
+  if (expandedIdx !== null) {
+    const target = allNotes[expandedIdx];
+    if (target) fetchAndRenderNoteBody(expandedIdx, target.path);
+  }
+}
+
+function expandKnowledgeList() {
+  knowExpanded = true;
+  renderKnowledge();
+}
+
+function toggleExpand(idx) {
+  expandedIdx = expandedIdx === idx ? null : idx;
+  renderKnowledge();
+}
+
+async function fetchAndRenderNoteBody(idx, path) {
+  const el = document.getElementById('knowBody' + idx);
+  if (!el) return;
+  if (wikiBodyCache[path] !== undefined) {
+    el.innerHTML = mdMini(wikiBodyCache[path]) + `<a class="ah-vault-link" href="files.html?path=${encodeURIComponent(path)}" onclick="event.stopPropagation()">Open in vault ↗</a>`;
+    return;
+  }
+  try {
+    const res = await fetch('/api/wiki/page?path=' + encodeURIComponent(path));
+    const json = await res.json();
+    const b = (json && json.data && json.data.body) || '';
+    wikiBodyCache[path] = b;
+    el.innerHTML = mdMini(b) + `<a class="ah-vault-link" href="files.html?path=${encodeURIComponent(path)}" onclick="event.stopPropagation()">Open in vault ↗</a>`;
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--text-muted)">Couldn't load this note (${escH(e.message)}).</span>`;
+  }
+}
+
+let oppExpanded = false;
+function renderOppSide(expanded) {
+  oppExpanded = expanded;
+  const body = document.getElementById('oppBody');
+  const opps = lastOpportunities;
+  if (!opps.length) {
+    body.innerHTML = '<div class="ah-empty">No signals in the Opportunity Radar for this area yet.</div>';
+    return;
+  }
+  const shown = expanded ? opps : opps.slice(0, 3);
+  const rows = shown.map(o => `
+    <div class="ah-side-item ah-opp-item">
+      <span class="ah-opp-pill">${escH(o.confidence || 'signal')}</span>
+      <span class="ah-opp-text">${escH(o.text)}</span>
+    </div>`).join('');
+  const footer = (!expanded && opps.length > 3)
+    ? `<button class="ah-side-footer" onclick="renderOppSide(true)">All ${opps.length} →</button>` : '';
+  body.innerHTML = '<div class="ah-side-list">' + rows + '</div>' + footer;
+}
+
+async function loadTasksSide(key) {
+  const body = document.getElementById('tasksBody');
   const taskTag = AREA_TASK_TAG[key];
   if (!taskTag) {
-    taskBody.innerHTML = '<div class="ar-empty">No kanban tag maps to this area yet — see the Kanban board directly.</div>';
-  } else {
-    try {
-      const tres = await fetch('/api/tasks');
-      const tjson = await tres.json();
-      const rows = ((tjson && (tjson.data || tjson.tasks)) || []).filter(t =>
-        String(t.tag || '').toLowerCase() === taskTag && t.column !== 'done' && !t.completed);
-      taskBody.innerHTML = rows.length
-        ? '<div class="ar-task-grid">' + rows.map(t => `
-            <div class="ar-task-card">
-              <div class="ar-task-title">${escH(t.title || '')}</div>
-              <div class="ar-task-col">${escH(t.column || '')}</div>
-            </div>`).join('') + '</div>'
-        : '<div class="ar-empty">No open tasks tagged ' + escH(taskTag) + '.</div>';
-    } catch (e) {
-      taskBody.innerHTML = `<div class="ar-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
-    }
+    body.innerHTML = '<div class="ah-empty">No kanban tag maps to this area yet — see the Kanban board directly.</div>';
+    document.getElementById('statTasks').textContent = '0';
+    return;
   }
+  try {
+    const tres = await fetch('/api/tasks');
+    const tjson = await tres.json();
+    const rows = ((tjson && (tjson.data || tjson.tasks)) || []).filter(t =>
+      String(t.tag || '').toLowerCase() === taskTag && t.column !== 'done' && !t.completed);
+    document.getElementById('statTasks').textContent = rows.length;
+    if (!rows.length) {
+      body.innerHTML = '<div class="ah-empty">No open tasks tagged ' + escH(taskTag) + '.</div>';
+      return;
+    }
+    const shown = rows.slice(0, 3);
+    const items = shown.map(t => `<div class="ah-side-item ah-task-item">${escH(t.title || '')}</div>`).join('');
+    const footer = rows.length > 3 ? `<a class="ah-side-footer" href="kanban.html">All ${rows.length} →</a>` : '';
+    body.innerHTML = '<div class="ah-side-list">' + items + '</div>' + footer;
+  } catch (e) {
+    body.innerHTML = `<div class="ah-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
+    document.getElementById('statTasks').textContent = '0';
+  }
+}
 
+let lastProjects = [];
+function renderProjSide(expanded) {
+  const body = document.getElementById('projBody');
+  const rows = lastProjects;
+  if (!rows.length) {
+    body.innerHTML = '<div class="ah-empty">No projects tagged to this area yet.</div>';
+    return;
+  }
+  const shown = expanded ? rows : rows.slice(0, 3);
+  const items = shown.map(r => `
+    <a class="ah-side-item ah-proj-item" href="files.html?path=${encodeURIComponent(r.path || '')}">
+      <div class="ah-proj-name">${escH(r.name)}</div>
+      <div class="ah-proj-status">${escH(r.status || 'no status')}</div>
+    </a>`).join('');
+  const footer = (!expanded && rows.length > 3)
+    ? `<button class="ah-side-footer" onclick="renderProjSide(true)">All ${rows.length} →</button>` : '';
+  body.innerHTML = '<div class="ah-side-list">' + items + '</div>' + footer;
+}
+
+async function loadProjectsSide(key, area) {
+  const body = document.getElementById('projBody');
   try {
     const res2 = await fetch('/api/projects');
     const json2 = await res2.json();
     const rows = (json2 && json2.data) || [];
-    const related = rows.filter(r => String(r.area || '').toLowerCase().includes(area.tag));
-    if (!related.length) {
-      projBody.innerHTML = '<div class="ar-empty">No projects tagged to this area yet.</div>';
-      return;
-    }
-    projBody.innerHTML = '<div class="ar-proj-grid">' + related.map(r => `
-      <a class="ar-proj-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
-        <div class="ar-proj-name">${escH(r.name)}</div>
-        <div class="ar-proj-status">${escH(r.status || 'no status')}</div>
-      </a>`).join('') + '</div>';
+    lastProjects = rows.filter(r => String(r.area || '').toLowerCase().includes(area.tag));
+    document.getElementById('statProj').textContent = lastProjects.length;
+    renderProjSide(false);
   } catch (e) {
-    projBody.innerHTML = `<div class="ar-empty">Couldn't load related projects (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="ah-empty">Couldn't load related projects (${escH(e.message)}).</div>`;
+    document.getElementById('statProj').textContent = '0';
   }
 }
 

@@ -273,6 +273,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_extract_prompts()
         elif path == "/api/playbook/run":
             self._handle_playbook_run()
+        elif path == "/api/areas/brief":
+            self._handle_area_brief_post()
         else:
             self._json_error(404, "Endpoint not found")
             return
@@ -376,6 +378,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_playbook()
         elif path == "/api/areas":
             self._serve_areas()
+        elif path == "/api/areas/brief":
+            self._serve_area_brief(query)
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -629,56 +633,253 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         VAULT_DIR, malformed note, or absent Opportunity Radar yields an
         honest empty result, never a 500."""
         try:
-            areas = {slug: {"count": 0, "notes": []} for slug in self.CANONICAL_AREAS}
-            CAP = 50
-
-            if VAULT_DIR.exists():
-                for scope in self._AREAS_SCOPE_DIRS:
-                    base = VAULT_DIR / scope
-                    if not base.exists():
-                        continue
-                    for f in base.rglob("*.md"):
-                        rel = str(f.relative_to(VAULT_DIR))
-                        if any(part in rel for part in self._AREAS_SKIP_PARTS):
-                            continue
-                        try:
-                            meta, _ = self._parse_frontmatter(f.read_text(encoding="utf-8"))
-                        except Exception:
-                            continue
-                        note_areas = self._extract_note_areas(meta)
-                        if not note_areas:
-                            continue
-                        title = meta.get("title") or f.stem
-                        date = (meta.get("last_reviewed") or meta.get("date_processed")
-                                or meta.get("captured_date") or meta.get("processed_date") or "")
-                        entry = {
-                            "title": title,
-                            "path": rel,
-                            "date": date,
-                            "type": meta.get("type", ""),
-                        }
-                        for slug in note_areas:
-                            if slug not in areas:
-                                continue  # unknown slug, ignore rather than 500
-                            bucket = areas[slug]
-                            bucket["count"] += 1
-                            if len(bucket["notes"]) < CAP:
-                                bucket["notes"].append(entry)
-
-            for slug, bucket in areas.items():
-                bucket["notes"].sort(key=lambda r: str(r.get("date") or ""), reverse=True)
-                bucket["total"] = bucket["count"]
-
-            opportunities = self._parse_opportunity_radar()
-            for slug, opp_list in opportunities.items():
-                if slug in areas:
-                    areas[slug]["opportunities"] = opp_list
-            for slug in areas:
-                areas[slug].setdefault("opportunities", [])
-
+            areas = self._build_areas_index()
             self._json_response({"areas": areas})
         except Exception as e:
             self._json_error(500, f"Failed to serve areas: {str(e)}")
+
+    def _build_areas_index(self):
+        """Shared builder behind /api/areas and the Area Brief generator (item
+        4, 2026-07-13) — computes the same {slug: {count,total,notes,
+        opportunities}} dict in-process so the brief endpoint doesn't need a
+        self-HTTP round trip. Pure read/compute, no side effects."""
+        areas = {slug: {"count": 0, "notes": []} for slug in self.CANONICAL_AREAS}
+        CAP = 50
+
+        if VAULT_DIR.exists():
+            for scope in self._AREAS_SCOPE_DIRS:
+                base = VAULT_DIR / scope
+                if not base.exists():
+                    continue
+                for f in base.rglob("*.md"):
+                    rel = str(f.relative_to(VAULT_DIR))
+                    if any(part in rel for part in self._AREAS_SKIP_PARTS):
+                        continue
+                    try:
+                        meta, _ = self._parse_frontmatter(f.read_text(encoding="utf-8"))
+                    except Exception:
+                        continue
+                    note_areas = self._extract_note_areas(meta)
+                    if not note_areas:
+                        continue
+                    title = meta.get("title") or f.stem
+                    date = (meta.get("last_reviewed") or meta.get("date_processed")
+                            or meta.get("captured_date") or meta.get("processed_date") or "")
+                    entry = {
+                        "title": title,
+                        "path": rel,
+                        "date": date,
+                        "type": meta.get("type", ""),
+                        "description": meta.get("description", "") or "",
+                    }
+                    for slug in note_areas:
+                        if slug not in areas:
+                            continue  # unknown slug, ignore rather than 500
+                        bucket = areas[slug]
+                        bucket["count"] += 1
+                        if len(bucket["notes"]) < CAP:
+                            bucket["notes"].append(entry)
+
+        for slug, bucket in areas.items():
+            bucket["notes"].sort(key=lambda r: str(r.get("date") or ""), reverse=True)
+            bucket["total"] = bucket["count"]
+
+        opportunities = self._parse_opportunity_radar()
+        for slug, opp_list in opportunities.items():
+            if slug in areas:
+                areas[slug]["opportunities"] = opp_list
+        for slug in areas:
+            areas[slug].setdefault("opportunities", [])
+
+        return areas
+
+    _AREA_BRIEFS_CACHE = DATA_DIR / ".area_briefs.json"
+
+    @classmethod
+    def _load_area_briefs_cache(cls):
+        try:
+            if cls._AREA_BRIEFS_CACHE.exists():
+                with open(cls._AREA_BRIEFS_CACHE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return data
+        except Exception:
+            pass
+        return {}
+
+    @classmethod
+    def _save_area_briefs_cache(cls, data):
+        with open(cls._AREA_BRIEFS_CACHE, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+    def _serve_area_brief(self, query):
+        """GET /api/areas/brief?area=<slug> — reads the cached brief for an
+        area from DATA_DIR/.area_briefs.json (dashboard's own operational
+        lane, same class as .kanban_store.json — architect pre-approval,
+        Fable 2026-07-13, Area Page Hub Redesign brief). No cache entry ->
+        honest available:false, never a fabricated brief. Regeneration is
+        on-demand only via POST; this is a pure read."""
+        area = (query.get("area") or [""])[0].strip().lower()
+        if area not in self.CANONICAL_AREAS:
+            self._json_error(400, "Unknown or missing ?area=")
+            return
+        cache = self._load_area_briefs_cache()
+        entry = cache.get(area)
+        if not entry:
+            self._json_response({"brief": "", "generated": None, "available": False})
+            return
+        self._json_response({
+            "brief": entry.get("brief", ""),
+            "generated": entry.get("generated"),
+            "available": True,
+        })
+
+    def _handle_area_brief_post(self):
+        """POST /api/areas/brief {area} — generates (via Hermes) a 2-4 sentence
+        brief for one life area from its 10 newest notes (title+description),
+        its Opportunity Radar signals, and its open kanban tasks — all read
+        in-process via _build_areas_index() / the kanban store, no new parser.
+        Caches the result in DATA_DIR/.area_briefs.json and returns it.
+        On-demand only (no cron). Hermes down / unparseable -> honest
+        available:false, never a fake brief."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self._json_error(400, "No data provided")
+                return
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            area = (data.get('area') or '').strip().lower()
+            if area not in self.CANONICAL_AREAS:
+                self._json_error(400, "Unknown or missing area")
+                return
+
+            areas = self._build_areas_index()
+            bucket = areas.get(area, {"notes": [], "opportunities": []})
+            notes = bucket.get("notes", [])[:10]
+            opportunities = bucket.get("opportunities", [])[:10]
+
+            open_tasks = []
+            store_path = DATA_DIR / ".kanban_store.json"
+            if store_path.exists():
+                try:
+                    with open(store_path, 'r', encoding='utf-8') as f:
+                        cards = json.load(f)
+                    if isinstance(cards, list):
+                        open_tasks = [c.get("title", "") for c in cards
+                                      if isinstance(c, dict)
+                                      and str(c.get("tag", "")).lower() == area
+                                      and c.get("column") != "done"
+                                      and c.get("title")]
+                except Exception:
+                    open_tasks = []
+
+            lines = []
+            lines.append("Recent knowledge notes:")
+            for n in notes:
+                d = n.get("description") or ""
+                lines.append(f"- {n.get('title','')}" + (f": {d}" if d else ""))
+            lines.append("")
+            lines.append("Opportunity Radar signals:")
+            for o in opportunities:
+                lines.append(f"- [{o.get('confidence','signal')}] {o.get('text','')}")
+            lines.append("")
+            lines.append("Open tasks:")
+            for t in open_tasks[:15]:
+                lines.append(f"- {t}")
+            if area == "fieldbridge":
+                # Item 5 (fieldbridge.html) additionally feeds pipeline stage counts +
+                # next-step fields, per the Area Page Hub Redesign brief §"fieldbridge.html".
+                try:
+                    crm_rows = []
+                    crm_dir = VAULT_DIR / "CRM"
+                    if crm_dir.exists():
+                        for f in sorted(crm_dir.glob("*.md")):
+                            base = f.stem.lower()
+                            if base in ("index", "readme"):
+                                continue
+                            try:
+                                meta, _ = self._parse_frontmatter(f.read_text(encoding="utf-8"))
+                            except Exception:
+                                continue
+                            crm_rows.append(meta)
+                    stage_counts = {}
+                    for r in crm_rows:
+                        st = r.get("stage") or "Unstaged"
+                        stage_counts[st] = stage_counts.get(st, 0) + 1
+                    lines.append("")
+                    lines.append("Pipeline stage counts:")
+                    for st, ct in stage_counts.items():
+                        lines.append(f"- {st}: {ct}")
+                    next_steps = [r.get("next") for r in crm_rows if r.get("next")]
+                    if next_steps:
+                        lines.append("")
+                        lines.append("Next steps on file:")
+                        for ns in next_steps[:10]:
+                            lines.append(f"- {ns}")
+                except Exception:
+                    pass
+
+            digest = "\n".join(lines).strip()
+            if not digest or (not notes and not opportunities and not open_tasks):
+                self._json_response({"brief": "", "generated": None, "available": False,
+                                     "error": "Nothing to summarize for this area yet."})
+                return
+
+            prompt = (
+                "You write a short status brief for one life/business area, based only on the "
+                "data below. Write 2-4 sentences. Name concrete items (note titles, task titles, "
+                "signal text) rather than generic filler. No preamble, no markdown, just the "
+                "sentences.\n\n" + digest
+            )
+
+            import urllib.request
+            payload = json.dumps({
+                "model": "google/gemma-2.5-flash-preview",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 400,
+                "temperature": 0.3
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer life-os-dashboard-2026"
+                }
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    hd = json.loads(resp.read().decode('utf-8'))
+            except Exception as e:
+                self._json_response({"brief": "", "generated": None, "available": False,
+                                     "error": f"Hermes unavailable: {str(e)}"})
+                return
+
+            brief_text = ""
+            if 'choices' in hd and hd['choices']:
+                brief_text = hd['choices'][0]['message']['content'].strip()
+            if brief_text.startswith('```'):
+                brief_text = brief_text.split('\n', 1)[1] if '\n' in brief_text else brief_text[3:]
+                if brief_text.endswith('```'):
+                    brief_text = brief_text[:-3]
+            brief_text = brief_text.strip()
+
+            if not brief_text:
+                self._json_response({"brief": "", "generated": None, "available": False,
+                                     "error": "Hermes returned an empty brief."})
+                return
+
+            generated = datetime.datetime.now().isoformat()
+            cache = self._load_area_briefs_cache()
+            cache[area] = {"brief": brief_text, "generated": generated}
+            self._save_area_briefs_cache(cache)
+
+            self._json_response({"brief": brief_text, "generated": generated, "available": True})
+        except Exception as e:
+            print(f"Area brief error: {e}")
+            self._json_response({"brief": "", "generated": None, "available": False,
+                                 "error": str(e)})
 
     @staticmethod
     def _extract_note_areas(meta):
