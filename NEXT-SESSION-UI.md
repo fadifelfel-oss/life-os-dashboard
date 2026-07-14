@@ -199,6 +199,148 @@ anything on UI-MASTER-PLAN already marked done.
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
 
+## 🎯 CLOSE-OUT TRACKER ("PROMPT — Builder Session 5 — UI Close-Out & Enablement", updated 2026-07-14 session #15)
+
+- [x] 1. Productivity Hub v1 — DONE session #15 (server endpoints + admin.html Triage + consolidated
+      capture UIs). See write-up below.
+- [x] 2. graph3d.html click bug — RE-VERIFIED session #15: already fixed 2026-07-08, no code change
+      needed. Builder prompt carried stale framing.
+- [ ] 3. Close-out sweep (dead files) — PREPARED session #15, blocked on Fadi: sessions can't delete
+      files on the C:\Dev mount (`rm` = "Operation not permitted"). `git rm` command printed below —
+      check this box once Fadi runs it and pushes.
+- [x] 4. STANDARD one-liner (vault) — DONE session #15. Remind Fadi: `sync-vault-to-git.bat`.
+- [ ] 5. Phase 2 Item 5 — VPS migration copy (session #6/#9's guarded `cp -n` block) — NOT run, needs
+      Fadi at the keyboard (session can't reach the VPS).
+- [ ] 6. Phase 2 Item 6 — Capture-pipeline credentials (roadmap 3.2) — NOT started, needs Fadi.
+- [ ] 7. Phase 2 Item 7 — HTTPS via Caddy — blocked on Fadi owning/wanting a domain (session #9 asked,
+      unanswered as of this session).
+- [ ] 8. Phase 2 Item 8 — Hermes 05:15 morning-brief scheduled task — NOT started, needs Fadi.
+- [ ] 9. Phase 3 Item 9 — Home Morning Brief card — GATED on item 8 verified live.
+
+**How to resume:** open a new Cowork session in this project, paste the same "PROMPT — Builder Session
+5" file (or just say "resume Builder Session 5, Phase 2") with Fadi present at the keyboard — Phase 2
+items 5-8 are click-by-click and cannot be done unattended.
+
+## 2026-07-14 session #15 (Sonnet, "PROMPT — Builder Session 5 — UI Close-Out & Enablement", life-os-dashboard + Second Brain folders mounted) — Phase 1 complete: Productivity Hub v1 (item 1), graph3d click-bug re-verified already fixed (item 2), close-out sweep prepared (item 3), STANDARD one-liner (item 4)
+
+Fadi pasted the Builder Session 5 prompt (Fable-planned, created 2026-07-13). Executed Phase 1
+(buildable solo) end to end; Phases 2-3 need Fadi at the keyboard (VPS/domain/Hermes click-by-click)
+and are NOT started this session.
+
+**Item 1 — Productivity Hub v1, BUILT** (architecture pre-approved session #9, 2026-07-12; Fadi
+signed off 2026-07-13 per the builder prompt header):
+- `server.py`: new `DATA_DIR/.capture_inbox.json` triage buffer (same operational class as
+  `.kanban_store.json`/`playbook-usage.jsonl`/`.meeting_store.json`) behind `GET /api/capture[?status=]`,
+  `POST /api/capture` (add, status always starts `new`), `POST /api/capture/update` (`{id, status?,
+  text?}` — status must be new/triaged/dismissed, stamps `updated` on status change so admin.html can
+  compute "triaged today"). Defensive parsing throughout, honest errors, wired into both the
+  `do_GET`/`_handle_api_get` and `do_POST` dispatch tables.
+- Consolidated the two prior localStorage-only silos onto it: `shared.js` gained a `Capture` object
+  (`submit()` → POST /api/capture with automatic localStorage queue-and-retry if the backend is
+  unreachable, `flushQueue()` called on every page load, `migrateLegacy()` one-time-transfers anything
+  sitting in the old `fb-captures`/`cmd-inbox` keys — neither key was ever read elsewhere in the repo,
+  confirmed by repo-wide grep, so this is safe). `QuickCapture.save()` (the global FAB) and
+  `dashboard.html`'s `cmdCapture()` (Today-tab) both now call `Capture.submit()` instead of writing
+  their own separate localStorage arrays.
+- New `admin.html` ("Triage"): tile row (New / Triaged today / Total), filter chips
+  (New/Triaged/Dismissed/All, defaults to New), list of `.hub-tcard`s per AREA-PAGE-SPEC card
+  anatomy, each with **Task** (POST /api/task into Kanban Backlog, same lane QuickCapture's
+  brain-dump-review already uses — no new writer), **Vault** (clipboard + toast promote-pattern,
+  "paste into any Cowork session to file it" — NO vault write from the dashboard, Cowork stays the
+  vault's only writer), **Dismiss**. Both Task and Vault call `/api/capture/update` to mark the item
+  `triaged`; Dismiss marks it `dismissed`. Empty state: "Inbox zero." Wired into navigation: sidebar
+  "Today" section + mobile nav left untouched (5-item IA budget), `index.html` nav-item + both
+  `moduleFiles` maps in `shared.js` (`'triage': 'admin.html'`), and the standalone-page
+  `global-nav-drawer` groups list (`renderGlobalNav`) so it's reachable from every page, not just the
+  sidebar.
+- v1 scope only, as specced: no Hermes auto-triage cron, no vault-first routing.
+
+**Item 2 — graph3d.html click bug — RE-VERIFIED, already fixed, no code touched.** The builder prompt
+carried the stale pre-2026-07-08 framing. Read the actual `onMouseUp`/`onMouseDown`/`onMouseMove`
+handlers (graph3d.html ~L883-952): the fix described in the 2026-07-08 session write-up (fresh
+raycast at mouseup rather than stale `hoveredNode`, a `didDrag` threshold so camera-drags don't fire
+node selection) is fully in place and calls `openNodeDetail(node)` correctly. Confirmed via memory
+(`life-os-dashboard-recent-work.md`, 2026-07-08 entry) and by reading the live code. Nothing to do.
+
+**Item 3 — close-out sweep — prepared, NOT executed (sessions can't delete files on the C:\Dev
+mount — confirmed this session, `rm` returned "Operation not permitted").** `tasks.html` was already
+gone (deleted in an earlier pass). Repo-wide grep confirmed zero remaining references to `voice.html`
+or `theme-preview.html` in any `.html`/`.js`/`server.py` (nav, moduleFiles maps, and links were already
+scrubbed in item 12). Fadi's `git rm` command below deletes + stages both in one step. VPS cleanup
+command (30_Meetings/.meeting_store.json/temp_uploads under the OLD vault-mirror path — item 13 already
+moved live reads+writes to DATA_DIR, so anything left under VAULT_DIR is stale) printed below WITH the
+guard: confirm nothing there is real git-tracked Fireflies content before deleting.
+
+**Item 4 — STANDARD one-liner — DONE (vault edit).** Added one line to `STANDARD — System
+Architecture.md`'s Capture flows section distinguishing capture-of-knowledge (→ vault `000 Inbox/`)
+from operational quick-capture (→ dashboard `DATA_DIR` triage buffer, drains, never retains). **Vault
+is OneDrive-sync only, not git — remind Fadi to run `sync-vault-to-git.bat`** so the VPS mirror picks
+it up (separate from the repo push below).
+
+**Not touched:** Phase 2 (VPS migration copy re-print, capture-pipeline credentials, HTTPS via Caddy)
+and Phase 3 (Morning Brief card, gated on Hermes's 05:15 task) — both need Fadi at the keyboard for
+click-by-click steps, per the builder prompt's own phase gate. Resume with the same prompt file when
+Fadi is present.
+
+**Verification caveat (mount staleness — wider than previously documented):** confirmed this session
+that the bash-mount staleness (session #9's "phantom deletion" note) isn't limited to server.py — it
+affected every file touched via Edit this session (server.py, shared.js, dashboard.html, index.html
+all read back at their pre-edit byte size through bash, even after the edits landed and were confirmed
+via the Read tool). `admin.html` (a brand-new file via Write, not Edit) synced to the mount correctly.
+Practical effect: py_compile/NUL-scan via bash `/tmp` copies is NOT reliable for edited files in a
+session like this one — every edit in this session was instead verified by reading the changed
+sections back with the Read tool (authoritative, host-side) and eyeballing indentation/brace balance.
+A real NUL byte scan via Python (`open(f,'rb').read().count(b'\x00')`, not bash's `$'\x00'` which the
+shell truncates to an empty/match-everything argument) came back clean for all 5 touched files.
+Recommend Fadi's own `git diff` review before pushing as a second pair of eyes, same as any session.
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status   # expect server.py/shared.js/dashboard.html/index.html/admin.html(new) modified —
+             # if server.py shows a large unexplained DELETION instead of the capture-endpoint
+             # additions, that's the documented mount-truncation phantom (session #9) — do NOT
+             # commit it; re-check with your own editor before staging.
+git add server.py shared.js dashboard.html index.html admin.html NEXT-SESSION-UI.md
+git rm voice.html theme-preview.html
+git commit -m "Builder Session 5 Phase 1: Productivity Hub v1 (capture triage buffer + admin.html Triage page), close-out sweep (retire voice.html/theme-preview.html), graph3d click-bug re-verified already fixed (no change)"
+git push origin main
+```
+
+### VPS — close-out cleanup, run ON the VPS (sessions can't reach it):
+
+```
+# GUARD FIRST — confirm nothing here is real git-tracked Fireflies content
+# before deleting. Fireflies meetings sync to the vault via the nightly
+# ingest, a DIFFERENT path from this one; this location should only hold
+# the stray artifacts from the pre-item-13 write path (item 13, 2026-07-11,
+# already moved live reads+writes to DATA_DIR).
+cd /root/second-brain
+git status 30_Meetings/ .meeting_store.json 2>/dev/null
+# ^ If either shows as tracked/clean (part of a real commit), STOP — do not
+#   delete, that would be real vault content. If untracked or absent from
+#   git entirely, they're the stale artifacts — safe to remove:
+rm -rf /root/second-brain/30_Meetings
+rm -f /root/second-brain/.meeting_store.json
+rm -rf /root/second-brain/temp_uploads
+```
+
+### 5-minute live-QA script (once deployed):
+
+Open `admin.html` directly (or click "Triage" in the Today sidebar section) — confirm the tile row
+renders (0/0/0 or real numbers) and the empty state "Inbox zero." shows if nothing's captured yet.
+Open any page, click the + Quick Capture FAB, save a note — switch to `admin.html`, hit Refresh,
+confirm the item appears under New with source "fab". Go to the Today tab, use its inline capture
+box — confirm that item also appears in Triage with source "today". Click **Task** on one item —
+confirm it disappears from the New filter and shows up in Kanban Backlog. Click **Vault** on another
+— confirm the clipboard toast appears and the item moves to Triaged. Click **Dismiss** on a third —
+confirm it moves to Dismissed. Reload the page — confirm counts persist (proves it's server-backed,
+not localStorage). Open `graph3d.html`, click a node — confirm the detail panel still opens (should
+already work, this session made no changes there). Confirm `voice.html` and `theme-preview.html` are
+gone from the deployed site (404) once Fadi's `git rm` push lands.
+
 ## 2026-07-13 session #14 (Sonnet, life-os-dashboard folder mounted) — Design Language Standardization, Batch C (items 10-16) — SWEEP COMPLETE
 
 New session, continuing from Fadi's "looks good go ahead with C" after Batch B was deployed and

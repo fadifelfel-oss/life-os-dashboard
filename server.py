@@ -275,6 +275,10 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._handle_playbook_run()
         elif path == "/api/areas/brief":
             self._handle_area_brief_post()
+        elif path == "/api/capture":
+            self._handle_capture_post()
+        elif path == "/api/capture/update":
+            self._handle_capture_update()
         else:
             self._json_error(404, "Endpoint not found")
             return
@@ -380,6 +384,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_areas()
         elif path == "/api/areas/brief":
             self._serve_area_brief(query)
+        elif path == "/api/capture":
+            self._serve_capture_get(query)
         elif path == "/api/upload":
             self._json_error(405, "Method not allowed. Use POST.")
         elif path == "/api/chat":
@@ -611,6 +617,126 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._json_response({"ok": True})
         except Exception as e:
             self._json_error(500, f"Failed to log playbook run: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # PRODUCTIVITY HUB — CAPTURE TRIAGE BUFFER (v1, Builder Session 5,
+    # 2026-07-14). DATA_DIR/.capture_inbox.json is a dashboard-owned
+    # OPERATIONAL triage buffer — same class as .kanban_store.json /
+    # playbook-usage.jsonl / .meeting_store.json. Ruled APPROVED by
+    # Fable (session #9, 2026-07-12) against `STANDARD -- System
+    # Architecture.md`, conditioned on framing as a TRIAGE BUFFER: every
+    # item must always DRAIN -> a kanban task (this dashboard's own
+    # lane), -> the vault via the clipboard+Cowork promote-pattern (NO
+    # vault write from here — Cowork is the vault's only writer), or ->
+    # dismissed. Nothing knowledge-bearing rests here permanently.
+    # Consolidates the two prior localStorage-only silos (shared.js
+    # QuickCapture 'fb-captures', dashboard.html Today-tab 'cmd-inbox')
+    # onto one real backend inbox so captures survive across pages/
+    # devices instead of living only in one browser's localStorage.
+    # v1 scope only — no Hermes auto-triage cron, no vault-first
+    # routing (both deferred by design per the session #9 ruling).
+    # ═══════════════════════════════════════════════════════════
+
+    def _load_capture_inbox(self):
+        path = DATA_DIR / ".capture_inbox.json"
+        if not path.exists():
+            return []
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+
+    def _save_capture_inbox(self, items):
+        path = DATA_DIR / ".capture_inbox.json"
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(items, f, indent=2)
+
+    def _serve_capture_get(self, query):
+        """GET /api/capture[?status=new] -- list triage-buffer items, newest
+        first. Pure read, defensive against a missing/corrupt store."""
+        try:
+            items = self._load_capture_inbox()
+            status = (query.get('status') or [''])[0].strip().lower()
+            if status:
+                items = [i for i in items if str(i.get('status', '')).lower() == status]
+            items.sort(key=lambda i: i.get('ts', ''), reverse=True)
+            self._json_response({"data": items})
+        except Exception as e:
+            self._json_error(500, f"Failed to load capture inbox: {str(e)}")
+
+    def _handle_capture_post(self):
+        """POST /api/capture {text, source} -- add one item to the triage
+        buffer. status always starts 'new'; draining happens only via
+        /api/capture/update."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self._json_error(400, "No data provided")
+                return
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            text = str(data.get('text') or '').strip()
+            if not text:
+                self._json_error(400, "text required")
+                return
+            source = str(data.get('source') or 'unknown').strip()[:40]
+            item = {
+                "id": "cap_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S%f"),
+                "text": text,
+                "source": source,
+                "ts": datetime.datetime.now().isoformat(),
+                "status": "new",
+            }
+            items = self._load_capture_inbox()
+            items.append(item)
+            self._save_capture_inbox(items)
+            self._json_response({"ok": True, "id": item["id"]})
+        except Exception as e:
+            self._json_error(500, f"Failed to save capture: {str(e)}")
+
+    def _handle_capture_update(self):
+        """POST /api/capture/update {id, status?, text?} -- drain or edit one
+        item. status (when provided) must be one of new/triaged/dismissed --
+        'triaged' means it drained to a kanban task or the vault-via-Cowork
+        clipboard promote; 'dismissed' means discarded. text (when provided)
+        edits the item in place without changing status."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self._json_error(400, "No data provided")
+                return
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            item_id = str(data.get('id') or '').strip()
+            if not item_id:
+                self._json_error(400, "id required")
+                return
+            items = self._load_capture_inbox()
+            found = False
+            for i in items:
+                if i.get('id') == item_id:
+                    found = True
+                    if 'status' in data:
+                        status = str(data.get('status') or '').strip().lower()
+                        if status not in ('new', 'triaged', 'dismissed'):
+                            self._json_error(400, "status must be new/triaged/dismissed")
+                            return
+                        i['status'] = status
+                        i['updated'] = datetime.datetime.now().isoformat()
+                    if 'text' in data:
+                        new_text = str(data.get('text') or '').strip()
+                        if new_text:
+                            i['text'] = new_text
+                    break
+            if not found:
+                self._json_error(404, "Capture item not found")
+                return
+            self._save_capture_inbox(items)
+            self._json_response({"ok": True})
+        except Exception as e:
+            self._json_error(500, f"Failed to update capture: {str(e)}")
 
     # Canonical life-area slugs (BRIEF — UI Dashboards + Knowledge Backlinking, 2026-07-13).
     # Locked list — do not add/rename without updating the vault classification + shared.css tokens.

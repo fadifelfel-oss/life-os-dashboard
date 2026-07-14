@@ -366,6 +366,7 @@ function navigateTo(page) {
     'sessions': 'chat.html',
     'skills': 'skills.html',
     'kanban': 'kanban.html',
+    'triage': 'admin.html',
     'artifacts': 'artifacts.html',
     'imagegen': 'imagegen.html',
     'browser': 'browser.html',
@@ -422,6 +423,7 @@ function loadModule(page) {
     'sessions': 'chat.html',
     'skills': 'skills.html',
     'kanban': 'kanban.html',
+    'triage': 'admin.html',
     'artifacts': 'artifacts.html',
     'imagegen': 'imagegen.html',
     'browser': 'browser.html',
@@ -545,7 +547,7 @@ function renderGlobalNav() {
     if (document.querySelector('.sidebar')) return;       // index.html: full sidebar already
     if (document.getElementById('global-nav-drawer')) return;
     const groups = [
-      { title: 'Today',  items: [['index.html','zap','Today'], ['kanban.html','clipboard-list','Kanban']] },
+      { title: 'Today',  items: [['index.html','zap','Today'], ['kanban.html','clipboard-list','Kanban'], ['admin.html','inbox','Triage']] },
       { title: 'Work',   items: [['crm.html','users','CRM'], ['projects.html','clipboard-list','Projects']] },
       { title: 'Life',   items: [['trading.html','candlestick-chart','Trading'], ['fitness.html','heart-pulse','Fitness']] },
       { title: 'Brain',  items: [['graph3d.html','brain','3D Brain'], ['files.html','folder','Files']] },
@@ -788,6 +790,8 @@ if (document.readyState === 'loading') {
       CommandBar.registerActions(getDefaultActions());
     }
     QuickCapture.init();
+    Capture.migrateLegacy();
+    Capture.flushQueue();
     ShortcutsOverlay.init();
     ContextSwitcher.init();
     ShipToday.init();
@@ -800,6 +804,8 @@ if (document.readyState === 'loading') {
     CommandBar.registerActions(getDefaultActions());
   }
   QuickCapture.init();
+  Capture.migrateLegacy();
+  Capture.flushQueue();
   ShortcutsOverlay.init();
   ContextSwitcher.init();
   ShipToday.init();
@@ -1161,6 +1167,94 @@ const I18n = {
     this._needsReload = isAr;
   }
 };
+// ============================================================
+// CAPTURE BACKEND (Productivity Hub v1, Builder Session 5, 2026-07-14)
+// One real inbox behind POST/GET /api/capture (DATA_DIR/.capture_inbox.
+// json — dashboard-owned operational triage buffer, see server.py for
+// the full architecture note). Replaces the two localStorage-only
+// silos this file and dashboard.html used to write independently
+// (QuickCapture's 'fb-captures', dashboard.html's 'cmd-inbox'). Backend
+// unreachable -> queue locally under CAPTURE_QUEUE_KEY, auto-flushed on
+// the next successful submit or page load. Drain UI lives in
+// admin.html (Triage).
+// ============================================================
+const Capture = {
+  QUEUE_KEY: 'capture-queue-fallback',
+
+  // Submit one capture. Always "succeeds" from the caller's perspective
+  // (queued locally if the backend is down) — callers don't need to
+  // branch on the return value, but it's returned in case a caller
+  // wants to distinguish "reached the server" from "queued offline".
+  async submit(text, source) {
+    if (!text || !text.trim()) return false;
+    const ok = await this._post(text.trim(), source);
+    if (ok) {
+      this.flushQueue(); // good moment to drain anything stranded earlier
+      return true;
+    }
+    this._queueLocally(text.trim(), source);
+    return false;
+  },
+
+  async _post(text, source) {
+    try {
+      const resp = await fetch('/api/capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, source: source || 'unknown' })
+      });
+      return resp.ok;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  _queueLocally(text, source) {
+    try {
+      const q = JSON.parse(localStorage.getItem(this.QUEUE_KEY) || '[]');
+      q.push({ text, source: source || 'unknown', time: new Date().toISOString() });
+      localStorage.setItem(this.QUEUE_KEY, JSON.stringify(q.slice(-200)));
+    } catch (e) {}
+  },
+
+  async flushQueue() {
+    let q = [];
+    try { q = JSON.parse(localStorage.getItem(this.QUEUE_KEY) || '[]'); } catch (e) {}
+    if (!q.length) return;
+    const remaining = [];
+    for (const item of q) {
+      const ok = await this._post(item.text, item.source);
+      if (!ok) remaining.push(item);
+    }
+    try {
+      if (remaining.length) localStorage.setItem(this.QUEUE_KEY, JSON.stringify(remaining));
+      else localStorage.removeItem(this.QUEUE_KEY);
+    } catch (e) {}
+  },
+
+  // One-time transfer of anything sitting in the two old localStorage-only
+  // silos into the real backend queue, then clear the legacy keys so this
+  // never re-runs on old data. Nothing else in the repo ever reads
+  // 'fb-captures' or 'cmd-inbox' (write-only silos), so this is safe.
+  migrateLegacy() {
+    try {
+      ['fb-captures', 'cmd-inbox'].forEach(key => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        let items = [];
+        try { items = JSON.parse(raw); } catch (e) { items = []; }
+        if (Array.isArray(items)) {
+          items.forEach(it => {
+            const text = (it && it.text) ? String(it.text).trim() : '';
+            if (text) this._queueLocally(text, 'legacy:' + key);
+          });
+        }
+        localStorage.removeItem(key);
+      });
+    } catch (e) {}
+  }
+};
+
 const QuickCapture = {
   init() {
     if (document.getElementById('fabCapture')) return;
@@ -1211,11 +1305,7 @@ const QuickCapture = {
     const input = document.getElementById('captureInput');
     if (!input || !input.value.trim()) return;
     const text = input.value.trim();
-    try {
-      const clips = JSON.parse(localStorage.getItem('fb-captures') || '[]');
-      clips.unshift({ text, time: new Date().toISOString() });
-      localStorage.setItem('fb-captures', JSON.stringify(clips.slice(0, 200)));
-    } catch(e) {}
+    Capture.submit(text, 'fab'); // backend /api/capture; queues locally if offline
     input.value = '';
     this.closeModal();
     // Ask if they want to mark as shipped

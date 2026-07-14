@@ -307,9 +307,10 @@ function cmdCapture() {
   const input = document.getElementById('cmdCaptureInput');
   const text = input.value.trim();
   if (!text) return;
-  const inbox = JSON.parse(localStorage.getItem('cmd-inbox') || '[]');
-  inbox.unshift({ text, time: new Date().toISOString(), done: false });
-  localStorage.setItem('cmd-inbox', JSON.stringify(inbox.slice(0, 100)));
+  // Backend /api/capture (dashboard.html loads as a fragment inside index.html,
+  // which has shared.js loaded, so the global Capture object is available here).
+  // Queues locally if the backend is unreachable — nothing lost.
+  if (typeof Capture !== 'undefined') { Capture.submit(text, 'today'); }
   input.value = '';
   input.placeholder = 'Saved! Type another...';
   setTimeout(() => { input.placeholder = 'Type a thought, task, or note — press Enter to save to inbox'; }, 2000);
