@@ -10,17 +10,12 @@
 .keys-layout { display: grid; grid-template-columns:1fr 320px; gap:var(--space-5); padding:var(--space-4); }
 @media (max-width: 768px) { .keys-layout { grid-template-columns:1fr; } }
 
-.provider-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
-  border-left: 3px solid var(--red);
-  transition: border-color 0.2s;
-}
-.provider-card.connected { border-left-color: var(--green); }
-.provider-card.error { border-left-color: var(--red); }
+/* Provider cards restyled onto .hub-tcard (Builder Session Batch C.16) — this page already had
+   its own status-colored left-border spine (red default, green when connected); that's exactly
+   what .hub-tcard's ::before spine does via --ar-accent, so the local border-left/background/
+   border/radius/padding rules are now redundant and removed. Only margin-bottom (card spacing
+   in a single-column list, not part of the shared card anatomy) stays local. */
+.provider-card { margin-bottom: var(--space-3); }
 
 .provider-header {
   display: flex;
@@ -173,7 +168,7 @@ async function loadProviders() {
     renderProviders();
     updateStats();
   } catch(e) {
-    document.getElementById('providers-list').innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`;
+    document.getElementById('providers-list').innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg></div><div class="empty-state-text" style="color:var(--red);">Error: ${e.message}</div></div>`;
   }
 }
 
@@ -198,7 +193,7 @@ function renderProviders() {
     const keyVal = p.keyPreview || '';
     
     return `
-      <div class="provider-card ${statusClass}" id="card-${p.id}">
+      <div class="provider-card hub-tcard ${statusClass}" id="card-${p.id}" style="--ar-accent:${p.hasKey ? 'var(--green)' : 'var(--red)'};">
         <div class="provider-header">
           <span class="provider-icon">${p.icon}</span>
           <span class="provider-name">${p.name}</span>
@@ -238,8 +233,11 @@ function renderPool() {
 function updateCardStatus(id) {
   const card = document.getElementById('card-' + id);
   const input = document.getElementById('key-' + id);
-  if (input.value.trim()) card.classList.add('connected');
-  else card.classList.remove('connected');
+  const connected = !!input.value.trim();
+  card.classList.toggle('connected', connected);
+  // Keeps the .hub-tcard spine (--ar-accent) in sync with the .connected class as the user
+  // types, matching the pre-restyle behavior where border-left-color updated live (Batch C.16).
+  card.style.setProperty('--ar-accent', connected ? 'var(--green)' : 'var(--red)');
 }
 
 function toggleKey(id) {
@@ -296,7 +294,7 @@ async function saveKey(id) {
     const data = await resp.json();
     if (data.ok) {
       const card = document.getElementById('card-' + id);
-      if (card) card.classList.add('connected');
+      if (card) { card.classList.add('connected'); card.style.setProperty('--ar-accent', 'var(--green)'); }
       result.className = 'test-result show ok'; result.textContent = data.message + ' — testing…';
       await testProvider(id);   // save then immediately verify
     } else {
@@ -321,7 +319,8 @@ async function removeKey(id) {
   const input = document.getElementById('key-' + id);
   input.value = '';
   card.classList.remove('connected');
-  
+  card.style.setProperty('--ar-accent', 'var(--red)');
+
   try {
     await fetch('/api/auth', {
       method: 'POST',

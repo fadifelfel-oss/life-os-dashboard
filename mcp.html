@@ -8,9 +8,10 @@
 <link rel="stylesheet" href="shared.css">
 <style>
 .mcp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
-.mcp-card { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-xl); padding: var(--space-4); }
-.mcp-card h3 { margin: 0 0 var(--space-2); font-size: var(--font-size-md); }
-.mcp-card p { color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0; }
+/* Cards restyled onto .hub-tcard (Builder Session Batch C.12) — the connection status stays a
+   local .mcp-status dot+label (not a .hub-tag; it's a live/offline state, not an area pill), now
+   sitting inside .hub-tcard-meta, and the card spine is set inline per-card from the same status
+   (green = connected) so the two never disagree. */
 .mcp-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
 .mcp-status.online { color: var(--green); }
 .mcp-status.offline { color: var(--text-muted); }
@@ -24,25 +25,25 @@
 </div>
 <div class="container">
   <div class="mcp-grid">
-    <div class="mcp-card">
-      <h3>File System</h3>
-      <p>Read, write, and search vault files</p>
-      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
+    <div class="hub-tcard" style="--ar-accent:var(--green);">
+      <div class="hub-tcard-title">File System</div>
+      <div class="hub-tcard-desc">Read, write, and search vault files</div>
+      <div class="hub-tcard-meta"><span class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</span></div>
     </div>
-    <div class="mcp-card">
-      <h3>Browser</h3>
-      <p>Navigate the web for research</p>
-      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
+    <div class="hub-tcard" style="--ar-accent:var(--green);">
+      <div class="hub-tcard-title">Browser</div>
+      <div class="hub-tcard-desc">Navigate the web for research</div>
+      <div class="hub-tcard-meta"><span class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</span></div>
     </div>
-    <div class="mcp-card">
-      <h3>Terminal</h3>
-      <p>Execute shell commands on VPS</p>
-      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
+    <div class="hub-tcard" style="--ar-accent:var(--green);">
+      <div class="hub-tcard-title">Terminal</div>
+      <div class="hub-tcard-desc">Execute shell commands on VPS</div>
+      <div class="hub-tcard-meta"><span class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</span></div>
     </div>
-    <div class="mcp-card">
-      <h3>Obsidian Vault</h3>
-      <p>Direct access to /root/knowledge</p>
-      <div class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</div>
+    <div class="hub-tcard" style="--ar-accent:var(--green);">
+      <div class="hub-tcard-title">Obsidian Vault</div>
+      <div class="hub-tcard-desc">Direct access to /root/knowledge</div>
+      <div class="hub-tcard-meta"><span class="mcp-status online"><span class="status-dot" style="background:var(--green);"></span> Connected</span></div>
     </div>
   </div>
 </div>

@@ -11,62 +11,20 @@
     .browser-layout { display: grid; grid-template-columns: 1fr 320px; gap: var(--space-5); }
     @media (max-width: 900px) { .browser-layout { grid-template-columns: 1fr; } }
     
+    /* .browser-controls / .browser-preview restyled onto .hub-panel's base container
+       (Builder Session Batch C.14) — same background/border/radius/padding as every other
+       side-module panel in the app, deduplicated. Page-specific deltas (margin-bottom below,
+       and the height/overflow-y on .browser-preview) stay local since they're specific to this
+       page's two-panel layout, not part of the shared panel anatomy. */
     .browser-controls {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--radius-xl);
-      padding: var(--space-4);
       margin-bottom: var(--space-3);
     }
-    .control-group {
-      margin-bottom: var(--space-4);
-    }
-    .control-group label {
-      display: block;
-      font-size: var(--font-size-sm);
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: var(--space-2);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-    .control-group input,
-    .control-group select,
-    .control-group textarea {
-      width: 100%;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--radius-md);
-      color: var(--text-primary);
-      font-size: var(--font-size-base);
-      font-family: var(--font-sans);
-      padding: var(--space-2) var(--space-3);
-      transition: border-color var(--transition-fast);
-    }
-    .control-group input:focus,
-    .control-group select:focus,
-    .control-group textarea:focus {
-      outline: none;
-      border-color: var(--border-focus);
-    }
-    .control-group textarea {
-      min-height: 100px;
-      resize: vertical;
-      line-height: 1.5;
-    }
-    .btn-group {
-      display: flex;
-      gap: var(--space-2);
-      margin-top: var(--space-4);
-    }
-    .btn-group .btn {
-      flex: 1;
-    }
+    /* .control-group and .btn-group were exact duplicates of the rules shared.css already defines
+       for imagegen.html — de-duplicated (Builder Session Batch C.14). The one real delta this page
+       needed (an <input> styled the same as .control-group's textarea/select, for #target-url) is
+       now promoted into shared.css's own selector list instead of re-declared here, since it's
+       generically useful design-system behavior, not a one-off. */
     .browser-preview {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--radius-xl);
-      padding: var(--space-4);
       height: calc(100vh - var(--header-height) - var(--space-4));
       overflow-y: auto;
     }
@@ -149,6 +107,14 @@
     .log-success { color: var(--green); }
     .log-error { color: var(--red); }
     .log-info { color: var(--cyan); }
+    /* S6 empty/error states (Builder Session Batch C.14) — .success/.error/.info-message were
+       referenced by the JS but had no CSS anywhere (page-local or shared), so they rendered as
+       unstyled plain text; added here since they're this page's own status-message vocabulary.
+       .placeholder needed NO local rule — shared.css already styles it (imagegen.html uses the
+       same class); a local override was tried and reverted since it fought the shared version. */
+    .success-message { color: var(--green); }
+    .error-message { color: var(--red); }
+    .info-message { color: var(--cyan); }
     /* Responsive */
     @media (max-width: 768px) {
       .browser-layout {
@@ -166,7 +132,7 @@
 
   <div class="container">
     <!-- Controls Panel -->
-    <div class="browser-controls">
+    <div class="browser-controls hub-panel">
       <div class="control-group">
         <label for="target-url">Target URL</label>
         <input type="url" id="target-url" placeholder="https://example.com" required>
@@ -192,7 +158,7 @@
     </div>
 
     <!-- Preview Panel -->
-    <div class="browser-preview">
+    <div class="browser-preview hub-panel">
       <div class="preview-header">
         <h2>Preview & Logs</h2>
         <div class="preview-actions">

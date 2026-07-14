@@ -142,8 +142,9 @@ remain gated exactly as before; nothing gated was touched this pass.
    clearing item 4's gate in full for every page listed in the STANDARDIZATION TRACKER below.
    Execute ONE BATCH PER SESSION (push + Fadi's 2-minute live QA between batches — this sweep was
    once deferred as "too risky blind"; batching is the risk control, not a suggestion). See
-   session #12 write-up below for Batch A (items 1-4, shipped) and session #13 for Batch B
-   (items 5-9, shipped) — see the tracker for what's left.
+   session #12 write-up below for Batch A (items 1-4, shipped), session #13 for Batch B (items
+   5-9, shipped), and session #14 for Batch C (items 10-16, shipped) — **the sweep is now
+   complete, all 16 items shipped.**
 
    **STANDARDIZATION TRACKER** (16 items — check off what shipped, one line each, keep in sync
    with the session write-ups):
@@ -156,13 +157,13 @@ remain gated exactly as before; nothing gated was touched this pass.
    - [x] 7. meetings.html — session #13
    - [x] 8. skills.html — session #13
    - [x] 9. models.html — session #13
-   - [ ] 10. files.html
-   - [ ] 11. loops.html
-   - [ ] 12. mcp.html
-   - [ ] 13. artifacts.html
-   - [ ] 14. browser.html
-   - [ ] 15. imagegen.html
-   - [ ] 16. keys.html
+   - [x] 10. files.html — session #14
+   - [x] 11. loops.html — session #14 (reviewed, already compliant, no changes needed)
+   - [x] 12. mcp.html — session #14
+   - [x] 13. artifacts.html — session #14 (reviewed, already compliant, no changes needed)
+   - [x] 14. browser.html — session #14
+   - [x] 15. imagegen.html — session #14 (reviewed, already compliant, no changes needed)
+   - [x] 16. keys.html — session #14
    - Explicitly OUT of this sweep (per the builder prompt): kanban.html (reference implementation
      — only swap to shared classes if byte-equivalent), chat.html (toolbar/header only, never the
      message stream), graph3d.html (header + empty states only, no feature work — shiny-object
@@ -197,6 +198,129 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-13 session #14 (Sonnet, life-os-dashboard folder mounted) — Design Language Standardization, Batch C (items 10-16) — SWEEP COMPLETE
+
+New session, continuing from Fadi's "looks good go ahead with C" after Batch B was deployed and
+QA'd. Per the builder prompt's own scope note for this batch — "utility pages... S1/S2/S3/S6
+minimal, do NOT gold-plate" — most of Batch C turned out to need little or no restyle: three of
+the seven pages (loops.html, artifacts.html, imagegen.html) were reviewed and found already
+compliant, with the reasoning documented per-page below rather than forcing changes for their own
+sake. RESTYLE-ONLY, same as Batches A and B: no endpoint changes, no new data stores, no behavior
+changes beyond presentation — except where noted below, where a genuine behavior-preservation fix
+was required to avoid a regression the restyle would otherwise have caused.
+
+**Batch C.10 — files.html:** No card grid on this page (file tree + list rows), so S2 didn't
+apply. S6 gap found and fixed: 4 spots (`loadTree()`, `openFolder()`, `openFile()` ×2) rendered
+fetch errors as bare `<div style="color:var(--red)">` with no icon or structure — converted all 4
+to the shared `.empty-state`/`.empty-state-icon`/`.empty-state-text` pattern (with a triangle-alert
+icon), matching how every other page on the site shows an error state. S1 header and the page's
+pre-existing empty states (`.empty-state` for "Empty folder" / "Click a file to view") were already
+using the shared system correctly — no changes needed there.
+
+**Batch C.11 — loops.html:** Reviewed, no changes made. It's a dense reference table (automation
+registry) — already correctly left as a `<table>`, consistent with the spec's own "bordered-row for
+dense reference lists" guidance and the same call made for trading.html/fitness.html's log tables
+in Batch B. No duplicated CSS to promote, header already uses the shared `.header`/`.header-back`
+classes, and its `.loop-status`/`.loop-dot` status indicator is a legitimate small local pattern
+(dot + label), not an area pill — forcing it onto `.hub-tag` would lose its status semantics for no
+real gain.
+
+**Batch C.12 — mcp.html:** The one page in this batch that was a clean, low-risk S2 win — 4 static
+cards (no JS at all, purely presentational), fully converted onto `.hub-tcard`/`-title`/`-desc`/
+`-meta`. Spine color set inline (`--ar-accent: var(--green)`) since all 4 tools shown are
+"Connected." The `.mcp-status` dot+label kept as its own local class inside `.hub-tcard-meta` —
+it's a live/offline state, not an area pill, so `.hub-tag` wasn't the right fit.
+
+**Batch C.13 — artifacts.html:** Reviewed, no changes made. This is a split-pane live-code editor
+(template tabs, textarea editor, iframe preview) — no card-shaped content anywhere for S2. Its one
+empty-state (`.empty-preview`) is explicitly commented in the existing code as needing to stay a
+neutral white surface regardless of app theme, since it's simulating a real browser canvas
+rendering arbitrary user HTML, not themed app chrome. Converting it to the shared dark-themed
+`.empty-state` would have broken that documented, deliberate design decision, so it was left alone.
+
+**Batch C.14 — browser.html:** `.browser-controls`/`.browser-preview` panels de-duplicated onto
+`.hub-panel`'s base container styling (background/border/radius/padding), keeping only the
+page-specific deltas (margin-bottom, height/overflow-y) local. Added CSS for `.success-message`/
+`.error-message`/`.info-message` — these classes were referenced by the JS but had **no CSS
+anywhere** (page-local or shared), so they were rendering as unstyled plain text; a real S6 gap,
+now fixed with the standard green/red/cyan status tokens. **Bigger find while investigating this
+page against imagegen.html (both share `.control-group`/`.btn-group`):** browser.html's local
+`.control-group`/`.btn-group`/`.placeholder` CSS turned out to be near-exact duplicates of rules
+shared.css already defines (for imagegen.html) — genuinely the same kind of duplication Batch A's
+`ah-`/`fb-` prefix problem was. Fixed by removing the duplicate blocks from browser.html and
+promoting the one real delta (an `<input>` needing the same styling as `.control-group`'s
+textarea/select, since browser.html has a `#target-url` input imagegen.html doesn't) into
+shared.css's own selector list — confirmed via repo-wide grep that browser.html and imagegen.html
+are the *only* two pages using `.control-group` at all, so this was zero collision risk. A local
+`.placeholder` override was tried first, then reverted once the shared.css duplicate was found — it
+was fighting the existing shared rule (which already has a nicer 🖼️-icon treatment) rather than
+adding anything.
+
+**Batch C.15 — imagegen.html:** Reviewed, no changes made — this page turned out to be **already
+fully built against shared.css** (`.imagegen-layout`, `.imagegen-controls`, `.control-group`,
+`.btn-group`, `.model-info`, `.imagegen-preview*`, `.placeholder`, `.generated-image` are all
+already there, styled, with no page-local `<style>` block at all). Reading this page first is what
+surfaced the browser.html duplication fixed in C.14 above.
+
+**Batch C.16 — keys.html:** `.provider-card` was the strongest S2 candidate in this batch — it
+already had its own status-colored left-border spine (red default, green when `hasKey`), which is
+*exactly* what `.hub-tcard`'s `::before` spine does via `--ar-accent`. Converted: removed the now-
+redundant local background/border/radius/padding/border-left rules, added `.hub-tcard` to the card
+class list, and set `--ar-accent` inline per-card from the same `hasKey` check. **Behavior-
+preservation fix required:** the original CSS drove the spine color from the `.connected` class,
+which three JS functions (`updateCardStatus()` — live as the user types, `saveKey()`, `removeKey()`)
+toggled dynamically; switching the spine to a static inline `--ar-accent` set once at render time
+would have silently broken that live color feedback. Fixed by having all three functions also call
+`card.style.setProperty('--ar-accent', ...)` alongside their existing `classList` toggle, so the
+spine still updates live exactly as it did before the restyle — this is the kind of gap the
+per-page "re-read + Read the whole file" verification step exists to catch. Also fixed the same S6
+gap as files.html: `loadProviders()`'s fetch-error state was a bare `<div style="color:var(--red)">`,
+now the shared `.empty-state` pattern. `loadPool()`'s error state (small sidebar list) was left as
+its existing muted-text fallback — already appropriately minimal for that space, converting it to a
+full empty-state icon block would have been gold-plating.
+
+**Verification (Read/Grep — authoritative, same methodology as sessions #12-13):**
+- NUL-scan (`Grep` tool, `\x00` pattern): individually per file as each was finished, then a
+  consolidated pass across all 7 touched files + `shared.css` + this file together: **0 matches.**
+- `<script>` blocks extracted byte-for-byte via `Read` and run through `node --check`:
+  `files.html`, `keys.html` — both `SYNTAX_OK`. `mcp.html` has no `<script>` beyond the anti-flash
+  theme snippet (pure static HTML/CSS). `loops.html`, `artifacts.html`, `imagegen.html` had zero JS
+  edits (no changes made at all — see above). `browser.html` had zero JS edits (CSS + one HTML
+  class addition only) — consistent with the same "don't re-extract untouched scripts" call made
+  for dashboard.html in session #12 and meetings.html in session #13.
+- `shared.css` brace balance re-verified after this session's edit (the `.control-group input`
+  promotion): 380 open / 380 close — unchanged from session #12's count, as expected since the edit
+  only added selectors to existing rule blocks, not new blocks.
+- 3-page shared.css canary: grepped `kanban.html`, `index.html`, `dashboard.html` (none touched
+  this session) — all three still correctly link `shared.css`.
+- Full `Read` re-read of `keys.html` after all its edits (CSS + HTML template + 3 JS functions)
+  landed, specifically to catch the `--ar-accent`/`.connected` sync issue described above before
+  calling the file done.
+
+**Not touched:** `kanban.html`/`chat.html`/`graph3d.html`/`index.html`/`voice.html`/`tasks.html`/
+`theme-preview.html` (out of this sweep, per the builder prompt); any backend/server.py change
+(none needed); any tool role, writer lane, or data store (none changed).
+
+**Sweep status: all 16 STANDARDIZATION TRACKER items now shipped across sessions #12-14.** Any
+further design-language work on this repo is genuinely new work, not a continuation of this sweep.
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add shared.css files.html mcp.html browser.html keys.html NEXT-SESSION-UI.md
+git commit -m "Design Language Standardization Batch C (items 10-16) -- SWEEP COMPLETE: files.html error states onto shared .empty-state (4 spots, were bare red-text divs); mcp.html's 4 static tool cards fully onto .hub-tcard; browser.html panels de-duplicated onto .hub-panel, .success/.error/.info-message given real CSS (were referenced by JS but totally unstyled), and a genuine duplicate-CSS bug fixed (.control-group/.btn-group/.placeholder were near-exact copies of rules shared.css already has for imagegen.html -- removed the duplicates, promoted the one real delta -- input styling -- into shared.css, zero collision risk confirmed via repo-wide grep); keys.html's provider cards onto .hub-tcard reusing its existing status-spine concept, with updateCardStatus()/saveKey()/removeKey() fixed to keep the --ar-accent spine color live-updating like the old .connected-class-driven border did. loops.html, artifacts.html, imagegen.html reviewed and left unchanged -- already compliant or have a documented reason not to convert (dense table, neutral-canvas empty state, already-shared CSS). Restyle-only, no endpoint/data-store/writer-lane changes. All 16 STANDARDIZATION TRACKER items now checked off -- sweep complete."
+git push origin main
+# auto-pull deploys within ~1 min — run a 2-minute live-QA pass: open files.html (trigger a fetch
+# error to see the new empty-state, e.g. open with the backend down), mcp.html (4 cards look
+# re-skinned), browser.html (run an automation — placeholder/success/error messages in the preview
+# pane are now visibly styled, not plain text; controls/preview panels still work), keys.html (type
+# into a key field and watch the card's left spine change color live, save/remove a key and confirm
+# the spine still updates, run Test All).
+```
 
 ## 2026-07-13 session #13 (Sonnet, life-os-dashboard folder mounted) — Design Language Standardization, Batch B (items 5-9)
 

@@ -1545,7 +1545,8 @@ body.dashboard-mode #dashboardContainer {
 }
 
 .control-group textarea,
-.control-group select {
+.control-group select,
+.control-group input {
   width: 100%;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
@@ -1564,7 +1565,8 @@ body.dashboard-mode #dashboardContainer {
 }
 
 .control-group textarea:focus,
-.control-group select:focus {
+.control-group select:focus,
+.control-group input:focus {
   outline: none;
   border-color: var(--border-focus);
 }

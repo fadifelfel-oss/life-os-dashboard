@@ -176,7 +176,7 @@ async function loadTree() {
     flattenTree(TREE_CACHE);
     renderTree(TREE_CACHE);
   } catch(e) {
-    document.getElementById('tree-container').innerHTML = `<div style="padding:16px;color:var(--red)">Error loading tree: ${e.message}</div>`;
+    document.getElementById('tree-container').innerHTML = `<div class="empty-state" style="padding:16px;"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg></div><div class="empty-state-text" style="color:var(--red);">Error loading tree: ${e.message}</div></div>`;
   }
 }
 
@@ -335,7 +335,7 @@ async function openFolder(el, path) {
     html += '</div>';
     content.innerHTML = html;
   } catch(e) {
-    content.innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`;
+    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg></div><div class="empty-state-text" style="color:var(--red);">Error: ${e.message}</div></div>`;
   }
 }
 
@@ -391,10 +391,10 @@ async function openFile(path, el) {
     } else if (data.content) {
       content.innerHTML = `<pre style="white-space:pre-wrap;font-size:var(--font-size-sm);color:var(--text-primary)">${escapeHtml(data.content)}</pre>`;
     } else {
-      content.innerHTML = `<div style="color:var(--red)">${data.error || 'Failed to load file'}</div>`;
+      content.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg></div><div class="empty-state-text" style="color:var(--red);">${data.error || 'Failed to load file'}</div></div>`;
     }
   } catch(e) {
-    content.innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`;
+    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="icon" width="20" height="20"><use href="assets/lucide-sprite.svg#icon-triangle-alert"/></svg></div><div class="empty-state-text" style="color:var(--red);">Error: ${e.message}</div></div>`;
   }
 }
 
