@@ -38,14 +38,32 @@
   .job-picks { grid-template-columns: 1fr !important; }
 }
 
+/* All-Models cards keep their own dense stat layout (score bar + dual price block + rank/speed
+   badges) rather than the title/desc/meta hub-tcard anatomy — same reasoning as trading.html's
+   and fitness.html's log tables (Builder Session Batch B): forcing a genuinely different data
+   shape into the 3-part anatomy would need a JS rewrite beyond a restyle. What IS adopted here
+   is the anatomy's signature visual language — a colored left spine — added purely in CSS so
+   the page still reads as part of the same design system. */
 .model-card {
+  position: relative;
+  overflow: hidden;
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-4) calc(var(--space-4) + 3px);
   transition: all var(--transition-base);
   cursor: pointer;
 }
+
+.model-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 3px; height: 100%;
+  background: var(--border-primary);
+}
+
+.model-card.free-card::before { background: var(--green); }
+.model-card.selected::before { background: var(--accent); }
 
 .model-card:hover {
   border-color: var(--accent-border);
@@ -130,28 +148,14 @@
   margin-bottom: var(--space-3);
 }
 .job-picks { display:grid; grid-template-columns: repeat(3,1fr); gap: var(--space-3); }
-.pick-card {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
-  display:flex; flex-direction:column; gap:6px;
-}
-.pick-card.rec { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-border) inset; }
-.pick-card.premium { border-color: var(--cyan); }
-.pick-card.budget { border-color: var(--green); }
-.pick-badge {
-  align-self:flex-start; font-size: 10px; font-weight:800; text-transform:uppercase;
-  letter-spacing:.05em; padding: 2px 8px; border-radius: var(--radius-full);
-}
-.pick-badge.rec { background: var(--accent); color: var(--on-accent); }
-.pick-badge.premium { background: var(--cyan-bg); color: var(--cyan); }
-.pick-badge.budget { background: var(--green-bg); color: var(--green); }
-.pick-name { font-size: var(--font-size-md); font-weight: 800; }
-.pick-provider { font-size: var(--font-size-xs); color: var(--text-tertiary); }
-.pick-price { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-primary); }
-.pick-price .free { color: var(--green); font-weight:700; }
-.pick-why { font-size: var(--font-size-xs); color: var(--text-secondary); line-height:1.5; margin-top:2px; }
+/* By-Job recommendation cards restyled onto .hub-tcard anatomy (Builder Session Batch B.9):
+   role (rec/premium/budget) now drives the spine color via --ar-accent set inline per card,
+   replacing the old border-color/box-shadow-per-role rules. The pick-badge pill is now a
+   .hub-tag styled inline with the same role colors, sitting in the title row. Deltas kept
+   local: monospace price font + free-price green (not part of the shared anatomy), and the
+   italic "est. price" note style. */
+.pick-price-mono { font-family: var(--font-mono); }
+.pick-price-mono .free { color: var(--green); font-weight:700; }
 .pick-missing { font-size: 10px; color: var(--text-muted); font-style: italic; }
 
 /* Token tracker specific */
@@ -736,6 +740,11 @@ function setDefaultModel(id) {
   renderJobs();
 }
 
+// Role → spine accent + pill colors, reused for every pick card so the spine (border-left)
+// and the badge pill never drift out of sync (Builder Session Batch B.9).
+const PICK_ROLE_ACCENT = { rec: 'var(--accent)', premium: 'var(--cyan)', budget: 'var(--green)' };
+const PICK_ROLE_TAG = { rec: { bg: 'var(--accent)', fg: 'var(--on-accent)' }, premium: { bg: 'var(--cyan-bg)', fg: 'var(--cyan)' }, budget: { bg: 'var(--green-bg)', fg: 'var(--green)' } };
+
 function renderJobs() {
   const wrap = document.getElementById('jobs-list');
   wrap.innerHTML = '';
@@ -746,16 +755,19 @@ function renderJobs() {
       const m = live || pick.fb;
       const badge = pick.role === 'rec' ? 'Best value' : pick.role === 'budget' ? 'Cheaper' : 'Premium';
       const cls = pick.role;
+      const tag = PICK_ROLE_TAG[cls] || PICK_ROLE_TAG.rec;
       const provider = m.provider || 'Model';
       const ctx = m.ctx >= 1000 ? (m.ctx/1000).toFixed(0)+'K' : (m.ctx||'')+ (m.ctx? '':'');
+      const isDefault = window.lifeosGetDefaultModel && live && window.lifeosGetDefaultModel() === live.id;
       cards += `
-        <div class="pick-card ${cls}">
-          <span class="pick-badge ${cls}">${badge}</span>
-          <div class="pick-name">${m.icon || '🔧'} ${m.name}</div>
-          <div class="pick-provider">${provider}${ctx?` • ${ctx} ctx`:''}${live?'':' • <span class="pick-missing">est. price</span>'}</div>
-          <div class="pick-price">in ${fmtP(m.pp||0)} / out ${fmtP(m.pc||0)} <span style="color:var(--text-muted);">per 1M</span></div>
-          <div class="pick-why">${pick.why}</div>
-          ${live ? `<button onclick="setDefaultModel('${live.id}')" style="align-self:flex-start;margin-top:6px;font-size:11px;font-weight:700;background:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'var(--accent)':'var(--bg-primary)'};color:${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'var(--on-accent)':'var(--accent)'};border:1px solid var(--accent-border);padding:4px 10px;border-radius:var(--radius-full);cursor:pointer;">${window.lifeosGetDefaultModel&&window.lifeosGetDefaultModel()===live.id?'★ Chat default':'☆ Set as chat default'}</button>` : ''}
+        <div class="hub-tcard pick-card ${cls}" style="--ar-accent:${PICK_ROLE_ACCENT[cls] || 'var(--accent)'};">
+          <div class="hub-tcard-title">${m.icon || '🔧'} ${m.name} <span class="hub-tag" style="background:${tag.bg};color:${tag.fg};">${badge}</span></div>
+          <div class="hub-tcard-desc">${pick.why}</div>
+          <div class="hub-tcard-meta">
+            <span class="hub-tag-muted">${provider}${ctx?` • ${ctx} ctx`:''}${live?'':' • <span class="pick-missing">est. price</span>'}</span>
+            <span class="hub-tag-muted pick-price-mono">in ${fmtP(m.pp||0)} / out ${fmtP(m.pc||0)} per 1M</span>
+            ${live ? `<button onclick="setDefaultModel('${live.id}')" style="font-size:11px;font-weight:700;background:${isDefault?'var(--accent)':'var(--bg-primary)'};color:${isDefault?'var(--on-accent)':'var(--accent)'};border:1px solid var(--accent-border);padding:4px 10px;border-radius:var(--radius-full);cursor:pointer;">${isDefault?'★ Chat default':'☆ Set as chat default'}</button>` : ''}
+          </div>
         </div>`;
     });
     wrap.innerHTML += `

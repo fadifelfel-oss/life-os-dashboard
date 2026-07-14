@@ -89,14 +89,10 @@ body {
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
-/* Panels */
-.panel {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 12px;
-  padding: 18px;
-  margin-bottom: 16px;
-}
+/* Panels — .panel promoted onto the shared .hub-panel module-card style (Builder Session —
+   Batch B.7); the local rule below is removed, class renamed to hub-panel in the HTML. Kept
+   .panel-title as its own local uppercase-eyebrow label style — this page uses a label div, not
+   an <h2>, so shared.css's .hub-panel h2 rule simply doesn't apply here (no conflict). */
 .panel-title {
   font-size: 12px;
   font-weight: 700;
@@ -125,12 +121,23 @@ select.prospect-select {
   font-size: 13px;
 }
 
-/* Brief card */
+/* Brief card — given a hub-tcard-style outer shell (bordered card + colored left spine, matching
+   the .hub-tcard anatomy in shared.css) per Builder Session Batch B.7. Kept as its own .brief
+   class rather than renamed to .hub-tcard: the internal structure (name/chips header + multiple
+   labeled fields + action buttons) is much richer than hub-tcard's title/desc/meta anatomy, so
+   only the container language (border + spine) is borrowed, not the full class. */
 .brief {
+  position: relative;
+  overflow: hidden;
   background: var(--bg-primary);
   border: 1px solid var(--border-primary);
   border-radius: 10px;
-  padding: 16px;
+  padding: 16px 16px 16px 20px;
+}
+.brief::before {
+  content: '';
+  position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+  background: var(--area-fieldbridge);
 }
 .brief-head {
   display: flex;
@@ -250,7 +257,7 @@ select.prospect-select {
 
 <!-- PREP BRIEF TAB -->
 <div id="tab-prep" class="tab-content active">
-  <div class="panel">
+  <div class="hub-panel">
     <div class="panel-title">Pre-call prep — pull a prospect from your CRM</div>
     <div class="prep-row">
       <select class="prospect-select" id="prospectSelect" onchange="renderPrepBrief()">
@@ -269,7 +276,7 @@ select.prospect-select {
 
 <!-- AD-HOC TRANSCRIPT TAB -->
 <div id="tab-adhoc" class="tab-content">
-  <div class="panel">
+  <div class="hub-panel">
     <div class="panel-title">Ad-hoc transcript — audio Fireflies didn't capture</div>
     <div class="upload-area" id="processArea" onclick="document.getElementById('audioInput').click()">
       <div class="upload-icon"><svg class="icon" width="28" height="28"><use href="assets/lucide-sprite.svg#icon-headphones"/></svg></div>
@@ -281,7 +288,7 @@ select.prospect-select {
     <div class="note-inline">Processed transcripts are saved server-side for working reference. To get decisions, actions, and CRM impact into the vault, use <strong>Copy for Cowork</strong> below and paste into a Cowork session.</div>
   </div>
 
-  <div class="panel" id="resultsPanel" style="display:none;">
+  <div class="hub-panel" id="resultsPanel" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="panel-title" style="margin-bottom:0;">Working copy — <span id="resultTitle"></span></div>
       <button class="btn btn-primary btn-sm" onclick="copyForCowork()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-copy"/></svg> Copy for Cowork</button>

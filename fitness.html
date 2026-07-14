@@ -14,18 +14,17 @@
   padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-4);
   display: flex; align-items: center; gap: 8px; line-height: 1.5;
 }
-.ft-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
-.ft-stat {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: var(--space-3); text-align: center;
-}
-.ft-stat-value { font-size: 22px; font-weight: 800; color: var(--area-health); }
-.ft-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
-.ft-panel {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
-}
-.ft-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+/* .ft-stats/.ft-stat/.ft-stat-value/.ft-stat-label promoted to shared.css as .hub-tile-row/
+   .hub-tile/.hub-tile-num/.hub-tile-label (Builder Session — Batch B.6, same pattern as
+   trading.html Batch B.5). Non-clickable display tiles → cursor/text-align overridden back;
+   value kept health-accent colored per this page's existing emphasis. */
+.hub-tile { cursor: default; text-align: center; }
+.hub-tile-num { font-size: 22px; font-weight: 800; color: var(--area-health); margin-top: 0; }
+/* .ft-panel promoted to shared.css as .hub-panel — identical rules, renamed in place throughout.
+   Note: exercise cards (.ft-ex-card below) deliberately NOT converted to .hub-tcard — they're a
+   centered icon-topped reference grid (today's circuit), a genuinely different shape than the
+   left-spined title/meta card anatomy; forcing the spine anatomy here would look worse, not more
+   consistent. Session log stays a <table> (dense reference data), same call as trading.html. */
 .ft-anchors { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-2); }
 .ft-anchor { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
 .ft-spark { width: 100%; height: 60px; display: block; }
@@ -35,12 +34,11 @@
 .ft-table tr:hover td { background: var(--bg-tertiary); }
 .ft-table a { color: var(--text-primary); text-decoration: none; font-weight: 600; }
 .ft-chip { font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); }
-.ft-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; line-height: 1.8; }
-.ft-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
+/* .hub-digest-empty/.hub-digest-loading promoted to shared.css as .hub-digest-empty/.hub-digest-loading */
 .ft-scroll { overflow-x: auto; }
-details.ft-panel > summary { cursor: pointer; list-style: none; }
-details.ft-panel > summary::-webkit-details-marker { display: none; }
-details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
+details.hub-panel > summary { cursor: pointer; list-style: none; }
+details.hub-panel > summary::-webkit-details-marker { display: none; }
+details.hub-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
 .ft-chev { display: inline-block; font-weight: 700; transition: transform 0.15s ease; }
 .ft-program-body { margin-top: var(--space-3); font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
 .ft-program-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--space-2) 0; }
@@ -77,9 +75,9 @@ details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
   <button class="btn btn-sm" onclick="askHealthCoach()"><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-message-square"/></svg> Ask the Health Coach</button>
 </div>
 
-<div class="ft-stats" id="ftStats"></div>
+<div class="hub-tile-row" id="ftStats"></div>
 
-<div class="ft-panel">
+<div class="hub-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-dumbbell"/></svg> Today's circuit — 2 rounds, ~20 min</h2>
   <div class="ft-ex-grid">
     <div class="ft-ex-card"><svg class="icon ft-ex-icon" width="40" height="40"><use href="assets/exercise-illustrations.svg#ex-leg-press"/></svg><div class="ft-ex-name">Leg press</div><div class="ft-ex-reps">10 reps</div><div class="ft-ex-cue">Light. Stop above parallel. Exhale pushing.</div></div>
@@ -92,7 +90,7 @@ details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
   <p class="ft-note">Rest 60–90 sec between machines · everything at RPE ≤ 6–7. Illustrations are simple reference diagrams, not photos — my build sandbox can't verify external image links right now, so nothing here depends on one. Ask staff at LA Fitness if a machine's setup looks different from what you expect.</p>
 </div>
 
-<details class="ft-panel" id="programPanel">
+<details class="hub-panel" id="programPanel">
   <summary>
     <h2><span class="ft-chev">›</span> <svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Full program details (rules, progression, phases)<span class="ft-status-chip" id="programStatus">loading</span></h2>
   </summary>
@@ -101,7 +99,7 @@ details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
 
 <p class="ft-note" style="padding:0 var(--space-1);"><svg class="icon icon-sm" width="12" height="12" style="vertical-align:-1px"><use href="assets/lucide-sprite.svg#icon-repeat"/></svg> By design, Session A, B, and C are the identical workout — Phase 1 favors repetition over variety while you relearn the movements and rebuild base fitness at light load. Variety comes in Phase 2 (week 7+).</p>
 
-<div class="ft-panel">
+<div class="hub-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Daily anchors (gym or not)</h2>
   <div class="ft-anchors">
     <div class="ft-anchor"><svg class="icon icon-sm" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Morning light — 5–10 min outside</div>
@@ -110,14 +108,14 @@ details.ft-panel[open] > summary h2 .ft-chev { transform: rotate(90deg); }
   </div>
 </div>
 
-<div class="ft-panel" id="sparkPanel" style="display:none;">
+<div class="hub-panel" id="sparkPanel" style="display:none;">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-zap"/></svg> Energy after sessions (trend)</h2>
   <svg class="ft-spark" id="sparkSvg" viewBox="0 0 600 60" preserveAspectRatio="none"></svg>
 </div>
 
-<div class="ft-panel">
+<div class="hub-panel">
   <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Session log</h2>
-  <div id="ftBody"><div class="ft-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading log…</div></div>
+  <div id="ftBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading log…</div></div>
 </div>
 
 </div><!-- /container -->
@@ -129,7 +127,7 @@ function escH(s) { const d = document.createElement('div'); d.textContent = s ==
 function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
 
 function statCard(value, label) {
-  return `<div class="ft-stat"><div class="ft-stat-value">${value}</div><div class="ft-stat-label">${label}</div></div>`;
+  return `<div class="hub-tile"><div class="hub-tile-num">${value}</div><div class="hub-tile-label">${label}</div></div>`;
 }
 
 // Cached after each loadWorkouts() run — used by askHealthCoach() so the
@@ -149,11 +147,11 @@ async function loadProgram() {
       body.innerHTML = '<pre style="white-space:pre-wrap;font-size:12px;">' + escH(json.content) + '</pre>';
       chip.textContent = 'raw';
     } else {
-      body.innerHTML = '<div class="ft-empty">Program file not found in the vault mirror yet.</div>';
+      body.innerHTML = '<div class="hub-digest-empty">Program file not found in the vault mirror yet.</div>';
       chip.textContent = 'missing';
     }
   } catch (e) {
-    body.innerHTML = `<div class="ft-empty">Couldn't load Program v1 (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load Program v1 (${escH(e.message)}).</div>`;
     chip.textContent = 'error';
   }
 }
@@ -245,7 +243,7 @@ async function loadWorkouts() {
 
     if (!rows.length) {
       stats.innerHTML = statCard('0/3', 'This week') + statCard(phaseLabel, 'Program') + statCard('—', 'Avg energy after') + statCard('—', 'Last session');
-      body.innerHTML = '<div class="ft-empty">No sessions logged yet.<br>Session #1 = a note in the vault\'s <strong>Workout Log</strong> folder from the <strong>Workout Log Entry</strong> template.<br><span style="font-size:12px;">Program v1: 25 min Zone 2 + 2 rounds machine circuit, RPE ≤ 7 — embarrassingly light is correct.</span></div>';
+      body.innerHTML = '<div class="hub-digest-empty">No sessions logged yet.<br>Session #1 = a note in the vault\'s <strong>Workout Log</strong> folder from the <strong>Workout Log Entry</strong> template.<br><span style="font-size:12px;">Program v1: 25 min Zone 2 + 2 rounds machine circuit, RPE ≤ 7 — embarrassingly light is correct.</span></div>';
       drawSpark([]);
       ftLastSummary = { thisWeek: 0, phaseLabel, avgEnergy: '—', lastDate: null };
       return;
@@ -285,7 +283,7 @@ async function loadWorkouts() {
         </tr>`;
       }).join('') + '</tbody></table></div>';
   } catch (e) {
-    body.innerHTML = `<div class="ft-empty">Couldn't load the log (${escH(e.message)}). The backend commit (/api/logs) may not be deployed yet.</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load the log (${escH(e.message)}). The backend commit (/api/logs) may not be deployed yet.</div>`;
   }
 }
 

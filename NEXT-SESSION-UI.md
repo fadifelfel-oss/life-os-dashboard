@@ -142,7 +142,8 @@ remain gated exactly as before; nothing gated was touched this pass.
    clearing item 4's gate in full for every page listed in the STANDARDIZATION TRACKER below.
    Execute ONE BATCH PER SESSION (push + Fadi's 2-minute live QA between batches — this sweep was
    once deferred as "too risky blind"; batching is the risk control, not a suggestion). See
-   session #12 write-up below for Batch A (items 1-4, shipped) and the tracker for what's left.
+   session #12 write-up below for Batch A (items 1-4, shipped) and session #13 for Batch B
+   (items 5-9, shipped) — see the tracker for what's left.
 
    **STANDARDIZATION TRACKER** (16 items — check off what shipped, one line each, keep in sync
    with the session write-ups):
@@ -150,11 +151,11 @@ remain gated exactly as before; nothing gated was touched this pass.
    - [x] 2. crm.html — session #12
    - [x] 3. use-cases.html (chip row = the S4 reference, aligned to shared) — session #12
    - [x] 4. projects.html — session #12
-   - [ ] 5. trading.html
-   - [ ] 6. fitness.html
-   - [ ] 7. meetings.html
-   - [ ] 8. skills.html
-   - [ ] 9. models.html
+   - [x] 5. trading.html — session #13
+   - [x] 6. fitness.html — session #13
+   - [x] 7. meetings.html — session #13
+   - [x] 8. skills.html — session #13
+   - [x] 9. models.html — session #13
    - [ ] 10. files.html
    - [ ] 11. loops.html
    - [ ] 12. mcp.html
@@ -196,6 +197,99 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-13 session #13 (Sonnet, life-os-dashboard folder mounted) — Design Language Standardization, Batch B (items 5-9)
+
+Continuation of session #12 in the same conversation. Fadi confirmed "Yes, deployed and QA'd" for
+Batch A before authorizing Batch B — the builder prompt's one-batch-per-session risk control was
+honored by pausing and asking rather than chaining straight through. RESTYLE-ONLY, same as Batch A:
+no endpoint changes, no new data stores, no behavior changes beyond presentation. No further
+shared.css changes were needed this batch — Batch A's promotions already covered everything reused
+(`.hub-tile-row/-tile/-num/-label`, `.hub-panel`, `.hub-digest-empty/-loading`, `.hub-tcard*`,
+`.hub-tag*`).
+
+**Batch B.5 — trading.html:** `.tr-stats`→`.hub-tile-row`, `.tr-stat*`→`.hub-tile*` (kept a local
+override: tiles are non-clickable and center-aligned/trading-colored, unlike dashboard's default
+tile). `.tr-panel`→`.hub-panel`, `.tr-empty`/`.tr-loading`→`.hub-digest-empty`/`.hub-digest-loading`.
+**Deliberately NOT converted:** the trade log stays a 9-column `<table>` — dense reference data,
+matching the spec's own "bordered-row for dense reference lists" guidance rather than forcing it
+into card anatomy.
+
+**Batch B.6 — fitness.html:** Same stat-tile/panel/empty pattern as trading.html
+(`.ft-stats`→`.hub-tile-row`, etc., health-accent color kept via local override). **Deliberately NOT
+converted:** `.ft-ex-card` (today's-circuit exercise reference cards) — a centered icon-topped grid,
+a genuinely different shape than the left-spined anatomy; forcing it would look worse. Session log
+table stays a `<table>`, same reasoning as trading.html. Both exclusions documented in code comments
+so future sessions read them as deliberate, not overlooked.
+
+**Batch B.7 — meetings.html:** Narrower restyle than other pages, matching this page's own bespoke
+design system and the "keep banner and handlers truthful" instruction: `.panel`→`.hub-panel`
+(container-shape-only rename, 3 HTML usages; `.panel-title` left untouched — different, page-specific
+label class). The `.brief` card (prep-brief output) got hub-tcard-*style* treatment without a class
+rename — `position:relative;overflow:hidden`, adjusted padding, and a new `.brief::before` 3px
+left-spine bar in `var(--area-fieldbridge)` — kept as its own `.brief` class since its internal
+structure (name/chips header + labeled fields + actions) is richer than hub-tcard's title/desc/meta
+anatomy. Zero JS edits — `<script>` block, `.empty-state`, `.role-banner`, `.tabs`, and every
+`onclick` handler left completely untouched, consistent with dashboard.html's Batch A precedent of
+not re-touching working scripts that weren't part of the ask.
+
+**Batch B.8 — skills.html:** ARMS registry rows got a bordered-row treatment (not full cards — too
+heavy for a dense ~20+ row list): `.reg-row` gained a `border-left: 3px solid transparent` accent,
+set per-row from a new shared `REG_STATUS_COLORS` map (`active`/`consolidating`/`retired`) via a new
+`regRowAccent()` helper — same map `regStatusChip()` already used for the chip dot, refactored so the
+two colors can never drift out of sync. The slide-in detail side panel's Job/Wired-to/Log fields
+adopted `.hub-side-item` (the shared muted-box side-module treatment) in place of this page's bespoke
+bare-text/one-off-box styling. `.skill-card` grid (Vault Skills / Installed Skills) deliberately left
+untouched — not named in the batch instruction for this page.
+
+**Batch B.9 — models.html:** By-Job tab's `.pick-card` recommendation cards (rec/premium/budget)
+fully re-skinned onto `.hub-tcard`/`-title`/`-desc`/`-meta` — the `pick-badge` role pill is now a
+`.hub-tag` styled inline from a new `PICK_ROLE_TAG` map, and the spine color comes from a matching
+`PICK_ROLE_ACCENT` map set via inline `--ar-accent`, so spine and pill share one source of truth per
+role. Content and the `setDefaultModel()` onclick handler are unchanged — only the DOM structure
+changed (badge/name/provider/price/why → title+pill/desc/meta). Removed the now-unused
+`.pick-badge`/`.pick-name`/`.pick-provider`/`.pick-price`/`.pick-why` CSS. **All Models tab's**
+`.model-card` grid **deliberately NOT** converted to the title/desc/meta anatomy — same reasoning as
+trading/fitness's log tables: a genuinely different data shape (score bar + dual price stat + rank/
+speed badges) that would need a JS rewrite beyond a restyle. What WAS adopted: the anatomy's
+signature visual language — added a colored left spine in pure CSS (`.model-card::before`, grey by
+default, green for the free tier, accent for the selected/compare state) so the page still reads as
+part of the same design system without touching the render logic.
+
+**Verification (Read/Grep — authoritative, same methodology as session #12):**
+- NUL-scan (`Grep` tool, `\x00` pattern) across all 5 touched files individually as each was
+  finished, then again as a consolidated pass across all 5 together: **0 matches.**
+- `<script>` blocks extracted byte-for-byte via `Read` (never the bash mount) and run through
+  `node --check`: `trading.html`, `fitness.html`, `skills.html`, `models.html` — all `SYNTAX_OK`.
+  `meetings.html` had zero JS edits this batch (see B.7 above) so it wasn't re-extracted, consistent
+  with the same call made for dashboard.html in session #12.
+- Full `Read` re-read of `skills.html` after all 5 of its edits (CSS + HTML + JS) landed, to confirm
+  the `.reg-row` accent, `hub-side-item` additions, and `REG_STATUS_COLORS`/`regRowAccent` refactor
+  are internally consistent before running the syntax/NUL checks.
+- Class-collision check for `models.html`'s new tokens (`PICK_ROLE_ACCENT`, `PICK_ROLE_TAG`,
+  `pick-price-mono`): page-local, not shared-namespace, so no repo-wide collision risk.
+
+**Not touched:** Batch C (items 10-16) — see the STANDARDIZATION TRACKER above; `kanban.html`/
+`chat.html`/`graph3d.html`/`index.html`/`voice.html`/`tasks.html`/`theme-preview.html` (out of this
+sweep); `shared.css` (no further promotions needed this batch); any backend/server.py change (none
+needed); any tool role, writer lane, or data store (none changed).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add trading.html fitness.html meetings.html skills.html models.html NEXT-SESSION-UI.md
+git commit -m "Design Language Standardization Batch B (items 5-9): trading.html + fitness.html stat tiles/panel/empty-state onto shared .hub-tile/.hub-panel/.hub-digest-* classes, trade/session log tables kept as dense-reference tables per spec; meetings.html .panel container onto .hub-panel + .brief card gets hub-tcard-style spine (no class rename, banner/handlers untouched); skills.html ARMS registry rows get a status-colored bordered-row accent (regRowAccent(), shared with the existing status chip color map) + side panel onto .hub-side-item; models.html By-Job pick-cards fully onto .hub-tcard/.hub-tag with per-role spine+pill color maps, All-Models cards get the hub-tcard spine visual language in CSS only (score-bar/price-stat layout kept, too dense to force into title/desc/meta). Restyle-only, no endpoint/data-store/writer-lane changes, no further shared.css promotions needed. STANDARDIZATION TRACKER items 5-9 checked off. Batch C (files/loops/mcp/artifacts/browser/imagegen/keys, items 10-16) next -- needs a fresh push+QA checkpoint first per the one-batch-per-session rule"
+git push origin main
+# auto-pull deploys within ~1 min — run a 2-minute live-QA pass: open trading.html (stat tiles +
+# guard banner still triggers on rule breaks), fitness.html (stat tiles + circuit cards unchanged),
+# meetings.html (Workbench panels + prep-brief still generates and all buttons still work),
+# skills.html (click a registry row — side panel opens with the new box styling + colored row
+# accent), models.html (By-Job tab cards look re-skinned, "Set as chat default" button still works,
+# All Models tab still filters/compares normally).
+```
 
 ## 2026-07-13 session #12 (Sonnet, life-os-dashboard folder mounted) — Design Language Standardization, Batch A (items 1-4)
 
