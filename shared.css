@@ -1099,6 +1099,70 @@ body.dashboard-mode #dashboardContainer {
 
 .empty-state-action { margin-top: var(--space-3); }
 
+/* == Hub design language (AREA-PAGE-SPEC) ==
+   Promoted 2026-07-13 ("Builder Session 4 — Design Language Standardization", Batch A.1) from
+   dashboard.html (Today-tab restyle, session #7) + area.html/fieldbridge.html (Area Page Hub
+   Redesign, session #11) — see design/AREA-PAGE-SPEC.md for the layout recipe. Card anatomy
+   (.hub-tcard), stat tiles, filter chips, side-module panels, and empty/loading states for any
+   hub-digest-style page. Distinct from the older .card/.card-kpi/.stat-card/.empty-state system
+   above (Phase 2.3) — intentionally not merged with it, per the spec doc.
+   Pages that want a page-local accent instead of the global --accent set --ar-accent (and
+   optionally --ar-accent-bg) on :root/.container — every rule below falls back to --accent when
+   a page doesn't set it, so dashboard.html's Today-tab cards (which never set --ar-accent) render
+   byte-identical to before this promotion. */
+
+/* --- Card anatomy --- */
+.hub-tcard { position: relative; overflow: hidden; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 11px 12px 11px 16px; transition: all .2s; }
+.hub-tcard:hover { border-color: var(--ar-accent, var(--accent)); transform: translateY(-1px); box-shadow: 0 4px 16px color-mix(in srgb, var(--ar-accent, var(--accent)) 15%, transparent); }
+.hub-tcard::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--ar-accent, var(--area-admin)); }
+.hub-tcard.sp-due::before { background: var(--status-stale); }
+.hub-tcard.sp-overdue::before { background: var(--status-failed); }
+.hub-tcard.sp-wip::before { background: var(--accent-2); }
+.hub-tcard.sp-fieldbridge::before { background: var(--area-fieldbridge); }
+.hub-tcard.sp-trading::before { background: var(--area-trading); }
+.hub-tcard-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-bottom: 6px; }
+.hub-tcard-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
+.hub-tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.hub-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; background: var(--area-admin-bg); color: var(--area-admin); }
+.hub-tag.tg-fieldbridge { background: var(--area-fieldbridge-bg); color: var(--area-fieldbridge); }
+.hub-tag.tg-career { background: var(--area-career-bg); color: var(--area-career); }
+.hub-tag.tg-construction { background: var(--area-construction-bg); color: var(--area-construction); }
+.hub-tag.tg-trading { background: var(--area-trading-bg); color: var(--area-trading); }
+.hub-tag.tg-health { background: var(--area-health-bg); color: var(--area-health); }
+.hub-tag.tg-family { background: var(--area-family-bg); color: var(--area-family); }
+.hub-tag.tg-knowledge { background: var(--area-knowledge-bg); color: var(--area-knowledge); }
+.hub-tag.tg-overdue { background: color-mix(in srgb, var(--status-failed) 18%, transparent); color: var(--status-failed); }
+.hub-tag-muted { font-size: 11px; color: var(--text-tertiary); }
+
+/* --- Stat tile row (S5) --- */
+.hub-tile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+@media (max-width: 640px) { .hub-tile-row { grid-template-columns: repeat(2, 1fr); } }
+.hub-tile { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-3); cursor: pointer; transition: border-color .15s, transform .15s; text-align: left; }
+.hub-tile:hover { border-color: var(--ar-accent, var(--accent)); transform: translateY(-1px); }
+.hub-tile-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.hub-tile-num { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+
+/* --- Filter chips (S4) --- */
+.hub-filter-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
+.hub-filter-chip { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer; transition: all .15s; }
+.hub-filter-chip:hover { border-color: var(--ar-accent, var(--accent)); }
+.hub-filter-chip.active { background: var(--ar-accent, var(--accent)); border-color: var(--ar-accent, var(--accent)); color: var(--on-accent); }
+
+/* --- Side-module panel (S2 side column) --- */
+.hub-panel { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4); }
+.hub-panel h2 { font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); color: var(--text-primary); }
+.hub-side .hub-panel h2 { font-size: 12px; font-weight: 500; margin-bottom: var(--space-2); }
+.hub-panel h2 .hub-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; text-decoration: none; }
+.hub-side-list { display: flex; flex-direction: column; gap: 6px; }
+.hub-side-item { font-size: 12px; padding: 7px 9px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); }
+.hub-side-footer { margin-top: var(--space-2); font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0; text-decoration: none; display: inline-block; }
+.hub-side-footer:hover { color: var(--ar-accent, var(--accent)); }
+
+/* --- Empty / loading state (S6) — named hub-digest-* to avoid colliding with dashboard.html's
+   pre-existing unrelated .hub-empty/.hub-loading (Today-tab Due/WIP/Signals/Wagers rows) --- */
+.hub-digest-empty { color: var(--text-muted); font-size: 13px; padding: var(--space-4); text-align: center; line-height: 1.7; }
+.hub-digest-loading { color: var(--text-muted); font-size: 13px; padding: var(--space-3); display: flex; align-items: center; gap: 8px; }
+
 /* === BUTTONS === */
 .btn {
   display: inline-flex;

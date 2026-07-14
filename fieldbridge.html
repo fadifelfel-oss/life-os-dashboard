@@ -9,7 +9,12 @@
 <style>
 /* AREA PAGE HUB — fieldbridge.html applies the same recipe as area.html/life-areas.html.
    See design/AREA-PAGE-SPEC.md. Pipeline is FieldBridge's own extra full-width module
-   (its reason to exist), inserted between the stat tiles and the two-column digest. */
+   (its reason to exist), inserted between the stat tiles and the two-column digest.
+   --ar-accent set statically (this page is always the FieldBridge area, no per-visit switching
+   like area.html's JS-set version) so the shared .hub-tcard/.hub-tile/.hub-filter-chip/
+   .hub-side-footer rules in shared.css resolve to FieldBridge's color, matching this page's
+   pre-promotion hardcoded var(--area-fieldbridge) everywhere (Batch A.1). */
+:root { --ar-accent: var(--area-fieldbridge); --ar-accent-bg: var(--area-fieldbridge-bg); }
 .fb-banner {
   font-size: 13px; color: var(--text-secondary);
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
@@ -36,29 +41,8 @@
 .fb-brief-body { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
 .fb-brief-body.fb-brief-empty { color: var(--text-muted); }
 
-/* --- Stat tile row --- */
-.fb-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
-@media (max-width: 640px) { .fb-stats { grid-template-columns: repeat(2, 1fr); } }
-.fb-stat-tile {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg);
-  padding: var(--space-3); cursor: pointer; transition: border-color .15s, transform .15s; text-align: left;
-}
-.fb-stat-tile:hover { border-color: var(--area-fieldbridge); transform: translateY(-1px); }
-.fb-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
-.fb-stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
-
-.fb-panel {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
-}
-.fb-panel h2 {
-  font-size: var(--font-size-md); margin: 0 0 var(--space-3);
-  display: flex; align-items: center; gap: var(--space-2); color: var(--text-primary);
-}
-.fb-side .fb-panel h2 { font-size: 12px; font-weight: 500; margin-bottom: var(--space-2); }
-.fb-panel h2 .fb-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: auto; text-decoration: none; }
-.fb-empty { color: var(--text-muted); font-size: 13px; padding: var(--space-4); text-align: center; line-height: 1.7; }
-.fb-loading { color: var(--text-muted); font-size: 13px; padding: var(--space-3); display: flex; align-items: center; gap: 8px; }
+/* --- Stat tile row / panel / empty / loading: promoted to shared.css as .hub-tile-row/.hub-tile/
+   .hub-tile-label/.hub-tile-num/.hub-panel/.hub-digest-empty/.hub-digest-loading (Batch A.1) --- */
 
 /* --- Pipeline (full-width, hub-tcard anatomy) --- */
 .fb-board { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); }
@@ -85,22 +69,13 @@
   min-width: 160px;
 }
 .fb-search:focus { outline: none; border-color: var(--area-fieldbridge); }
-.fb-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
-.fb-chip {
-  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full);
-  border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-secondary);
-  cursor: pointer; transition: all .15s;
-}
-.fb-chip:hover { border-color: var(--area-fieldbridge); }
-.fb-chip.active { background: var(--area-fieldbridge); border-color: var(--area-fieldbridge); color: var(--on-accent); }
+/* .hub-filter-chip-row/.hub-filter-chip promoted to shared.css as .hub-filter-chip-row/.hub-filter-chip (Batch A.1) */
 
-/* hub-tcard anatomy — shared language with dashboard.html / area.html */
-.hub-tcard { position: relative; overflow: hidden; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 11px 12px 11px 16px; transition: all .2s; cursor: pointer; }
-.hub-tcard:hover { border-color: var(--area-fieldbridge); }
-.hub-tcard::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--area-fieldbridge); }
-.hub-tcard-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-bottom: 4px; }
-.hub-tcard-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
-.hub-tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+/* hub-tcard anatomy — base/title/desc promoted to shared.css (Batch A.1, shared language with
+   dashboard.html / area.html). Local deltas kept: this page's knowledge cards are clickable
+   (expand-in-place) and the meta row shows styled text, not pill tags. */
+#knowledgeBody .hub-tcard { cursor: pointer; }
+.hub-tcard-meta { gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
 .hub-tcard-meta .fb-expand-toggle { margin-left: auto; color: var(--area-fieldbridge); text-transform: none; letter-spacing: 0; font-size: 11px; }
 /* Pipeline mini-cards reuse the same card, no click/expand */
 .fb-mini-card { cursor: default; text-decoration: none; display: block; }
@@ -119,9 +94,9 @@
 .fb-vault-link:hover { text-decoration: underline; }
 .fb-show-all { margin-top: var(--space-2); font-size: 12px; font-weight: 700; color: var(--area-fieldbridge); background: transparent; border: none; cursor: pointer; padding: 4px 0; }
 
-/* Side modules */
-.fb-side-list { display: flex; flex-direction: column; gap: 6px; }
-.fb-side-item { font-size: 12px; padding: 7px 9px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); }
+/* Side modules — .hub-side-list/.hub-side-item/.hub-side-footer promoted to shared.css as
+   .hub-side-list/.hub-side-item/.hub-side-footer (Batch A.1); opp/task/play item styling below
+   is page-specific content, stays local. */
 .fb-opp-item { display: flex; align-items: flex-start; gap: 6px; }
 .fb-opp-pill { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: var(--radius-full); white-space: nowrap; }
 .fb-opp-high { background: var(--red-bg); color: var(--red); }
@@ -131,8 +106,6 @@
 .fb-opp-text { color: var(--text-secondary); line-height: 1.4; }
 .fb-task-item { font-weight: 600; color: var(--text-primary); position: relative; padding-left: 12px; }
 .fb-task-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--radius-md) 0 0 var(--radius-md); background: var(--area-fieldbridge); }
-.fb-side-footer { margin-top: var(--space-2); font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0; text-decoration: none; display: inline-block; }
-.fb-side-footer:hover { color: var(--area-fieldbridge); }
 
 /* Plays (side module, keeps Run-in-Hermes) */
 .fb-play-item { display: flex; flex-direction: column; gap: 4px; }
@@ -172,33 +145,33 @@
   <div class="fb-brief-body" id="briefBody">Loading…</div>
 </div>
 
-<div class="fb-stats">
-  <button class="fb-stat-tile" onclick="scrollToModule('pipelineModule')">
-    <div class="fb-stat-label">Pipeline</div>
-    <div class="fb-stat-num" id="statPipeline">—</div>
+<div class="hub-tile-row">
+  <button class="hub-tile" onclick="scrollToModule('pipelineModule')">
+    <div class="hub-tile-label">Pipeline</div>
+    <div class="hub-tile-num" id="statPipeline">—</div>
   </button>
-  <button class="fb-stat-tile" onclick="scrollToModule('knowledgeModule')">
-    <div class="fb-stat-label">Knowledge</div>
-    <div class="fb-stat-num" id="statKnowledge">—</div>
+  <button class="hub-tile" onclick="scrollToModule('knowledgeModule')">
+    <div class="hub-tile-label">Knowledge</div>
+    <div class="hub-tile-num" id="statKnowledge">—</div>
   </button>
-  <button class="fb-stat-tile" onclick="scrollToModule('oppModule')">
-    <div class="fb-stat-label">Opportunities</div>
-    <div class="fb-stat-num" id="statOpp">—</div>
+  <button class="hub-tile" onclick="scrollToModule('oppModule')">
+    <div class="hub-tile-label">Opportunities</div>
+    <div class="hub-tile-num" id="statOpp">—</div>
   </button>
-  <button class="fb-stat-tile" onclick="scrollToModule('tasksModule')">
-    <div class="fb-stat-label">Open tasks</div>
-    <div class="fb-stat-num" id="statTasks">—</div>
+  <button class="hub-tile" onclick="scrollToModule('tasksModule')">
+    <div class="hub-tile-label">Open tasks</div>
+    <div class="hub-tile-num" id="statTasks">—</div>
   </button>
 </div>
 
-<div class="fb-panel" id="pipelineModule">
-  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-users"/></svg> Pipeline <a href="crm.html" class="fb-sub">full CRM →</a></h2>
-  <div id="fbPipeline"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
+<div class="hub-panel" id="pipelineModule">
+  <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-users"/></svg> Pipeline <a href="crm.html" class="hub-sub">full CRM →</a></h2>
+  <div id="fbPipeline"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
 </div>
 
 <div class="fb-digest">
   <div class="fb-main">
-    <div class="fb-panel" id="knowledgeModule">
+    <div class="hub-panel" id="knowledgeModule">
       <div class="fb-know-head">
         <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge feeding FieldBridge</h2>
         <input class="fb-search" id="knowSearch" type="text" placeholder="Search notes…" oninput="renderKnowledge()">
@@ -208,23 +181,23 @@
         Cross-vault bridge: clips and wiki notes tagged <code>relates_to: fieldbridge</code> in the
         Second Brain vault, surfaced here because Obsidian wikilinks can't cross into the FieldBridge HQ vault directly.
       </div>
-      <div class="fb-chip-row" id="knowChips" style="display:none;"></div>
-      <div id="knowledgeBody"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div class="hub-filter-chip-row" id="knowChips" style="display:none;"></div>
+      <div id="knowledgeBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
   </div>
 
-  <div class="fb-side">
-    <div class="fb-panel" id="oppModule">
+  <div class="hub-side">
+    <div class="hub-panel" id="oppModule">
       <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity radar</h2>
-      <div id="oppBody"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div id="oppBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
-    <div class="fb-panel" id="playsModule">
+    <div class="hub-panel" id="playsModule">
       <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-play"/></svg> Plays</h2>
-      <div id="fbPlays"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div id="fbPlays"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
-    <div class="fb-panel" id="tasksModule">
-      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks <a href="kanban.html" class="fb-sub">board →</a></h2>
-      <div id="fbTasks"><div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+    <div class="hub-panel" id="tasksModule">
+      <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks <a href="kanban.html" class="hub-sub">board →</a></h2>
+      <div id="fbTasks"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
   </div>
 </div>
@@ -357,7 +330,7 @@ async function loadPipeline(){
     });
     document.getElementById('statPipeline').textContent = rows.length;
     if (!rows.length) {
-      body.innerHTML = '<div class="fb-empty">No clients synced yet — see the full CRM page.</div>';
+      body.innerHTML = '<div class="hub-digest-empty">No clients synced yet — see the full CRM page.</div>';
       return;
     }
     const groups = {};
@@ -375,7 +348,7 @@ async function loadPipeline(){
         </div>
       </div>`).join('') + '</div>';
   } catch (e) {
-    body.innerHTML = `<div class="fb-empty">Couldn't load the pipeline (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load the pipeline (${escH(e.message)}).</div>`;
     document.getElementById('statPipeline').textContent = '0';
   }
 }
@@ -400,7 +373,7 @@ function renderKnowChips() {
   if (types.length < 2) { row.style.display = 'none'; row.innerHTML = ''; return; }
   row.style.display = '';
   const chips = ['all', ...types];
-  row.innerHTML = chips.map(t => `<button class="fb-chip${t === activeTypeChip ? ' active' : ''}" onclick="setTypeChip('${escH(t).replace(/'/g, "\\'")}')">${escH(t === 'all' ? 'All' : t)}</button>`).join('');
+  row.innerHTML = chips.map(t => `<button class="hub-filter-chip${t === activeTypeChip ? ' active' : ''}" onclick="setTypeChip('${escH(t).replace(/'/g, "\\'")}')">${escH(t === 'all' ? 'All' : t)}</button>`).join('');
 }
 
 function setTypeChip(t) {
@@ -419,7 +392,7 @@ function renderKnowledge() {
     (n.title || '').toLowerCase().includes(q) || (n.description || '').toLowerCase().includes(q));
 
   if (!filtered.length) {
-    body.innerHTML = '<div class="fb-empty">No knowledge classified to FieldBridge yet' + (q || activeTypeChip !== 'all' ? ' matching this filter' : '') + '.</div>';
+    body.innerHTML = '<div class="hub-digest-empty">No knowledge classified to FieldBridge yet' + (q || activeTypeChip !== 'all' ? ' matching this filter' : '') + '.</div>';
     return;
   }
 
@@ -485,21 +458,21 @@ function renderOppSide(expanded){
   const opps = lastOpportunities;
   document.getElementById('statOpp').textContent = opps.length;
   if (!opps.length) {
-    body.innerHTML = '<div class="fb-empty">No signals in the Opportunity Radar yet.</div>';
+    body.innerHTML = '<div class="hub-digest-empty">No signals in the Opportunity Radar yet.</div>';
     return;
   }
   const shown = expanded ? opps : opps.slice(0, 3);
   const rows = shown.map(o => {
     const conf = (o.confidence || 'signal').toLowerCase();
     const cls = ['high','medium','emerging'].includes(conf) ? `fb-opp-${conf}` : 'fb-opp-signal';
-    return `<div class="fb-side-item fb-opp-item">
+    return `<div class="hub-side-item fb-opp-item">
       <span class="fb-opp-pill ${cls}">${escH(conf)}</span>
       <span class="fb-opp-text">${escH(o.text)}</span>
     </div>`;
   }).join('');
   const footer = (!expanded && opps.length > 3)
-    ? `<button class="fb-side-footer" onclick="renderOppSide(true)">All ${opps.length} →</button>` : '';
-  body.innerHTML = '<div class="fb-side-list">' + rows + '</div>' + footer;
+    ? `<button class="hub-side-footer" onclick="renderOppSide(true)">All ${opps.length} →</button>` : '';
+  body.innerHTML = '<div class="hub-side-list">' + rows + '</div>' + footer;
 }
 
 async function loadPlays(){
@@ -509,21 +482,21 @@ async function loadPlays(){
     const json = await res.json();
     const plays = ((json && json.data) || []).filter(p => p.area === 'fieldbridge');
     if (!plays.length) {
-      body.innerHTML = '<div class="fb-empty">No FieldBridge plays in the library yet — see the Playbook page.</div>';
+      body.innerHTML = '<div class="hub-digest-empty">No FieldBridge plays in the library yet — see the Playbook page.</div>';
       return;
     }
     plays.sort((a,b) => (b.run_count || 0) - (a.run_count || 0));
     const shown = plays.slice(0, 3);
     const items = shown.map(p => `
-      <div class="fb-side-item fb-play-item">
+      <div class="hub-side-item fb-play-item">
         <div class="fb-play-title">${escH(p.title)}</div>
         ${p.run_count ? `<div class="fb-play-usage">used ${p.run_count}×</div>` : ''}
         <button class="fb-play-run" onclick='runInHermes(${JSON.stringify(p.key)}, ${JSON.stringify(p.prompt)})'>▶ Run in Hermes</button>
       </div>`).join('');
-    const footer = plays.length > 3 ? `<a class="fb-side-footer" href="use-cases.html">All ${plays.length} →</a>` : '';
-    body.innerHTML = '<div class="fb-side-list">' + items + '</div>' + footer;
+    const footer = plays.length > 3 ? `<a class="hub-side-footer" href="use-cases.html">All ${plays.length} →</a>` : '';
+    body.innerHTML = '<div class="hub-side-list">' + items + '</div>' + footer;
   } catch (e) {
-    body.innerHTML = `<div class="fb-empty">Couldn't load plays (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load plays (${escH(e.message)}).</div>`;
   }
 }
 
@@ -543,15 +516,15 @@ async function loadTasks(){
     const rows = ((json && json.data) || json.tasks || []).filter(t => String(t.tag || '').toLowerCase() === 'fieldbridge' && t.column !== 'done');
     document.getElementById('statTasks').textContent = rows.length;
     if (!rows.length) {
-      body.innerHTML = '<div class="fb-empty">No open tasks tagged fieldbridge — see the Kanban board.</div>';
+      body.innerHTML = '<div class="hub-digest-empty">No open tasks tagged fieldbridge — see the Kanban board.</div>';
       return;
     }
     const shown = rows.slice(0, 3);
-    const items = shown.map(t => `<div class="fb-side-item fb-task-item">${escH(t.title || t.text || '')}</div>`).join('');
-    const footer = rows.length > 3 ? `<a class="fb-side-footer" href="kanban.html">All ${rows.length} →</a>` : '';
-    body.innerHTML = '<div class="fb-side-list">' + items + '</div>' + footer;
+    const items = shown.map(t => `<div class="hub-side-item fb-task-item">${escH(t.title || t.text || '')}</div>`).join('');
+    const footer = rows.length > 3 ? `<a class="hub-side-footer" href="kanban.html">All ${rows.length} →</a>` : '';
+    body.innerHTML = '<div class="hub-side-list">' + items + '</div>' + footer;
   } catch (e) {
-    body.innerHTML = `<div class="fb-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
     document.getElementById('statTasks').textContent = '0';
   }
 }
@@ -561,8 +534,8 @@ async function loadAll(){
   loadPipeline();
   loadPlays();
   loadTasks();
-  document.getElementById('knowledgeBody').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
-  document.getElementById('oppBody').innerHTML = '<div class="fb-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
+  document.getElementById('knowledgeBody').innerHTML = '<div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
+  document.getElementById('oppBody').innerHTML = '<div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div>';
   try {
     const fb = await loadAreaData();
     allNotes = fb.notes || [];
@@ -576,7 +549,7 @@ async function loadAll(){
     lastOpportunities = fb.opportunities || [];
     renderOppSide(false);
   } catch (e) {
-    const msg = `<div class="fb-empty">${escH(e.message)}</div>`;
+    const msg = `<div class="hub-digest-empty">${escH(e.message)}</div>`;
     document.getElementById('knowledgeBody').innerHTML = msg;
     document.getElementById('oppBody').innerHTML = msg;
     document.getElementById('statKnowledge').textContent = '0';

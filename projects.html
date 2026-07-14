@@ -7,6 +7,12 @@
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
+/* Project cards re-skinned onto the shared hub design language (Builder Session 4, Batch A.4 —
+   design/AREA-PAGE-SPEC.md). Area pill reuses .hub-tag/.tg-<area> (same shared classes as
+   dashboard.html's Today-tab tags); card spine set per-card via inline --ar-accent matching the
+   project's area color (falls back to the default grey when the area isn't one of the nine
+   canonical slugs). Priority stays a small local pill (.pr-prio) — not an area concept, keeps its
+   existing red/orange semantic tokens. Status columns/board stay page-local, same as crm.html. */
 .pr-banner {
   font-size: 13px; color: var(--text-secondary);
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
@@ -24,21 +30,10 @@
 }
 .pr-col-count { color: var(--text-muted); }
 .pr-col-body { display: flex; flex-direction: column; gap: 8px; }
-.pr-card {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: var(--space-3);
-  cursor: pointer; transition: border-color .15s, transform .1s; text-decoration: none; display: block;
-}
-.pr-card:hover { border-color: var(--accent); transform: translateY(-1px); }
-.pr-card-name { font-size: 16px; font-weight: 700; color: var(--text-primary); }
 .pr-card-folder { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono, monospace); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pr-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
-.pr-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space: nowrap; }
-.pr-tag.prio-high { color: var(--red); border-color: var(--red); }
-.pr-tag.prio-medium { color: var(--orange); border-color: var(--orange); }
-.pr-synced { font-size: 11px; color: var(--text-muted); margin-left: auto; }
-.pr-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; }
-.pr-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
+.pr-prio { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space: nowrap; }
+.pr-prio.prio-high { color: var(--red); border-color: var(--red); }
+.pr-prio.prio-medium { color: var(--orange); border-color: var(--orange); }
 </style>
 </head>
 <body>
@@ -56,7 +51,7 @@
   Read-only registry of your Cowork projects. Each project's own folder is its system of record; Cowork maintains one hub note per project in the vault and this dashboard reads it. New projects appear here automatically once they have a hub note.
 </div>
 
-<div id="prBody"><div class="pr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading projects…</div></div>
+<div id="prBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading projects…</div></div>
 
 </div><!-- /container -->
 
@@ -67,15 +62,20 @@ function escH(s){ const d = document.createElement('div'); d.textContent = s == 
 const STATUS_ORDER = { active: 0, 'in-progress': 1, planning: 2, paused: 3, 'on-hold': 3, backlog: 4, done: 5, archived: 6 };
 function statusRank(s){ const k = String(s || '').toLowerCase(); return (k in STATUS_ORDER) ? STATUS_ORDER[k] : 50; }
 
+// The nine canonical relates_to slugs (BRIEF — UI Dashboards + Knowledge Backlinking, 2026-07-13) —
+// same set hub-tag/.tg-<area> is built for. Unrecognized areas fall back to the default grey pill.
+const KNOWN_AREAS = ['fieldbridge', 'career', 'construction', 'trading', 'health', 'family', 'knowledge', 'admin', 'finances'];
+function areaSlug(area){ const a = String(area || '').toLowerCase().trim(); return KNOWN_AREAS.includes(a) ? a : null; }
+
 async function loadProjects(){
   const body = document.getElementById('prBody');
-  body.innerHTML = '<div class="pr-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading projects…</div>';
+  body.innerHTML = '<div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading projects…</div>';
   try {
     const res = await fetch('/api/projects');
     const json = await res.json();
     const rows = (json && json.data) || [];
     if (!rows.length) {
-      body.innerHTML = '<div class="pr-empty">No projects registered yet.<br><br>Add a hub note in the vault under <strong>010 Projects/</strong> (one per Cowork project) and it appears here automatically.</div>';
+      body.innerHTML = '<div class="hub-digest-empty">No projects registered yet.<br><br>Add a hub note in the vault under <strong>010 Projects/</strong> (one per Cowork project) and it appears here automatically.</div>';
       return;
     }
     const groups = {};
@@ -87,20 +87,22 @@ async function loadProjects(){
         <div class="pr-col-body">
           ${groups[st].map(r => {
             const prio = String(r.priority || '').toLowerCase();
-            return `<a class="pr-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
-              <div class="pr-card-name">${escH(r.name)}</div>
+            const aSlug = areaSlug(r.area);
+            const spine = aSlug ? ` style="--ar-accent:var(--area-${aSlug});"` : '';
+            return `<a class="hub-tcard" href="files.html?path=${encodeURIComponent(r.path || '')}"${spine}>
+              <div class="hub-tcard-title">${escH(r.name)}</div>
               ${r.folder ? `<div class="pr-card-folder">${escH(r.folder)}</div>` : ''}
-              <div class="pr-card-meta">
-                ${r.area ? `<span class="pr-tag">${escH(r.area)}</span>` : ''}
-                ${r.priority ? `<span class="pr-tag prio-${escH(prio)}">${escH(r.priority)}</span>` : ''}
-                ${r.last_synced ? `<span class="pr-synced">synced ${escH(r.last_synced)}</span>` : ''}
+              <div class="hub-tcard-meta">
+                ${r.area ? `<span class="hub-tag${aSlug ? ' tg-' + aSlug : ''}">${escH(r.area)}</span>` : ''}
+                ${r.priority ? `<span class="pr-prio prio-${escH(prio)}">${escH(r.priority)}</span>` : ''}
+                ${r.last_synced ? `<span class="hub-tag-muted">synced ${escH(r.last_synced)}</span>` : ''}
               </div>
             </a>`;
           }).join('')}
         </div>
       </div>`).join('') + '</div>';
   } catch (e) {
-    body.innerHTML = `<div class="pr-empty">Couldn't load projects (${escH(e.message)}). The server may need a restart to pick up /api/projects.</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load projects (${escH(e.message)}). The server may need a restart to pick up /api/projects.</div>`;
   }
 }
 

@@ -7,6 +7,14 @@
 <script>/* anti-flash (R13): apply saved theme before first paint */(function(){try{var s=JSON.parse(localStorage.getItem('fb-os-state')||'{}');document.documentElement.setAttribute('data-theme',s.theme||'blueprint');}catch(e){document.documentElement.setAttribute('data-theme','blueprint');}})();</script>
 <link rel="stylesheet" href="shared.css">
 <style>
+/* CRM board, re-skinned onto the shared hub design language (Builder Session 4, Batch A.2 —
+   design/AREA-PAGE-SPEC.md). --ar-accent set statically to FieldBridge's color (this CRM is
+   FieldBridge-only, one area, same static pattern as fieldbridge.html) so the shared
+   .hub-tcard/.hub-tile/.hub-side-footer rules in shared.css pick it up automatically. Card
+   anatomy, stage-count tiles, and empty/loading states now match fieldbridge.html's own Pipeline
+   module mini-cards exactly (same data, same look). Stage columns/board stay page-local — that
+   layout is CRM/fieldbridge-specific, not part of the promoted family. */
+:root { --ar-accent: var(--area-fieldbridge); --ar-accent-bg: var(--area-fieldbridge-bg); }
 .crm-banner {
   font-size: 13px; color: var(--text-secondary);
   background: var(--bg-secondary); border: 1px solid var(--border-primary);
@@ -24,19 +32,10 @@
 }
 .crm-col-count { color: var(--text-muted); }
 .crm-col-body { display: flex; flex-direction: column; gap: 8px; }
-.crm-card {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: var(--space-3);
-  cursor: pointer; transition: border-color .15s, transform .1s; text-decoration: none; display: block;
-}
-.crm-card:hover { border-color: var(--area-fieldbridge); transform: translateY(-1px); }
-.crm-card-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
-.crm-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.crm-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: var(--radius-full); border: 1px solid var(--border-primary); color: var(--text-tertiary); white-space: nowrap; }
-.crm-empty { color: var(--text-muted); font-size: 14px; padding: var(--space-5); text-align: center; }
-.crm-empty a { color: var(--accent); text-decoration: none; }
-.crm-loading { color: var(--text-muted); font-size: 14px; padding: var(--space-4); display: flex; align-items: center; gap: 8px; }
 .crm-sync-note { font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+/* hub-tcard delta for this page: meta row shows plain trade/region text, not pill tags —
+   matches fieldbridge.html's Pipeline mini-cards exactly (same underlying CRM data). */
+.hub-tcard-meta { gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -54,7 +53,9 @@
   Read-only view of the FieldBridge CRM. Notion is the system of record; Cowork's nightly sync pulls Notion → vault and this dashboard reads that mirror. Edits happen in Notion/Cowork, never here.
 </div>
 
-<div id="crmBody"><div class="crm-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
+<div id="crmStats"></div>
+
+<div id="crmBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading pipeline…</div></div>
 
 </div><!-- /container -->
 
@@ -67,8 +68,11 @@ function stageOrder(stage){
   return m ? parseInt(m[1], 10) : 999;
 }
 
+function slugStage(st, i){ return 'stageCol-' + i + '-' + String(st).toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+
 async function loadCrm(){
   const body = document.getElementById('crmBody');
+  const stats = document.getElementById('crmStats');
   try {
     const res = await fetch('/api/wiki/crm');
     const json = await res.json();
@@ -79,7 +83,8 @@ async function loadCrm(){
       return base !== 'index.md' && name !== 'index' && name !== 'readme';
     });
     if (!rows.length) {
-      body.innerHTML = '<div class="crm-empty">No clients synced yet.<br><br>Click <strong>Sync from Notion</strong> above to pull your Client Pipeline.<br><span style="font-size:12px;">(Make sure the CRM database is shared with the "Life OS Dashboard" Notion integration.)</span></div>';
+      stats.innerHTML = '';
+      body.innerHTML = '<div class="hub-digest-empty">No clients synced yet.<br><br>Click <strong>Sync from Notion</strong> above to pull your Client Pipeline.<br><span style="font-size:12px;">(Make sure the CRM database is shared with the "Life OS Dashboard" Notion integration.)</span></div>';
       return;
     }
     // group by stage
@@ -89,23 +94,38 @@ async function loadCrm(){
       (groups[st] = groups[st] || []).push(r);
     });
     const stages = Object.keys(groups).sort((a,b) => stageOrder(a) - stageOrder(b) || a.localeCompare(b));
-    body.innerHTML = '<div class="crm-board">' + stages.map(st => `
-      <div class="crm-col">
+
+    // Stage-count tiles (S5) — one per stage, click scrolls to that stage's column.
+    stats.innerHTML = '<div class="hub-tile-row" style="grid-template-columns: repeat(' + Math.min(stages.length, 4) + ', 1fr);">'
+      + stages.map((st, i) => `
+        <button class="hub-tile" onclick="scrollToStage(${i})">
+          <div class="hub-tile-label">${escH(st)}</div>
+          <div class="hub-tile-num">${groups[st].length}</div>
+        </button>`).join('') + '</div>';
+
+    body.innerHTML = '<div class="crm-board">' + stages.map((st, i) => `
+      <div class="crm-col" id="${slugStage(st, i)}">
         <div class="crm-col-head"><span>${escH(st)}</span><span class="crm-col-count">${groups[st].length}</span></div>
         <div class="crm-col-body">
           ${groups[st].map(r => `
-            <a class="crm-card" href="files.html?path=${encodeURIComponent(r.path || '')}">
-              <div class="crm-card-name">${escH(r.company)}</div>
-              <div class="crm-card-meta">
-                ${r.trade ? `<span class="crm-tag">${escH(r.trade)}</span>` : ''}
-                ${r.region ? `<span class="crm-tag">${escH(r.region)}</span>` : ''}
-              </div>
+            <a class="hub-tcard" href="files.html?path=${encodeURIComponent(r.path || '')}">
+              <div class="hub-tcard-title">${escH(r.company)}</div>
+              <div class="hub-tcard-meta">${escH(r.trade || '')}${r.trade && r.region ? ' · ' : ''}${escH(r.region || '')}</div>
             </a>`).join('')}
         </div>
       </div>`).join('') + '</div>';
+
+    window.__crmStages = stages.map((st, i) => slugStage(st, i));
   } catch (e) {
-    body.innerHTML = `<div class="crm-empty">Couldn't load the CRM (${escH(e.message)}). The server may need a restart.</div>`;
+    stats.innerHTML = '';
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load the CRM (${escH(e.message)}). The server may need a restart.</div>`;
   }
+}
+
+function scrollToStage(i) {
+  const id = (window.__crmStages || [])[i];
+  const el = id && document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
 }
 
 document.addEventListener('DOMContentLoaded', loadCrm);

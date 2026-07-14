@@ -136,8 +136,38 @@ remain gated exactly as before; nothing gated was touched this pass.
    **PARTIAL CLEAR 2026-07-13 (Sonnet, "PROMPT — Builder Session 3 — Area Page Hub Redesign"):**
    Fadi named `area.html` / `fieldbridge.html` / `life-areas.html` explicitly and approved the hub
    digest + `.hub-tcard` language for them in-session with Fable — see session write-up below and
-   `design/AREA-PAGE-SPEC.md`. The other ~12 pages remain gated exactly as before; this did not
-   open the door to touching them without Fadi naming them too.
+   `design/AREA-PAGE-SPEC.md`.
+   **GATE FULLY CLEARED 2026-07-13 (Fable, architect, same date) — "PROMPT — Builder Session 4 —
+   Design Language Standardization (All Pages)":** Fadi named all remaining pages this date,
+   clearing item 4's gate in full for every page listed in the STANDARDIZATION TRACKER below.
+   Execute ONE BATCH PER SESSION (push + Fadi's 2-minute live QA between batches — this sweep was
+   once deferred as "too risky blind"; batching is the risk control, not a suggestion). See
+   session #12 write-up below for Batch A (items 1-4, shipped) and the tracker for what's left.
+
+   **STANDARDIZATION TRACKER** (16 items — check off what shipped, one line each, keep in sync
+   with the session write-ups):
+   - [x] 1. Promote `.hub-tcard`/stat-tile/chip-row/side-module-card/empty-state CSS to shared.css — session #12
+   - [x] 2. crm.html — session #12
+   - [x] 3. use-cases.html (chip row = the S4 reference, aligned to shared) — session #12
+   - [x] 4. projects.html — session #12
+   - [ ] 5. trading.html
+   - [ ] 6. fitness.html
+   - [ ] 7. meetings.html
+   - [ ] 8. skills.html
+   - [ ] 9. models.html
+   - [ ] 10. files.html
+   - [ ] 11. loops.html
+   - [ ] 12. mcp.html
+   - [ ] 13. artifacts.html
+   - [ ] 14. browser.html
+   - [ ] 15. imagegen.html
+   - [ ] 16. keys.html
+   - Explicitly OUT of this sweep (per the builder prompt): kanban.html (reference implementation
+     — only swap to shared classes if byte-equivalent), chat.html (toolbar/header only, never the
+     message stream), graph3d.html (header + empty states only, no feature work — shiny-object
+     flagged), index.html/dashboard.html (Today tab already done; only the Batch-A shared.css
+     de-dup touched dashboard.html), voice.html/tasks.html/theme-preview.html (dead/orphaned, skip
+     — close-out sweep's job).
 5. **Morning Brief card on Home** — GATE: Hermes actually produces a brief. First help Fadi set
    up Hermes's 05:15 scheduled task per vault `agent-profiles/hermes-market-scanner.md` (click-by-
    click, Hermes side), verify a real brief exists in Hermes's lane, THEN build the card.
@@ -166,6 +196,137 @@ anything on UI-MASTER-PLAN already marked done.
 > weekly trading/fitness journal reviews. Rule for any model: if a change would alter tool roles,
 > writer lanes, or data stores, STOP and flag it against the STANDARD — that's a design change,
 > not execution.
+
+## 2026-07-13 session #12 (Sonnet, life-os-dashboard folder mounted) — Design Language Standardization, Batch A (items 1-4)
+
+Executed "PROMPT — Builder Session 4 — Design Language Standardization (All Pages)" Batch A only,
+per the prompt's own resumable-batch rule (push + Fadi's 2-minute live QA between batches). This is
+a RESTYLE-ONLY sweep — no endpoint changes, no new data stores, no behavior changes beyond
+presentation; confirmed nothing here touches tool roles, writer lanes, or data stores. First action
+taken: recorded the STANDARDIZATION TRACKER above (item 4's gate is now fully cleared for all
+pages) and read `design/AREA-PAGE-SPEC.md` + the `.hub-tcard` CSS in `dashboard.html` +
+`area.html`'s digest CSS before touching anything, per the prompt's own instructions.
+
+**Batch A.1 — promote `.hub-tcard` + digest CSS to shared.css (the keystone):**
+- New `shared.css` section `/* == Hub design language (AREA-PAGE-SPEC) == */` (inserted after the
+  existing Phase-2.3 `.empty-state` block, kept deliberately separate — not merged with the older
+  `.card`/`.card-kpi`/`.stat-card` system per the spec doc). Contains: card anatomy
+  (`.hub-tcard`/`-title`/`-desc`/`-meta`, `.hub-tag`/`.tg-<area>` pills, `sp-*` spine modifiers),
+  stat tiles (`.hub-tile-row`/`.hub-tile`/`.hub-tile-label`/`.hub-tile-num`), filter chips
+  (`.hub-filter-chip-row`/`.hub-filter-chip`), side-module panel
+  (`.hub-panel`/`.hub-side`/`.hub-side-list`/`.hub-side-item`/`.hub-side-footer`/`.hub-sub`), and
+  empty/loading states (`.hub-digest-empty`/`.hub-digest-loading`).
+- **Naming note (deviation from the prompt's literal "keep class names exactly as they are"):**
+  area.html used an `ah-` prefix and fieldbridge.html used an `fb-` prefix for what turned out to
+  be the SAME underlying stat-tile/chip-row/panel/side-module/empty-state CSS — two different names
+  for identical rules, not a shared name to preserve. Promoting required picking one; used a new
+  `hub-` prefix (`hub-tile-row`, `hub-filter-chip`, `hub-panel`, `hub-side-*`, `hub-digest-*`) and
+  renamed both pages onto it. Checked for collisions first: dashboard.html already had unrelated
+  `.hub-stat`/`.hub-stat-num`/`.hub-stat-label` (header stat, different shape) and `.hub-chip`
+  (a small pill decorator, different purpose) and `.hub-empty`/`.hub-loading` (Today-tab specific,
+  different layout) — the new names were chosen specifically to avoid colliding with any of those;
+  verified via `Grep` that the new class tokens (`hub-tile-row`, `hub-tile-label`, `hub-tile-num`,
+  `hub-filter-chip*`, `hub-panel`, `hub-side-list/item/footer`, `hub-digest-empty/loading`, `hub-sub`)
+  appear ONLY in the 5 files intentionally touched this session — zero hits elsewhere in the repo.
+- **Per-page accent color, unified via one CSS variable:** every promoted rule that needs a
+  page-local accent reads `var(--ar-accent, var(--accent))` (or `var(--ar-accent, var(--area-admin))`
+  for the default spine). `dashboard.html` never sets `--ar-accent` → falls back to `--accent`,
+  reproducing its pre-promotion look exactly. `area.html` already set `--ar-accent`/`--ar-accent-bg`
+  on `document.documentElement` via JS per selected area (unchanged) — its rules already used this
+  exact fallback pattern pre-promotion, so nothing to reconcile. `fieldbridge.html` previously
+  hardcoded `var(--area-fieldbridge)` everywhere instead of using a variable — added one static line
+  `:root { --ar-accent: var(--area-fieldbridge); --ar-accent-bg: var(--area-fieldbridge-bg); }` so
+  the shared rules resolve to the identical color without per-rule overrides.
+- **Known, deliberate, minor visual deltas** (documented rather than silently forced to zero-diff):
+  (1) `.hub-tcard-title` margin-bottom converges from area/fieldbridge's 4px to dashboard's 6px
+  (2px, imperceptible). (2) `.hub-tcard:hover` gains dashboard's `translateY(-1px)` + accent-tinted
+  box-shadow on area.html/fieldbridge.html's knowledge cards, which previously only changed
+  border-color on hover — this is the S2 spec's own required "hover-lift," so the addition brings
+  those cards INTO compliance rather than away from it. Local deltas kept where behavior genuinely
+  differs: `#knowledgeBody .hub-tcard { cursor: pointer }` (area/fieldbridge's cards are
+  click-to-expand; dashboard's Today-tab cards aren't) and a `.hub-tcard-meta` typography override
+  (10px uppercase muted text — area/fieldbridge show "type · date · expand" as styled text in the
+  meta row; dashboard's meta row is a bare flex container for pill tags, no typography of its own).
+- Deleted the now-duplicate CSS blocks from `dashboard.html`, `area.html`, `fieldbridge.html` and
+  renamed both pages' HTML/JS class references (including JS-generated template-string class names,
+  e.g. the chip-row `.map()` calls) onto the shared names.
+
+**Batch A.2 — crm.html:** Pipeline cards re-skinned onto `.hub-tcard` (title + plain-text
+trade/region meta line, matching fieldbridge.html's own embedded Pipeline mini-cards exactly — same
+underlying CRM data, now the same look). Added a `:root { --ar-accent: var(--area-fieldbridge); }`
+static line (CRM is FieldBridge-only, same pattern as fieldbridge.html). Added a stage-count tile
+row (S5) above the board — one `.hub-tile` per stage (dynamic count, not a fixed 4), each click
+scrolls to that stage's column. Empty/error states moved to `.hub-digest-empty`/`.hub-digest-loading`.
+Stage columns/board (`.crm-board`/`.crm-col*`) stayed page-local, matching the `fb-board`/`fb-col`
+precedent — that layout is CRM/FieldBridge-specific, not part of the promoted family.
+
+**Batch A.3 — use-cases.html:** This page's `.pb-filter-row`/`.pb-filter-chip` was the ORIGINAL S4
+reference implementation the spec was written from (per `design/AREA-PAGE-SPEC.md`'s own text) — now
+aligned to the promoted `.hub-filter-chip-row`/`.hub-filter-chip` instead of keeping its own local
+copy, closing the loop. Playbook + Saved-Prompts cards re-skinned onto `.hub-tcard`/`-title`/`-desc`.
+Since this page shows MANY areas' plays at once (not one page-wide accent like a single-area page),
+each Playbook card's spine color is set per-card via an inline `style="--ar-accent:<area color>"` —
+the shared `.hub-tcard::before`/`:hover` rules read that per-card variable automatically, so no CSS
+changes were needed to support per-card coloring. Saved-Prompts cards (no area) get the default grey
+spine. Chip active/hover per-area coloring stays as inline `style` (unchanged) — inline always wins
+over the shared class's default color, so no conflict.
+
+**Batch A.4 — projects.html:** Project cards re-skinned onto `.hub-tcard`. Area pill now reuses the
+SAME shared `.hub-tag`/`.tg-<area>` classes as dashboard.html's Today-tab tags (previously a plain
+uncolored grey pill) — added a small `areaSlug()` helper mapping the raw area string to one of the
+nine canonical slugs, falling back to the default grey pill for anything unrecognized. Card spine
+set per-card via inline `--ar-accent` (same trick as use-cases.html) matching the project's area
+color. Priority pill kept local (`.pr-prio`, not an area concept) with its existing red/orange
+semantic tokens. Status columns/board (`.pr-board`/`.pr-col*`) stayed page-local. No stat-tile row
+added — not requested for this page, avoided gold-plating.
+
+**Verification (Read/Grep — authoritative; the C:\Dev bash mount was cross-checked and caught
+serving stale/truncated content again this session, consistent with every prior session's notes):**
+- NUL-scan (`Grep` tool, pattern `\x00`, the proven method — bash `grep`/python `bytes.count` via
+  the mount both produced false readings again this session: bash reported non-zero hits via the
+  documented `$'\x00'` degrade-to-match-all bug, and python's `bytes.count` via the stale mount
+  reported 1873 NULs in `dashboard.html` that do not exist in the real file) — ran across every
+  `.html` file in the repo, not just the touched ones: **0 matches, repo-wide.**
+- `shared.css` brace balance: the stale bash mount reported an off-by-2 `{`/`}` count; the
+  authoritative `Grep` tool (host-side, not the mount) confirmed 380 open / 380 close — balanced.
+  The promoted block itself was also manually re-read and hand-verified rule-by-rule.
+- Every touched page's inline `<script>` block extracted byte-for-byte (`Read` tool, not the mount)
+  into standalone `.js` files and run through `node --check`: `area.html`, `fieldbridge.html`,
+  `crm.html`, `use-cases.html`, `projects.html` — all five `SYNTAX_OK`. (`dashboard.html`'s script
+  was not touched this pass — only its `<style>` block changed — so it wasn't re-extracted.)
+- Class-collision audit: grepped the whole repo for every newly-promoted class token
+  (`hub-tile-row`, `hub-tile-label`, `hub-tile-num`, `hub-filter-chip*`, `hub-panel`,
+  `hub-side-list/item/footer`, `hub-digest-empty/loading`, `hub-sub`, bare `hub-tile`) — each one
+  appears ONLY in the 5 files intentionally touched, confirmed via `Grep` across `*.html`.
+- 3-page shared.css canary (per the hard rule): grepped `kanban.html`, `index.html`, `meetings.html`
+  (none touched this session) — all three still correctly link `shared.css`, confirming the shared
+  stylesheet edit didn't break anything for untouched pages.
+- **Not eyeballed live** — Fadi's per-batch QA (2 min, per the builder prompt): after auto-pull,
+  open `crm.html` (stage tiles + re-skinned pipeline cards), `use-cases.html` (Playbook tab —
+  per-card colored spines, chip row still filters correctly), `projects.html` (colored area pills,
+  re-skinned cards), and re-check `area.html`/`fieldbridge.html`/dashboard.html's Today tab still
+  look exactly as they did before this session (the de-duplication should be invisible on those
+  three). **The shared.css canary: if ANY page's nav or layout breaks, stop and report before
+  Batch B.**
+
+**Not touched:** gated items 5, 6, 8; the capture-inbox build; Batch B (5-9) and Batch C (10-16)
+pages — see the STANDARDIZATION TRACKER above for what's left; `kanban.html`/`chat.html`/
+`graph3d.html`/`index.html`/`voice.html`/`tasks.html`/`theme-preview.html` (explicitly out of this
+sweep per the builder prompt, see tracker); any backend/server.py change (none needed — pure
+CSS/HTML/JS restyle); any tool role, writer lane, or data store (none changed).
+
+### Git — commands for Fadi (sessions never run git):
+
+```
+cd /c/Dev/life-os-dashboard
+pwd   # must print /c/Dev/life-os-dashboard before continuing
+git status
+git add shared.css dashboard.html area.html fieldbridge.html crm.html use-cases.html projects.html NEXT-SESSION-UI.md
+git commit -m "Design Language Standardization Batch A (items 1-4): promote .hub-tcard/stat-tile/filter-chip/side-panel/empty-state CSS from dashboard.html+area.html+fieldbridge.html into shared.css under one hub- prefixed naming (collision-checked repo-wide); crm.html pipeline cards + new per-stage tile row re-skinned onto .hub-tcard/.hub-tile; use-cases.html's .pb-filter-chip (the original S4 reference) aligned to the shared .hub-filter-chip classes, Playbook/Saved-Prompts cards onto .hub-tcard with per-card --ar-accent spine coloring; projects.html cards onto .hub-tcard with area pills reusing the shared .hub-tag/.tg-<area> classes. Restyle-only, no endpoint/data-store/writer-lane changes. Item 4 (card-anatomy standardization) gate fully cleared this date by Fadi for all remaining pages -- STANDARDIZATION TRACKER added to this file, Batch B (trading/fitness/meetings/skills/models) next"
+git push origin main
+# auto-pull deploys within ~1 min — run the 2-minute live-QA script above, especially the
+# shared.css canary (any page's nav/layout breaking = stop before Batch B).
+```
 
 ## 2026-07-13 session #11 (Sonnet, life-os-dashboard folder mounted) — Area Page Hub Redesign, item 4 partial clear
 

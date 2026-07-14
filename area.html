@@ -47,31 +47,12 @@
 }
 .ah-gen-btn:disabled { opacity: .6; cursor: default; }
 
-/* --- Stat tile row --- */
-.ah-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
-@media (max-width: 640px) { .ah-stats { grid-template-columns: repeat(2, 1fr); } }
-.ah-stat-tile {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-lg);
-  padding: var(--space-3); cursor: pointer; transition: border-color .15s, transform .15s; text-align: left;
-}
-.ah-stat-tile:hover { border-color: var(--ar-accent, var(--accent)); transform: translateY(-1px); }
-.ah-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
-.ah-stat-num { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+/* --- Stat tile row: promoted to shared.css as .hub-tile-row/.hub-tile/.hub-tile-label/.hub-tile-num (Batch A.1) --- */
 
 /* --- Two-column digest --- */
 .ah-digest { display: grid; grid-template-columns: minmax(0,62%) minmax(0,1fr); gap: var(--space-4); align-items: start; }
 @media (max-width: 640px) { .ah-digest { grid-template-columns: 1fr; } }
-.ah-panel {
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
-}
-.ah-panel h2 {
-  font-size: var(--font-size-md); margin: 0 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2);
-  color: var(--text-primary);
-}
-.ah-side .ah-panel h2 { font-size: 12px; font-weight: 500; margin-bottom: var(--space-2); }
-.ah-empty { color: var(--text-muted); font-size: 13px; padding: var(--space-4); text-align: center; line-height: 1.7; }
-.ah-loading { color: var(--text-muted); font-size: 13px; padding: var(--space-3); display: flex; align-items: center; gap: 8px; }
+/* .hub-panel/.hub-side/.hub-digest-empty/.hub-digest-loading promoted to shared.css as .hub-panel/.hub-side/.hub-digest-empty/.hub-digest-loading (Batch A.1) */
 
 /* Knowledge module: search + chips */
 .ah-know-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap; }
@@ -82,23 +63,14 @@
   min-width: 160px;
 }
 .ah-search:focus { outline: none; border-color: var(--ar-accent, var(--accent)); }
-.ah-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-3); }
-.ah-chip {
-  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full);
-  border: 1px solid var(--border-primary); background: var(--bg-tertiary); color: var(--text-secondary);
-  cursor: pointer; transition: all .15s;
-}
-.ah-chip:hover { border-color: var(--ar-accent, var(--accent)); }
-.ah-chip.active { background: var(--ar-accent, var(--accent)); border-color: var(--ar-accent, var(--accent)); color: var(--on-accent); }
+/* .hub-filter-chip-row/.hub-filter-chip promoted to shared.css as .hub-filter-chip-row/.hub-filter-chip (Batch A.1) */
 
 /* Knowledge cards (hub-tcard anatomy) */
 .ah-know-list { display: flex; flex-direction: column; gap: 8px; }
-.hub-tcard { position: relative; overflow: hidden; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 11px 12px 11px 16px; transition: all .2s; cursor: pointer; }
-.hub-tcard:hover { border-color: var(--ar-accent, var(--accent)); }
-.hub-tcard::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--ar-accent, var(--area-admin)); }
-.hub-tcard-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-bottom: 4px; }
-.hub-tcard-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
-.hub-tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+/* .hub-tcard base/title/desc promoted to shared.css (Batch A.1). Local deltas kept: this page's
+   cards are clickable (expand-in-place) and the meta row shows styled text, not pill tags. */
+#knowledgeBody .hub-tcard { cursor: pointer; }
+.hub-tcard-meta { gap: 8px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
 .hub-tcard-meta .ah-expand-toggle { margin-left: auto; color: var(--ar-accent, var(--accent)); text-transform: none; letter-spacing: 0; font-size: 11px; }
 .ah-know-body {
   margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-primary);
@@ -116,9 +88,9 @@
   background: transparent; border: none; cursor: pointer; padding: 4px 0;
 }
 
-/* Side modules */
-.ah-side-list { display: flex; flex-direction: column; gap: 6px; }
-.ah-side-item { font-size: 12px; padding: 7px 9px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); }
+/* Side modules — .hub-side-list/.hub-side-item/.hub-side-footer promoted to shared.css as
+   .hub-side-list/.hub-side-item/.hub-side-footer (Batch A.1); opp/task/proj item styling below
+   is page-specific content, stays local. */
 .ah-opp-item { display: flex; align-items: flex-start; gap: 6px; }
 .ah-opp-pill { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: var(--radius-full); white-space: nowrap; background: var(--ar-accent-bg, var(--accent-bg)); color: var(--ar-accent, var(--accent)); }
 .ah-opp-text { color: var(--text-secondary); line-height: 1.4; }
@@ -127,8 +99,6 @@
 .ah-proj-item { display: block; text-decoration: none; color: inherit; }
 .ah-proj-name { font-weight: 700; color: var(--text-primary); }
 .ah-proj-status { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-.ah-side-footer { margin-top: var(--space-2); font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0; text-decoration: none; display: inline-block; }
-.ah-side-footer:hover { color: var(--ar-accent, var(--accent)); }
 </style>
 </head>
 <body>
@@ -158,49 +128,49 @@
   <div class="ah-brief-body" id="briefBody">Loading…</div>
 </div>
 
-<div class="ah-stats">
-  <button class="ah-stat-tile" onclick="scrollToModule('knowledgeModule')">
-    <div class="ah-stat-label">Knowledge</div>
-    <div class="ah-stat-num" id="statKnowledge">—</div>
+<div class="hub-tile-row">
+  <button class="hub-tile" onclick="scrollToModule('knowledgeModule')">
+    <div class="hub-tile-label">Knowledge</div>
+    <div class="hub-tile-num" id="statKnowledge">—</div>
   </button>
-  <button class="ah-stat-tile" onclick="scrollToModule('oppModule')">
-    <div class="ah-stat-label">Opportunities</div>
-    <div class="ah-stat-num" id="statOpp">—</div>
+  <button class="hub-tile" onclick="scrollToModule('oppModule')">
+    <div class="hub-tile-label">Opportunities</div>
+    <div class="hub-tile-num" id="statOpp">—</div>
   </button>
-  <button class="ah-stat-tile" onclick="scrollToModule('tasksModule')">
-    <div class="ah-stat-label">Open tasks</div>
-    <div class="ah-stat-num" id="statTasks">—</div>
+  <button class="hub-tile" onclick="scrollToModule('tasksModule')">
+    <div class="hub-tile-label">Open tasks</div>
+    <div class="hub-tile-num" id="statTasks">—</div>
   </button>
-  <button class="ah-stat-tile" onclick="scrollToModule('projModule')">
-    <div class="ah-stat-label">Projects</div>
-    <div class="ah-stat-num" id="statProj">—</div>
+  <button class="hub-tile" onclick="scrollToModule('projModule')">
+    <div class="hub-tile-label">Projects</div>
+    <div class="hub-tile-num" id="statProj">—</div>
   </button>
 </div>
 
 <div class="ah-digest">
   <div class="ah-main">
-    <div class="ah-panel" id="knowledgeModule">
+    <div class="hub-panel" id="knowledgeModule">
       <div class="ah-know-head">
         <h2><svg class="icon icon-sm" width="15" height="15"><use href="assets/lucide-sprite.svg#icon-book-open"/></svg> Knowledge</h2>
         <input class="ah-search" id="knowSearch" type="text" placeholder="Search notes…" oninput="renderKnowledge()">
       </div>
-      <div class="ah-chip-row" id="knowChips" style="display:none;"></div>
-      <div id="knowledgeBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div class="hub-filter-chip-row" id="knowChips" style="display:none;"></div>
+      <div id="knowledgeBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="14" height="14"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
   </div>
 
-  <div class="ah-side">
-    <div class="ah-panel" id="oppModule">
+  <div class="hub-side">
+    <div class="hub-panel" id="oppModule">
       <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-target"/></svg> Opportunity radar</h2>
-      <div id="oppBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div id="oppBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
-    <div class="ah-panel" id="tasksModule">
+    <div class="hub-panel" id="tasksModule">
       <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-clipboard-list"/></svg> Tasks</h2>
-      <div id="tasksBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div id="tasksBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
-    <div class="ah-panel" id="projModule">
+    <div class="hub-panel" id="projModule">
       <h2><svg class="icon icon-sm" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-folder"/></svg> Projects</h2>
-      <div id="projBody"><div class="ah-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
+      <div id="projBody"><div class="hub-digest-loading"><svg class="icon icon-sm icon-spin" width="13" height="13"><use href="assets/lucide-sprite.svg#icon-loader"/></svg> Loading…</div></div>
     </div>
   </div>
 </div>
@@ -393,7 +363,7 @@ async function loadKnowledgeAndOpportunities(key) {
     document.getElementById('statOpp').textContent = lastOpportunities.length;
     renderOppSide(false);
   } catch (e) {
-    const msg = `<div class="ah-empty">${escH(e.message)}</div>`;
+    const msg = `<div class="hub-digest-empty">${escH(e.message)}</div>`;
     knowBody.innerHTML = msg;
     oppBody.innerHTML = msg;
     document.getElementById('statKnowledge').textContent = '0';
@@ -407,7 +377,7 @@ function renderKnowChips() {
   if (types.length < 2) { row.style.display = 'none'; row.innerHTML = ''; return; }
   row.style.display = '';
   const chips = ['all', ...types];
-  row.innerHTML = chips.map(t => `<button class="ah-chip${t === activeTypeChip ? ' active' : ''}" onclick="setTypeChip('${escH(t).replace(/'/g, "\\'")}')">${escH(t === 'all' ? 'All' : t)}</button>`).join('');
+  row.innerHTML = chips.map(t => `<button class="hub-filter-chip${t === activeTypeChip ? ' active' : ''}" onclick="setTypeChip('${escH(t).replace(/'/g, "\\'")}')">${escH(t === 'all' ? 'All' : t)}</button>`).join('');
 }
 
 function setTypeChip(t) {
@@ -426,7 +396,7 @@ function renderKnowledge() {
     (n.title || '').toLowerCase().includes(q) || (n.description || '').toLowerCase().includes(q));
 
   if (!filtered.length) {
-    body.innerHTML = '<div class="ah-empty">No knowledge classified to this area yet' + (q || activeTypeChip !== 'all' ? ' matching this filter' : '') + '.</div>';
+    body.innerHTML = '<div class="hub-digest-empty">No knowledge classified to this area yet' + (q || activeTypeChip !== 'all' ? ' matching this filter' : '') + '.</div>';
     return;
   }
 
@@ -493,25 +463,25 @@ function renderOppSide(expanded) {
   const body = document.getElementById('oppBody');
   const opps = lastOpportunities;
   if (!opps.length) {
-    body.innerHTML = '<div class="ah-empty">No signals in the Opportunity Radar for this area yet.</div>';
+    body.innerHTML = '<div class="hub-digest-empty">No signals in the Opportunity Radar for this area yet.</div>';
     return;
   }
   const shown = expanded ? opps : opps.slice(0, 3);
   const rows = shown.map(o => `
-    <div class="ah-side-item ah-opp-item">
+    <div class="hub-side-item ah-opp-item">
       <span class="ah-opp-pill">${escH(o.confidence || 'signal')}</span>
       <span class="ah-opp-text">${escH(o.text)}</span>
     </div>`).join('');
   const footer = (!expanded && opps.length > 3)
-    ? `<button class="ah-side-footer" onclick="renderOppSide(true)">All ${opps.length} →</button>` : '';
-  body.innerHTML = '<div class="ah-side-list">' + rows + '</div>' + footer;
+    ? `<button class="hub-side-footer" onclick="renderOppSide(true)">All ${opps.length} →</button>` : '';
+  body.innerHTML = '<div class="hub-side-list">' + rows + '</div>' + footer;
 }
 
 async function loadTasksSide(key) {
   const body = document.getElementById('tasksBody');
   const taskTag = AREA_TASK_TAG[key];
   if (!taskTag) {
-    body.innerHTML = '<div class="ah-empty">No kanban tag maps to this area yet — see the Kanban board directly.</div>';
+    body.innerHTML = '<div class="hub-digest-empty">No kanban tag maps to this area yet — see the Kanban board directly.</div>';
     document.getElementById('statTasks').textContent = '0';
     return;
   }
@@ -522,15 +492,15 @@ async function loadTasksSide(key) {
       String(t.tag || '').toLowerCase() === taskTag && t.column !== 'done' && !t.completed);
     document.getElementById('statTasks').textContent = rows.length;
     if (!rows.length) {
-      body.innerHTML = '<div class="ah-empty">No open tasks tagged ' + escH(taskTag) + '.</div>';
+      body.innerHTML = '<div class="hub-digest-empty">No open tasks tagged ' + escH(taskTag) + '.</div>';
       return;
     }
     const shown = rows.slice(0, 3);
-    const items = shown.map(t => `<div class="ah-side-item ah-task-item">${escH(t.title || '')}</div>`).join('');
-    const footer = rows.length > 3 ? `<a class="ah-side-footer" href="kanban.html">All ${rows.length} →</a>` : '';
-    body.innerHTML = '<div class="ah-side-list">' + items + '</div>' + footer;
+    const items = shown.map(t => `<div class="hub-side-item ah-task-item">${escH(t.title || '')}</div>`).join('');
+    const footer = rows.length > 3 ? `<a class="hub-side-footer" href="kanban.html">All ${rows.length} →</a>` : '';
+    body.innerHTML = '<div class="hub-side-list">' + items + '</div>' + footer;
   } catch (e) {
-    body.innerHTML = `<div class="ah-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load tasks (${escH(e.message)}).</div>`;
     document.getElementById('statTasks').textContent = '0';
   }
 }
@@ -540,18 +510,18 @@ function renderProjSide(expanded) {
   const body = document.getElementById('projBody');
   const rows = lastProjects;
   if (!rows.length) {
-    body.innerHTML = '<div class="ah-empty">No projects tagged to this area yet.</div>';
+    body.innerHTML = '<div class="hub-digest-empty">No projects tagged to this area yet.</div>';
     return;
   }
   const shown = expanded ? rows : rows.slice(0, 3);
   const items = shown.map(r => `
-    <a class="ah-side-item ah-proj-item" href="files.html?path=${encodeURIComponent(r.path || '')}">
+    <a class="hub-side-item ah-proj-item" href="files.html?path=${encodeURIComponent(r.path || '')}">
       <div class="ah-proj-name">${escH(r.name)}</div>
       <div class="ah-proj-status">${escH(r.status || 'no status')}</div>
     </a>`).join('');
   const footer = (!expanded && rows.length > 3)
-    ? `<button class="ah-side-footer" onclick="renderProjSide(true)">All ${rows.length} →</button>` : '';
-  body.innerHTML = '<div class="ah-side-list">' + items + '</div>' + footer;
+    ? `<button class="hub-side-footer" onclick="renderProjSide(true)">All ${rows.length} →</button>` : '';
+  body.innerHTML = '<div class="hub-side-list">' + items + '</div>' + footer;
 }
 
 async function loadProjectsSide(key, area) {
@@ -564,7 +534,7 @@ async function loadProjectsSide(key, area) {
     document.getElementById('statProj').textContent = lastProjects.length;
     renderProjSide(false);
   } catch (e) {
-    body.innerHTML = `<div class="ah-empty">Couldn't load related projects (${escH(e.message)}).</div>`;
+    body.innerHTML = `<div class="hub-digest-empty">Couldn't load related projects (${escH(e.message)}).</div>`;
     document.getElementById('statProj').textContent = '0';
   }
 }
