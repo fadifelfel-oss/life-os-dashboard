@@ -635,7 +635,7 @@ const FALLBACK_MODELS = [
   { id:'google/gemini-2.5-flash-lite', name:'Gemini 2.5 Flash Lite', icon:'⚡', provider:'Google', arena:1280, mmlu:82, ctx:1048, pp:0.0000001, pc:0.0000004, tags:['cheap','flash','fast'] },
   { id:'google/gemini-2.5-flash', name:'Gemini 2.5 Flash', icon:'✨', provider:'Google', arena:1340, mmlu:87, ctx:1048, pp:0.0000003, pc:0.0000025, tags:['cheap','flash','strong'] },
   { id:'deepseek/deepseek-chat', name:'DeepSeek V3', icon:'🔮', provider:'DeepSeek', arena:1310, mmlu:88.5, ctx:131, pp:0.00000027, pc:0.0000011, tags:['cheap','strong'] },
-  { id:'deepseek/deepseek-reasoner', name:'DeepSeek R1', icon:'🧪', provider:'DeepSeek', arena:1360, mmlu:90.8, ctx:65, pp:0.00000055, pc:0.0000022, tags:['cheap','reasoning'] },
+  { id:'deepseek/deepseek-r1', name:'DeepSeek R1', icon:'🧪', provider:'DeepSeek', arena:1360, mmlu:90.8, ctx:164, pp:0.0000007, pc:0.0000025, tags:['cheap','reasoning'] },
   { id:'deepseek/deepseek-v4-flash', name:'DeepSeek V4 Flash', icon:'⚡', provider:'DeepSeek', arena:1350, mmlu:90, ctx:1048, pp:0.00000004, pc:0.0000001, tags:['cheap','flash','fast'] },
   { id:'qwen/qwen3-coder:free', name:'Qwen3 Coder', icon:'💻', provider:'Alibaba', arena:1280, mmlu:86.5, ctx:1048, pp:0, pc:0, tags:['free','coding'] },
   { id:'nvidia/nemotron-3-super-120b-a12b:free', name:'Nemotron Super 120B', icon:'⚡', provider:'NVIDIA', arena:1250, mmlu:84, ctx:1000, pp:0, pc:0, tags:['free','large'] },
@@ -650,7 +650,8 @@ const FALLBACK_MODELS = [
 // === JOB → MODEL CURATION ===
 // Each pick lists candidate id-substrings (first match in the live list wins),
 // plus a fallback used when nothing matches, and a plain-English reason.
-// Prices below are per-TOKEN (USD). Sourced from the live OpenRouter catalog on 2026-07-02.
+// Prices below are per-TOKEN (USD). Sourced from the live OpenRouter catalog on 2026-07-02,
+// re-verified 2026-07-15 (biweekly refresh) — see model-catalog.js header for what changed.
 // fb prices shown as $/1M in comments for readability.
 const JOBS = window.LIFEOS_JOBS || [
   {
@@ -659,7 +660,7 @@ const JOBS = window.LIFEOS_JOBS || [
     tip:'Your highest-volume job. DeepSeek V4 Flash summarizes a 1M-token doc for pennies — route the bulk here and only escalate dense technical sources.',
     picks:[
       { role:'rec', match:['deepseek-v4-flash','deepseek/deepseek-v4-flash'], fb:{name:'DeepSeek V4 Flash',provider:'DeepSeek',pp:0.00000009,pc:0.00000018,ctx:1048576}, why:'~$0.09/$0.18 per 1M with 1M context — cheapest capable summarizer available. Ideal for bulk ingestion.' },
-      { role:'budget', match:['lyria-3-pro-preview','nemotron-3-ultra-550b:free','ling-2.6-flash'], fb:{name:'Lyria 3 Pro Preview (free)',provider:'Google',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — use for huge batches of light clippings where volume beats nuance.' },
+      { role:'budget', match:['nemotron-3-ultra-550b:free','gpt-oss-20b:free','ling-2.6-flash'], fb:{name:'Nemotron 3 Ultra 550B (free)',provider:'NVIDIA',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — use for huge batches of light clippings where volume beats nuance.' },
       { role:'premium', match:['gemini-3.5-flash','gemini-flash-latest'], fb:{name:'Gemini 3.5 Flash',provider:'Google',pp:0.0000015,pc:0.000009,ctx:1048576}, why:'~$1.5/$9 per 1M, 1M context — higher fidelity for long, dense, or technical documents.' },
     ],
   },
@@ -689,7 +690,7 @@ const JOBS = window.LIFEOS_JOBS || [
     tip:'For anything that touches the repo, keep a review step. Free coder for scaffolding, premium for tricky multi-file logic.',
     picks:[
       { role:'rec', match:['kimi-k2.7-code','kimi-latest'], fb:{name:'Kimi K2.7 Code',provider:'Moonshot',pp:0.000000612,pc:0.000003069,ctx:262144}, why:'~$0.61/$3.07 per 1M — dedicated code model, strong value for everyday build tasks.' },
-      { role:'budget', match:['north-mini-code:free','north-mini-code','laguna-xs.2:free','pareto-code'], fb:{name:'North Mini Code (free)',provider:'Cohere',pp:0,pc:0,ctx:256000}, why:'Free code model — great for scaffolding, refactors, and glue code before a premium pass.' },
+      { role:'budget', match:['qwen3-coder:free','qwen3-coder','north-mini-code:free','north-mini-code'], fb:{name:'Qwen3 Coder 480B (free)',provider:'Qwen',pp:0,pc:0,ctx:1048576}, why:'Free, 1M context — the strongest free coding model on OpenRouter right now, ahead of North Mini Code on both capability and context size. Great for scaffolding, refactors, and glue code before a premium pass.' },
       { role:'premium', match:['claude-opus-4.8','gpt-5.5-pro','claude-opus-latest'], fb:{name:'Claude Opus 4.8',provider:'Anthropic',pp:0.000005,pc:0.000025,ctx:1000000}, why:'Best reliability on complex logic and large multi-file changes.' },
     ],
   },

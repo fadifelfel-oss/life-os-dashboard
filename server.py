@@ -1261,29 +1261,43 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
     # treat it as best-effort, not ground truth. Scheduled biweekly refresh
     # (agent-profiles or a Cowork scheduled task) should re-derive this whole
     # block from a live catalog pull rather than hand-editing entries.
+    #
+    # PATCHED 2026-07-15 (biweekly refresh): rank 1 and rank 4 of the Free
+    # Champions below were 'google/lyria-3-pro-preview' and
+    # 'google/lyria-3-clip-preview', labeled "Reasoning, long context,
+    # analysis" and "Vision + text, multimodal". Both IDs are real and both
+    # resolve against the live catalog (so a simple existence check wouldn't
+    # have caught this) — but Google Lyria 3 is a MUSIC/AUDIO generation
+    # model, not a text or vision model. It was mislabeled and ranked #1
+    # "Free Champion" for reasoning, same failure class as owl-alpha (a
+    # real-but-wrong ID quietly misleading the UI). Replaced both with
+    # confirmed free text models. Also fixed 7 dead/typo'd IDs elsewhere in
+    # this list (see individual comments below) — none of them were caught
+    # by the original 07-02 pull because this whole block was hand-typed
+    # rather than derived from a live fetch.
     _FALLBACK_MODELS = [
             # ═══════════════════════════════════════════════════════════
             # 🏆 FREE CHAMPIONS — Best free models (no cost)
             # ═══════════════════════════════════════════════════════════
-            {"id": "google/lyria-3-pro-preview", "name": "Lyria 3 Pro Preview", "provider": "Google", "context_length": 1048576, "max_tokens": 65536,
+            {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "name": "NVIDIA Nemotron 3 Ultra", "provider": "NVIDIA", "context_length": 1000000, "max_tokens": 65536,
              "pricing": {"prompt": 0, "completion": 0},
-             "category": "free", "best_for": "Reasoning, long context, analysis",
+             "category": "free", "best_for": "Reasoning, math, open source",
              "score": 87, "speed": "fast", "rank": 1},
             {"id": "qwen/qwen3-coder:free", "name": "Qwen3 Coder 480B", "provider": "Alibaba", "context_length": 1048576, "max_tokens": 262000,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "Coding, long context, open source",
              "score": 85, "speed": "fast", "rank": 2},
-            {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "name": "NVIDIA Nemotron 3 Ultra", "provider": "NVIDIA", "context_length": 1000000, "max_tokens": 65536,
+            {"id": "openai/gpt-oss-20b:free", "name": "OpenAI gpt-oss-20b", "provider": "OpenAI", "context_length": 131072, "max_tokens": 32768,
              "pricing": {"prompt": 0, "completion": 0},
-             "category": "free", "best_for": "Reasoning, math, open source",
+             "category": "free", "best_for": "General reasoning, matches o3-mini on coding",
              "score": 84, "speed": "fast", "rank": 3},
-            {"id": "google/lyria-3-clip-preview", "name": "Lyria 3 Clip Preview", "provider": "Google", "context_length": 1048576, "max_tokens": 65536,
-             "pricing": {"prompt": 0, "completion": 0},
-             "category": "free", "best_for": "Vision + text, multimodal",
-             "score": 82, "speed": "fast", "rank": 4},
-            {"id": "nvidia/nemotron-3-super-120b-a12b:free", "name": "NVIDIA Nemotron 3 Super", "provider": "NVIDIA", "context_length": 1000000, "max_tokens": 65536,
+            {"id": "nvidia/nemotron-3-super-120b-a12b:free", "name": "NVIDIA Nemotron 3 Super", "provider": "NVIDIA", "context_length": 1000000, "max_tokens": 262144,
              "pricing": {"prompt": 0, "completion": 0},
              "category": "free", "best_for": "General purpose, reasoning, open source",
+             "score": 82, "speed": "fast", "rank": 4},
+            {"id": "meta-llama/llama-3.3-70b-instruct:free", "name": "Meta Llama 3.3 70B", "provider": "Meta", "context_length": 131072, "max_tokens": 131072,
+             "pricing": {"prompt": 0, "completion": 0},
+             "category": "free", "best_for": "Multilingual dialogue, general chat",
              "score": 81, "speed": "fast", "rank": 5},
 
             # ═══════════════════════════════════════════════════════════
@@ -1293,11 +1307,11 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
              "pricing": {"prompt": 0.00000125, "completion": 0.00001},
              "category": "reasoning", "best_for": "Complex reasoning, multi-step analysis",
              "score": 92, "speed": "fast", "rank": 1},
-            {"id": "anthropic/claude-opus-4-20250514", "name": "Claude Opus 4", "provider": "Anthropic", "context_length": 200000, "max_tokens": 16384,
-             "pricing": {"prompt": 0.000015, "completion": 0.000075},
+            {"id": "anthropic/claude-opus-4.8", "name": "Claude Opus 4.8", "provider": "Anthropic", "context_length": 1000000, "max_tokens": 128000,
+             "pricing": {"prompt": 0.000005, "completion": 0.000025},
              "category": "reasoning", "best_for": "Deep analysis, research-grade thinking",
              "score": 99, "speed": "medium", "rank": 2},
-            {"id": "anthropic/claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "provider": "Anthropic", "context_length": 1048576, "max_tokens": 16384,
+            {"id": "anthropic/claude-sonnet-4", "name": "Claude Sonnet 4", "provider": "Anthropic", "context_length": 1000000, "max_tokens": 64000,
              "pricing": {"prompt": 0.000003, "completion": 0.000015},
              "category": "reasoning", "best_for": "Balanced reasoning + speed",
              "score": 95, "speed": "fast", "rank": 3},
@@ -1337,7 +1351,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
              "pricing": {"prompt": 0.0000011, "completion": 0.0000044},
              "category": "coding", "best_for": "Efficient coding, cost-effective",
              "score": 89, "speed": "fast", "rank": 4},
-            {"id": "anthropic/claude-haiku-3-5-20241022", "name": "Claude Haiku 3.5", "provider": "Anthropic", "context_length": 200000, "max_tokens": 8192,
+            {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5", "provider": "Anthropic", "context_length": 200000, "max_tokens": 64000,
              "pricing": {"prompt": 0.000001, "completion": 0.000005},
              "category": "coding", "best_for": "Quick coding, simple fixes",
              "score": 83, "speed": "fast", "rank": 5},
@@ -1353,8 +1367,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
              "pricing": {"prompt": 0.0000025, "completion": 0.00001},
              "category": "chat", "best_for": "General conversation, analysis",
              "score": 90, "speed": "fast", "rank": 1},
-            {"id": "deepseek/deepseek-chat-v3-1", "name": "DeepSeek V3", "provider": "DeepSeek", "context_length": 163840, "max_tokens": 8192,
-             "pricing": {"prompt": 0.00000021, "completion": 0.00000079},
+            {"id": "deepseek/deepseek-chat-v3.1", "name": "DeepSeek V3.1", "provider": "DeepSeek", "context_length": 163840, "max_tokens": 32768,
+             "pricing": {"prompt": 0.00000025, "completion": 0.00000095},
              "category": "chat", "best_for": "Chat, analysis, multilingual",
              "score": 88, "speed": "fast", "rank": 2},
             {"id": "x-ai/grok-4.20", "name": "Grok 4", "provider": "xAI", "context_length": 2000000, "max_tokens": 16384,
@@ -1381,7 +1395,7 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
              "pricing": {"prompt": 0.00000015, "completion": 0.0000006},
              "category": "vision", "best_for": "Image analysis, OCR, cheap",
              "score": 82, "speed": "fast", "rank": 2},
-            {"id": "google/gemini-2-5-flash-lite", "name": "Gemini Flash Lite", "provider": "Google", "context_length": 1048576, "max_tokens": 8192,
+            {"id": "google/gemini-2.5-flash-lite", "name": "Gemini Flash Lite", "provider": "Google", "context_length": 1048576, "max_tokens": 8192,
              "pricing": {"prompt": 0.0000001, "completion": 0.0000004},
              "category": "vision", "best_for": "Cheap image processing",
              "score": 76, "speed": "fastest", "rank": 3},
@@ -1401,19 +1415,19 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
              "pricing": {"prompt": 0.000002, "completion": 0.000008},
              "category": "budget", "best_for": "Reasoning + value",
              "score": 88, "speed": "medium", "rank": 1},
-            {"id": "qwen/qwen-max", "name": "Qwen Max", "provider": "Alibaba", "context_length": 1000000, "max_tokens": 16384,
-             "pricing": {"prompt": 0.00000026, "completion": 0.00000078},
+            {"id": "qwen/qwen3-max", "name": "Qwen3 Max", "provider": "Alibaba", "context_length": 262144, "max_tokens": 32768,
+             "pricing": {"prompt": 0.00000078, "completion": 0.0000039},
              "category": "budget", "best_for": "Best value, long context",
              "score": 85, "speed": "fast", "rank": 2},
-            {"id": "mistralai/mistral-large-3", "name": "Mistral Large 3", "provider": "Mistral", "context_length": 128000, "max_tokens": 16384,
-             "pricing": {"prompt": 0.0000002, "completion": 0.0000006},
+            {"id": "mistralai/mistral-large-2512", "name": "Mistral Large 3", "provider": "Mistral", "context_length": 262144, "max_tokens": 262144,
+             "pricing": {"prompt": 0.0000005, "completion": 0.0000015},
              "category": "budget", "best_for": "European compliance, GDPR",
              "score": 80, "speed": "fast", "rank": 3},
-            {"id": "x-ai/grok-3", "name": "Grok 3", "provider": "xAI", "context_length": 2000000, "max_tokens": 16384,
-             "pricing": {"prompt": 0.00000125, "completion": 0.0000025},
+            {"id": "x-ai/grok-4.5", "name": "Grok 4.5", "provider": "xAI", "context_length": 500000, "max_tokens": 500000,
+             "pricing": {"prompt": 0.000002, "completion": 0.000006},
              "category": "budget", "best_for": "Long context, real-time",
              "score": 83, "speed": "fast", "rank": 4},
-            {"id": "google/gemini-2-5-flash-lite", "name": "Gemini Flash Lite", "provider": "Google", "context_length": 1048576, "max_tokens": 8192,
+            {"id": "google/gemini-2.5-flash-lite", "name": "Gemini Flash Lite", "provider": "Google", "context_length": 1048576, "max_tokens": 8192,
              "pricing": {"prompt": 0.0000001, "completion": 0.0000004},
              "category": "budget", "best_for": "Best overall value",
              "score": 76, "speed": "fastest", "rank": 5},
