@@ -2040,19 +2040,55 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         return calls
 
     def _ea_call_hermes(self, model, messages, tools=None, temperature=0.7, max_tokens=4000):
-        """One round-trip to the Hermes API Server. Returns (message_dict, error)."""
+        """One round-trip for the EA loop. Returns (message_dict, error).
+
+        ⚠️ WHY THIS TALKS TO OPENROUTER AND NOT TO :8642 — discovered live
+        2026-07-17, and it is the whole reason Phase 2 works at all:
+
+        HERMES_CHAT_PROXY_URL (127.0.0.1:8642) is NOT a model endpoint. It is the
+        hermes-agent FRAMEWORK — it has its own tools, its own task store (t_*
+        ids, config.yaml, a "gateway kanban dispatch", a "legacy daemon"). When
+        we POST an OpenAI-shaped request with a `tools` array, it accepts it,
+        SILENTLY IGNORES our tools, runs its OWN agent loop, and returns prose.
+        Our tool_calls never come back, so our loop never fires.
+
+        The live symptom was the worst possible one: asked to add a task, it
+        replied *"Done. Created task t_8b981902"* — a FABRICATED id — and then
+        invented a plausible reason we couldn't see it. Board delta: 23 -> 23.
+        An agent that confidently reports work it did not do is worse than one
+        that admits it has no hands.
+
+        So the EA persona owns its own loop: model + our system prompt + OUR
+        tools, called straight against OpenRouter, where tool_calls come back to
+        US and we execute them against the real stores. Hermes-the-framework
+        stays what it is genuinely good at — the always-on VPS worker (deploys,
+        ingestion, scheduled scans). Two agents, two lanes, no pretending.
+
+        Falls back to the :8642 gateway only if no OpenRouter key exists, and the
+        caller reports that honestly rather than silently degrading to fiction.
+        """
         import urllib.request
         payload = {"model": model, "messages": messages, "stream": False,
                    "temperature": temperature, "max_tokens": max_tokens}
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
+
+        key = self._get_openrouter_key()
+        if key:
+            url = 'https://openrouter.ai/api/v1/chat/completions'
+            headers = {'Content-Type': 'application/json',
+                       'Authorization': f'Bearer {key}',
+                       'HTTP-Referer': 'https://os.fadifelfelos.com',
+                       'X-Title': 'Fadi Life OS — EA'}
+        else:
+            url = f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions"
+            headers = {'Content-Type': 'application/json',
+                       'Authorization': 'Bearer life-os-dashboard-2026'}
+
         req = urllib.request.Request(
-            f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions",
-            data=json.dumps(payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json',
-                     'Authorization': 'Bearer life-os-dashboard-2026'},
-            method='POST')
+            url, data=json.dumps(payload).encode('utf-8'),
+            headers=headers, method='POST')
         try:
             with urllib.request.urlopen(req, timeout=150) as r:
                 body = json.loads(r.read().decode('utf-8'))
@@ -2078,6 +2114,15 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         trace = []
         convo = list(messages)
         tools_supported = True
+
+        # Be loud about the degraded path. Without a key we fall back to the
+        # :8642 gateway, which ignores our tools and will happily CLAIM it did
+        # the work (see _ea_call_hermes). Fadi must never be told a task was
+        # created when it wasn't — so if we can't run tools, we say so up front.
+        if not self._get_openrouter_key():
+            trace.append({"type": "note",
+                          "text": "⚠️ No OPENROUTER_API_KEY in ~/.hermes/.env — falling back to the Hermes gateway, "
+                                  "which cannot run these tools. Anything it claims to have DONE is unverified."})
 
         for _ in range(self.EA_TOOL_MAX_ITERS):
             msg, err = self._ea_call_hermes(model, convo, tools=tools if tools_supported else None,
