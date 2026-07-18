@@ -376,6 +376,8 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             self._serve_crm_snapshot()
         elif path == "/api/hermes/morning-brief":
             self._serve_morning_brief()
+        elif path == "/api/ea/context":
+            self._serve_ea_context(query)
         elif path == "/api/hermes/activity":
             self._serve_hermes_activity(query)
         elif path == "/api/playbook":
@@ -1499,6 +1501,277 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             result["sources"]["kanban_error"] = str(e)
         self._json_response(result)
+
+    # ─────────────────────────────────────────────────────────────────────
+    # EA CONTEXT (Phase 1, 2026-07-17)
+    # ─────────────────────────────────────────────────────────────────────
+    # Built because the `lifeos` agent in chat.html — the one that is supposed
+    # to be Fadi's EA — carried a ONE-SENTENCE system prompt ("You are Fadi's
+    # autonomous AI agent"), while the Virtual PM and Health Coach personas
+    # each got a full prompt PLUS live context injection. The EA was the
+    # worst-briefed agent in the app. This endpoint fixes that.
+    #
+    # Design rules this follows:
+    #  - The persona lives in the VAULT (agent-profiles/hermes-ea.md), ONE
+    #    source of truth, read at request time. It is NOT pasted into
+    #    chat.html — that paste is exactly what let virtual-pm.md and its copy
+    #    in chat.html drift apart.
+    #  - Read-only: VAULT_DIR for persona + CRM, DATA_DIR for kanban +
+    #    captures. Writes nothing. No new data store.
+    #  - Degrades section by section. A missing vault mirror or a corrupt
+    #    kanban store costs you THAT section and is reported in `sources` —
+    #    it never 500s the whole prompt. An EA that boots with partial context
+    #    beats an EA that won't boot.
+    #  - Assembles the final string server-side so every future client (chat,
+    #    voice, a scheduled brief) gets an identical brain for free.
+    EA_PROFILE_REL = "agent-profiles/hermes-ea.md"
+
+    def _ea_now(self):
+        """Fadi's local wall-clock. He wakes 05:00 and commutes 06:45 — an EA
+        that thinks in UTC will propose work at 2am his time."""
+        try:
+            from zoneinfo import ZoneInfo
+            return datetime.datetime.now(ZoneInfo("America/Toronto"))
+        except Exception:
+            return datetime.datetime.now()
+
+    def _ea_persona(self):
+        """Persona text from the vault profile. Strips YAML frontmatter, then
+        takes everything after the first standalone '---' divider in the body
+        (the file marks its own send-verbatim block that way), so the human
+        README at the top never reaches the model."""
+        path = VAULT_DIR / self.EA_PROFILE_REL
+        if not path.exists():
+            return None, f"missing: {self.EA_PROFILE_REL} (run sync-vault-to-git.bat, then let the VPS pull)"
+        try:
+            _meta, body = self._parse_frontmatter(path.read_text(encoding='utf-8'))
+            parts = re.split(r'(?m)^---\s*$', body, maxsplit=1)
+            text = (parts[1] if len(parts) > 1 else parts[0]).strip()
+            if not text:
+                return None, "profile parsed empty"
+            return text, None
+        except Exception as e:
+            return None, f"parse failed: {e}"
+
+    def _ea_tasks(self):
+        """Open kanban cards, newest lanes first. Done cards are noise to an EA."""
+        path = DATA_DIR / ".kanban_store.json"
+        if not path.exists():
+            return [], "no kanban store yet"
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                cards = json.load(f)
+            if not isinstance(cards, list):
+                return [], "kanban store is not a list"
+            out = []
+            for c in cards:
+                if c.get('column') == 'done':
+                    continue
+                out.append({
+                    "title": c.get('title', 'Untitled'),
+                    "column": c.get('column', 'backlog'),
+                    "priority": c.get('priority', 'medium'),
+                    "tag": c.get('tag', ''),
+                    "due": c.get('due', ''),
+                })
+            order = {"in-progress": 0, "in_progress": 0, "todo": 1, "backlog": 2}
+            out.sort(key=lambda t: (order.get(t["column"], 3), t["title"]))
+            return out, None
+        except Exception as e:
+            return [], f"read failed: {e}"
+
+    def _ea_pipeline(self):
+        """CRM cards from the vault mirror. Same folder _serve_crm_snapshot
+        reads, but keyed on 'company' (NOT 'title' — no CRM note has a title
+        field; that bug made every row render as its filename)."""
+        out_dir = VAULT_DIR / "CRM"
+        if not out_dir.exists():
+            return [], "no CRM folder in the vault mirror"
+        rows = []
+        try:
+            for f in sorted(out_dir.glob("*.md")):
+                if f.stem.lower() == "index":
+                    continue
+                try:
+                    meta, body = self._parse_frontmatter(f.read_text(encoding='utf-8'))
+                except Exception:
+                    continue
+                rows.append({
+                    "name": meta.get('name', f.stem),
+                    "company": meta.get('company', ''),
+                    "stage": meta.get('stage', ''),
+                    "status": meta.get('status', ''),
+                    "geo": meta.get('geo', ''),
+                    "next": meta.get('next', ''),
+                    "last_interaction": self._extract_crm_last_interaction(body),
+                })
+            return rows, None
+        except Exception as e:
+            return rows, f"partial read: {e}"
+
+    def _ea_triage(self):
+        """Untriaged captures — things Fadi dumped and hasn't decided on."""
+        try:
+            items = self._load_capture_inbox()
+            pending = [i for i in items if i.get('status', 'new') == 'new']
+            return [{"text": (i.get('text') or '')[:200], "at": i.get('created_at', '')}
+                    for i in pending[:15]], None
+        except Exception as e:
+            return [], f"read failed: {e}"
+
+    def _ea_brief(self):
+        """Today's Hermes morning brief, if the scheduled task has run."""
+        try:
+            d = datetime.date.today().isoformat()
+            f = DATA_DIR / "hermes" / f"morning-brief-{d}.md"
+            if not f.exists():
+                return None, "no brief for today"
+            return f.read_text(encoding='utf-8')[:4000], None
+        except Exception as e:
+            return None, f"read failed: {e}"
+
+    @staticmethod
+    def _ea_render(sections):
+        """Assemble the prompt. Live context goes AFTER the persona so the
+        rules frame the data, and each block is labelled with its provenance —
+        the persona forbids inventing data, so the model must be able to tell
+        what it was actually handed from what it's guessing."""
+        L = []
+        L.append(sections["persona"])
+        L.append("\n\n# ───────── LIVE CONTEXT ─────────")
+        L.append("Everything below was read from Fadi's system just now. It is fact. Anything NOT")
+        L.append("below, you do not know — say so rather than filling the gap.\n")
+
+        now = sections["now"]
+        L.append(f"## Right now\n{now['pretty']} ({now['tz']}).\n")
+
+        tasks = sections["tasks"]
+        if tasks:
+            L.append(f"## Open tasks ({len(tasks)})")
+            for t in tasks[:25]:
+                bits = [f"[{t['column']}]", t['title']]
+                if t['priority'] and t['priority'] != 'medium':
+                    bits.append(f"· {t['priority']} priority")
+                if t['tag']:
+                    bits.append(f"· #{t['tag']}")
+                if t['due']:
+                    bits.append(f"· due {t['due']}")
+                L.append("- " + " ".join(bits))
+            if len(tasks) > 25:
+                L.append(f"- …and {len(tasks) - 25} more.")
+            L.append("")
+        else:
+            L.append("## Open tasks\nNone on the board.\n")
+
+        pipe = sections["pipeline"]
+        if pipe:
+            L.append(f"## FieldBridge pipeline ({len(pipe)} contacts) — REPORTING ONLY")
+            L.append("You report on this. You never build the deliverables — that's a FieldBridge Cowork session.")
+            for p in pipe:
+                head = p['name'] + (f" — {p['company']}" if p['company'] else "")
+                L.append(f"\n**{head}**" + (f" · {p['geo']}" if p['geo'] else ""))
+                if p['stage']:
+                    L.append(f"  - Stage: {p['stage']}")
+                if p['status']:
+                    L.append(f"  - Status: {p['status']}")
+                if p['next']:
+                    L.append(f"  - Next: {p['next']}")
+                if p['last_interaction']:
+                    L.append(f"  - Last interaction: {p['last_interaction']}")
+            L.append("")
+
+        tri = sections["triage"]
+        if tri:
+            L.append(f"## Untriaged captures ({len(tri)})")
+            for i in tri:
+                L.append(f"- {i['text']}")
+            L.append("")
+
+        if sections.get("brief"):
+            L.append("## Hermes morning brief (today)\n" + sections["brief"] + "\n")
+
+        bad = [k for k, v in sections["sources"].items() if v]
+        if bad:
+            L.append("## ⚠️ Context gaps")
+            L.append("These sections failed to load. Do NOT guess at what they'd have contained —")
+            L.append("tell Fadi the section is unavailable if he asks about it:")
+            for k in bad:
+                L.append(f"- {k}: {sections['sources'][k]}")
+            L.append("")
+        return "\n".join(L)
+
+    def _serve_ea_context(self, query=None):
+        """GET /api/ea/context — the EA's assembled brain.
+
+        ?raw=1  → sections only, no rendered prompt (for debugging what the
+                  model is actually being told, without reading a wall of text)
+        """
+        try:
+            persona, persona_err = self._ea_persona()
+            tasks, tasks_err = self._ea_tasks()
+            pipeline, pipe_err = self._ea_pipeline()
+            triage, triage_err = self._ea_triage()
+            brief, brief_err = self._ea_brief()
+            now = self._ea_now()
+
+            # A missing persona is the one gap worth shouting about: without it
+            # the EA silently degrades to a generic assistant, which is the
+            # exact failure this endpoint exists to end.
+            if not persona:
+                persona = (
+                    "You are Fadi Felfel's executive assistant. ⚠️ Your full persona profile could "
+                    "not be loaded from the vault, so you are running on a fallback and do NOT have "
+                    "your normal briefing on Fadi. Tell him this at the START of your first reply and "
+                    "say the fix is: run sync-vault-to-git.bat, then let the VPS pull. Until then, be "
+                    "direct and concise, never claim knowledge you don't have, and never touch "
+                    "anything about Jackman Construction or KOC."
+                )
+
+            sources = {}
+            if persona_err: sources["persona"] = persona_err
+            if tasks_err:   sources["tasks"] = tasks_err
+            if pipe_err:    sources["pipeline"] = pipe_err
+            if triage_err and triage_err != "read failed: ":
+                sources["triage"] = triage_err
+            # A missing brief is normal before 05:15 — not worth flagging as a gap.
+            if brief_err and brief_err != "no brief for today":
+                sources["brief"] = brief_err
+
+            sections = {
+                "persona": persona,
+                "now": {
+                    "pretty": now.strftime("%A, %B %-d, %Y at %-I:%M %p") if os.name != 'nt'
+                              else now.strftime("%A, %B %d, %Y at %I:%M %p"),
+                    "iso": now.isoformat(),
+                    "tz": "America/Toronto",
+                },
+                "tasks": tasks,
+                "pipeline": pipeline,
+                "triage": triage,
+                "brief": brief,
+                "sources": sources,
+            }
+
+            q = query or {}
+            if (q.get('raw', [''])[0] or '') in ('1', 'true'):
+                sections.pop("persona", None)
+                self._json_response({"data": sections})
+                return
+
+            self._json_response({"data": {
+                "prompt": self._ea_render(sections),
+                "generated_at": now.isoformat(),
+                "counts": {
+                    "tasks": len(tasks),
+                    "pipeline": len(pipeline),
+                    "triage": len(triage),
+                    "chars": len(persona or ""),
+                },
+                "sources": sources,
+                "persona_loaded": persona_err is None,
+            }})
+        except Exception as e:
+            self._json_error(500, f"Failed to assemble EA context: {str(e)}")
 
     def _serve_tasks_impl(self):
         """Serve tasks: combine vault markdown checkboxes + kanban store"""

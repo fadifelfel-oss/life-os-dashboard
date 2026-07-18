@@ -221,6 +221,64 @@ anything on UI-MASTER-PLAN already marked done.
 5" file (or just say "resume Builder Session 5, Phase 2") with Fadi present at the keyboard — Phase 2
 items 5-8 are click-by-click and cannot be done unattended.
 
+## 2026-07-17 session #16 (Opus, Cowork, life-os-dashboard + Second Brain mounted) — UI AUDIT + EA Phase 1 (context endpoint + real system prompt)
+
+**Context:** Fadi restated the UI's purpose — it is **Hermes's EA hub**. Hermes must know everything
+about him and act (tasks, email drafts, files, calendar), report on FieldBridge (customers / pipeline /
+deliverables), and be talkable-to from his phone. FieldBridge deliverables stay the property of the
+FieldBridge HQ project; the UI only reports.
+
+**Audit → `UI-AUDIT-2026-07-17.md` (committed `19d2bc3`). Read it instead of re-deriving.** Chrome
+extension wasn't connected and the sandbox is network-blocked from the VPS, so the click-by-click was
+done statically: all 202 inline handlers resolved against their definitions (0 dead), all fetches
+resolved against the 52 server routes (0 unrouted), nav 24/24 live. **The UI is structurally sound —
+it is not an agent.**
+
+**Cleared this session:**
+- Close-out item 3 + Phase 0.3/0.4 of the audit backlog — the 3 stray Jul-15 files (`models.html`,
+  `model-catalog.js`, `server.py`) were committed (`b209ab7`) and `brain_v2_check.py` deleted. That
+  diff was a **real bug fix**: `google/lyria-3-pro-preview` — a MUSIC generation model — was ranked
+  #1 Free Champion for "Reasoning" and was the `budget` pick for the **`ingest` job**, so clip/PDF
+  summarization could route to an audio model. Plus 7 dead/typo'd IDs. It had sat undeployed 2 days.
+- **Memory corrected:** `productivity-hub-v1` said "uncommitted, awaiting push" — it was pushed
+  (`eaf8b48`) and live. That stale note caused a false report. Verify git state, don't trust the note.
+
+**EA Phase 1 shipped (audit items 1.1/1.2/1.3):**
+- **NEW `agent-profiles/hermes-ea.md` in the VAULT** = single source of truth for the EA persona.
+  Follows the `virtual-pm.md` pattern (Cowork writes vault → sync bat → GitHub → VPS mirror reads).
+  Carries: who Fadi is, family, the 4 priorities, **the retired-tripwire rule (no cutoff dates)**, the
+  Jackman/KOC hard rule, the FieldBridge property line (report, never produce), working style, the
+  05:00/06:45 constraints, and the coaching directive.
+- **NEW `GET /api/ea/context`** (`server.py`, ~line 1503) — assembles persona + live context (now /
+  open kanban / CRM pipeline / untriaged captures / today's morning brief) into a finished prompt
+  string. `?raw=1` returns sections without the persona, for debugging what the model is actually told.
+  Read-only, no new data store, degrades section-by-section and reports gaps in `sources` rather than
+  500ing. **Keys CRM on `company` — the `title` bug (audit item 4.1) is fixed in this path**;
+  `_serve_crm_snapshot` (line ~2812) still has it and still needs the one-line fix.
+- **`chat.html`:** `loadEAContext()` added beside `loadHealthContext()`/`loadPMContext()`, with a
+  **2-minute TTL** (those two cache forever, which is fine for a fitness program and wrong for open
+  tasks — a forever-cached EA argues with a board Fadi just triaged). Send path now gives every
+  persona a prompt.
+
+**⚠️ FINDING WORTH REMEMBERING:** `chat.html:1901` read
+`currentCoach !== 'lifeos' ? coach.systemPrompt : ''` — so the EA's one-sentence prompt **was never
+sent at all.** The EA has been running on a literally EMPTY system prompt since the coach system was
+built. The one-liner was dead code. Fixed.
+
+**Verified:** `py_compile` clean · handler/route audit re-run clean · endpoint exercised offline
+against the real vault (11,065-char prompt, 7 pipeline contacts, 0 gaps) · 4 degradation tests pass
+(missing mirror → self-announcing fallback + live tasks survive; corrupt kanban → that section only).
+
+**NOT done / next:** Phase 2 = the tool-calling layer (`grep tool_call server.py` → still 0). That is
+the real blocker — Hermes still cannot ACT. Phase 0.1 (domain) is Fadi's; he's buying one. HTTPS gates
+the phone mic (`getUserMedia` needs a secure origin) — the mic almost certainly does not work on his
+phone today.
+
+**Fadi must run `sync-vault-to-git.bat` BEFORE this deploy is meaningful** — without it,
+`hermes-ea.md` never reaches `/root/second-brain` and the endpoint serves its fallback.
+
+---
+
 ## 2026-07-14 session #15 (Sonnet, "PROMPT — Builder Session 5 — UI Close-Out & Enablement", life-os-dashboard + Second Brain folders mounted) — Phase 1 complete: Productivity Hub v1 (item 1), graph3d click-bug re-verified already fixed (item 2), close-out sweep prepared (item 3), STANDARD one-liner (item 4)
 
 Fadi pasted the Builder Session 5 prompt (Fable-planned, created 2026-07-13). Executed Phase 1
