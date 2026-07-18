@@ -2028,18 +2028,28 @@ async function sendMessage() {
 
     updateActivity('asking', `Asking ${currentModel}…`);
 
-    // stream_ui:true opts into server.py's SSE-lite activity trace (queue
-    // item 9a) instead of the old single blocking JSON response — a real
-    // "connecting" event, a real elapsed-second heartbeat while Hermes is in
-    // flight, then a done/error event carrying Hermes's actual reply. Default
-    // (flag omitted) behavior is unchanged for any other /api/chat caller.
+    // TWO MODES, deliberately exclusive (2026-07-17):
+    //
+    //  tools:true      → the EA agent loop (server.py _ea_tool_loop). Hermes can
+    //                    actually DO things: add tasks, search the vault, pull the
+    //                    pipeline. Returns one JSON blob + an ea_trace.
+    //  stream_ui:true  → the SSE-lite activity trace (queue item 9a): a real
+    //                    elapsed-second heartbeat while Hermes is in flight.
+    //
+    // They're exclusive because server.py checks stream_ui first and returns, so
+    // sending both would silently drop the tools. The honest trade: the EA loses
+    // the heartbeat and can sit quiet for a while on a multi-tool turn. Worth it —
+    // an assistant that acts beats an assistant with a nicer spinner. Merging the
+    // two (tool events ON the SSE stream) is the right eventual answer.
+    const useTools = currentCoach === 'lifeos';
+    if (useTools) updateActivity('asking', `${currentModel} — working (may take a moment if he uses tools)…`);
     const resp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: currentModel,
         messages: messages,
-        stream_ui: true
+        ...(useTools ? { tools: true } : { stream_ui: true })
       })
     });
 
@@ -2056,6 +2066,31 @@ async function sendMessage() {
       } catch (e) { /* body wasn't JSON — keep the status-only fallback */ }
       throw new Error(detail);
     }
+    // EA agent path: plain JSON, no SSE to parse. Fold each executed tool into
+    // the activity log so the finished message carries a real, auditable record
+    // of what Hermes DID — not just what he claims he did.
+    if (useTools) {
+      const payload = await resp.json();
+      removeActivity();
+      const reply = payload.choices?.[0]?.message?.content || 'No response';
+      const trace = payload.ea_trace || [];
+      trace.forEach(t => {
+        if (t.type === 'tool') {
+          currentActivityLog.push(`${t.ok ? '🔧' : '⚠️'} ${t.summary}`);
+        } else if (t.type === 'note') {
+          currentActivityLog.push(`ℹ️ ${t.text}`);
+        }
+      });
+      if (payload.ea_tools_native) {
+        console.info('Hermes server did not accept the OpenAI tools schema; native <tool_call> parsing was used.');
+      }
+      conversationHistory.push({ role: 'assistant', content: reply, time: new Date().toISOString() });
+      addMessage('assistant', reply, currentActivityLog.slice());
+      persistSession();
+      btn.disabled = false;
+      return;
+    }
+
     if (!resp.body) {
       throw new Error('This browser does not support the streaming response the chat activity trace needs.');
     }

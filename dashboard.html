@@ -19,7 +19,20 @@
     <div class="hub-date" id="hubDate">—</div>
   </div>
   <div class="hub-head-right">
-    <div class="hub-stat"><span class="hub-stat-num" id="hubDays">--</span><span class="hub-stat-label">days to Aug 6</span></div>
+    <!-- 2026-07-17: was a "days to Aug 6" COUNTDOWN. Removed deliberately.
+         Fadi retired the $10k/Jul-24 tripwire on 2026-07-13 and his own standing
+         rule is that Aug 6 is "simply when my leave from Jackman ends — a fact,
+         not a gate", and that the measure is a WEEKLY SHIPPING CADENCE, not a
+         countdown. A clock ticking down to a non-deadline was the first thing he
+         saw every morning. Replaced with the live pipeline count — it points at
+         customers (the actual measure) instead of at a date.
+         TODO: the real Saturday GTM scorecard (outreach/demos/assessments/
+         proposals/invoiced/collected) needs a data source that does not exist
+         yet — kanban cards carry no completion timestamp and there is no
+         scorecard store. Build that, then this tile becomes the scorecard. -->
+    <div class="hub-stat" style="cursor:pointer;" onclick="navigateTo('crm')" title="Open CRM">
+      <span class="hub-stat-num" id="hubPipeline">--</span><span class="hub-stat-label">in pipeline</span>
+    </div>
   </div>
 </div>
 
@@ -181,15 +194,23 @@ function escHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// Header: date + days to Aug 6
+// Header: date + live pipeline count (replaced the Aug 6 countdown, 2026-07-17 —
+// see the comment on #hubPipeline for why a countdown was the wrong metric here)
 (function(){
   const now = new Date();
   const el = document.getElementById('hubDate');
   if (el) el.textContent = now.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
-  const deadline = new Date('2026-08-06T00:00:00');
-  const days = Math.ceil((deadline - now) / 86400000);
-  const d = document.getElementById('hubDays');
-  if (d) d.textContent = days > 0 ? days : 0;
+  // Real count off the vault CRM mirror. Fails quiet: a dash beats a wrong number
+  // on the one tile Fadi looks at every morning.
+  fetch('/api/wiki/crm')
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(j => {
+      const rows = (j && j.data) || [];
+      const live = rows.filter(r => (r.company || r.name) && String(r.status||'').toLowerCase() !== 'parked');
+      const d = document.getElementById('hubPipeline');
+      if (d) d.textContent = live.length;
+    })
+    .catch(e => console.warn('Pipeline count unavailable:', e));
 })();
 
 function daysAgo(iso) {

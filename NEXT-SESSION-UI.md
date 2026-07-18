@@ -221,6 +221,73 @@ anything on UI-MASTER-PLAN already marked done.
 5" file (or just say "resume Builder Session 5, Phase 2") with Fadi present at the keyboard — Phase 2
 items 5-8 are click-by-click and cannot be done unattended.
 
+## 2026-07-17 session #16b — EA PHASE 2: TOOL-CALLING (Hermes can now ACT) + HTTPS live + fixes
+
+**HTTPS IS LIVE: https://os.fadifelfelos.com** (Cloudflare domain bought 2026-07-17, A record `os` →
+45.63.19.249 **grey cloud / DNS-only**, Caddy + Let's Encrypt). Root cause of the first failure was
+**ufw**: default deny with 22/8642/9119/8090/8091 allowed and **no 80/443**, so the ACME challenge
+timed out on both tls-alpn-01 and http-01 while Caddy sat listening correctly. `ufw allow 80,443/tcp`
+fixed it. Runbook: `DEPLOY-HTTPS.md`. **The phone mic is now unblocked** (getUserMedia needs a secure
+origin — it could never have worked on the old http://IP:8090).
+⚠️ **Port 8642 (Hermes API Server) is open to the world** — flagged to Fadi, `ufw delete allow 8642/tcp`
+once HTTPS is proven. Only 8090 needs to be public, and arguably not even that once Caddy fronts it.
+
+**PHASE 2 SHIPPED — `/api/chat` now has a real agent loop.** `grep tool_call server.py` is no longer 0.
+- `_ea_tool_specs()` / `_ea_run_tool()` / `_ea_tool_loop()` (server.py, near `_serve_tasks_impl`).
+  **Opt-in via `tools:true`** so every other `/api/chat` caller is untouched. chat.html sets it ONLY
+  for the `lifeos` EA persona — Health and PM coaches stay hands-off advisors.
+- **Tools:** `add_task` · `list_tasks` · `search_knowledge` · `find_file` · `read_file` ·
+  `report_pipeline`. Every one reuses an existing store/engine — **no new data lanes, no new writers.**
+  `add_task` writes the same `.kanban_store.json` the board reads (source: `"Hermes (EA)"`).
+- **DUAL PROTOCOL, deliberately:** tries OpenAI `tools`/`tool_calls` first; if the Hermes API Server
+  rejects the schema it falls back to parsing Hermes-native `<tool_call>{...}</tool_call>` out of the
+  content. The server's function-calling capability was **untested from this codebase** and could not be
+  probed from the Cowork sandbox (network-blocked from the VPS) — hence belt and braces. `ea_tools_native`
+  in the response says which path ran. **If tools misbehave live, check that flag first.**
+- **Guards are in CODE, not just the prompt:** `_ea_blocked_path()` hard-blocks Jackman/KOC on
+  search/find/read (a prompt rule is a suggestion; this is a control). Path-traversal guard on
+  `read_file`. Iteration cap `EA_TOOL_MAX_ITERS = 4`, and it SAYS it hit the cap rather than stalling.
+- **Trace:** every call returns in `ea_trace` and renders into chat.html's existing activity log
+  (🔧 per tool). An EA that acts without showing its work is worse than one that can't act.
+
+**⚠️ KNOWN TRADE-OFF:** `tools:true` and `stream_ui:true` are **mutually exclusive** — server.py checks
+`stream_ui` first and returns, so sending both silently drops the tools. The EA therefore loses the
+elapsed-second heartbeat and can sit quiet on a multi-tool turn. **The right fix is to emit tool events
+ON the SSE stream** and merge the two paths. Deliberately deferred.
+
+**Fixes this session:**
+- **`meta.get('title')` → `meta.get('company')`** in `_serve_crm_snapshot` (audit item 4.1). NO CRM note
+  has a `title:` field, so every row rendered as its FILENAME and the real company was parsed and thrown
+  away. Verified: now returns "National Investment Corporation PJSC (NIC UAE)".
+- **Chat session index moved OUT of `VAULT_DIR`** → `DATA_DIR` (was lines 4515/4580/4626). Bodies were
+  already in DATA_DIR, so this was split-brain AND a direct violation of the read-only-mirror rule at the
+  top of the file. A re-clone would have silently emptied the session list while every body survived.
+  One-time migration on first read.
+- **Empty-capture guard** on `/api/capture`. Two `(No speech detected)` rows were sitting in the live
+  triage inbox: Whisper returns that SENTINEL STRING on silence, so `if not text` sailed past it and the
+  mic filed a card for every silent tap. Also guards the classic silence hallucinations ("you", "thank you.").
+- **RETIRED TRIPWIRE PURGED** from the Karim CRM card (vault) — it said `USD 1,500 = tripwire-critical`
+  while the persona says there are no cutoff dates. **The data was contradicting the rules**, and data
+  usually wins with a model. Correction labelled in-place, not silently deleted.
+- **"days to Aug 6" COUNTDOWN REMOVED** from dashboard.html (the variable was literally named `deadline`).
+  Fadi's own directive: Aug 6 is "a fact, not a gate", the measure is a weekly shipping cadence. Replaced
+  with the live pipeline count off `/api/wiki/crm`.
+  **TODO — the real Saturday GTM scorecard (outreach/demos/assessments/proposals/invoiced/collected) has
+  NO DATA SOURCE.** Kanban cards carry no completion timestamp and there is no scorecard store. That
+  needs building before the tile can show what Fadi actually measures. Not faked in the meantime.
+
+**Verified offline against the real vault:** all 6 tools execute; add_task lands on the board and
+list_tasks reads it back; Jackman/KOC blocked on search AND read; path traversal blocked; unknown tool
+refused; native `<tool_call>` parsing works. **`brain.score_index` is the real entry point — `brain.search`
+does NOT exist**; an earlier `hasattr(brain,'search')` guess would have silently fallen through to a grep
+fallback forever. Caught before deploy.
+
+**NOT done / next:** `draft_email` + `create_calendar_event` need Make.com webhooks (Fadi builds them
+click-by-click; server side is a dispatch call). PWA + TTS + tap-to-talk (backlog 3.1-3.3) — now
+unblocked by HTTPS. Merge tools onto the SSE stream. The GTM scorecard data source.
+
+---
+
 ## 2026-07-17 session #16 (Opus, Cowork, life-os-dashboard + Second Brain mounted) — UI AUDIT + EA Phase 1 (context endpoint + real system prompt)
 
 **Context:** Fadi restated the UI's purpose — it is **Hermes's EA hub**. Hermes must know everything

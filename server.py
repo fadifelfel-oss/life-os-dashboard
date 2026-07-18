@@ -683,6 +683,24 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             if not text:
                 self._json_error(400, "text required")
                 return
+            # GUARD ADDED 2026-07-17: two "(No speech detected)" rows were found
+            # sitting in the live triage inbox. When Whisper hears nothing it
+            # returns that SENTINEL STRING rather than an empty one, so the
+            # `if not text` check above sails right past it and the mic files a
+            # capture card for every silent tap. Fadi then has to triage litter
+            # his own system invented. Reject the known sentinels — this is not a
+            # server error, so answer 200 with saved:false and let the client
+            # stay quiet about it.
+            _sentinels = {
+                "(no speech detected)",
+                "(no speech detected in audio)",
+                "(inaudible)",
+                "you",          # Whisper's classic hallucination on pure silence
+                "thank you.",   # ditto — both are well-documented artifacts
+            }
+            if text.lower().strip() in _sentinels:
+                self._json_response({"ok": True, "saved": False, "reason": "no speech detected — nothing captured"})
+                return
             source = str(data.get('source') or 'unknown').strip()[:40]
             item = {
                 "id": "cap_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S%f"),
@@ -1772,6 +1790,342 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             }})
         except Exception as e:
             self._json_error(500, f"Failed to assemble EA context: {str(e)}")
+
+    # ═══════════════════════════════════════════════════════════════════
+    # EA TOOLS (Phase 2, 2026-07-17) — this is what makes Hermes an agent
+    # ═══════════════════════════════════════════════════════════════════
+    # Before this, /api/chat was a blind text proxy: Hermes would answer "sure,
+    # I've added that to your list" and NOTHING happened. He could describe
+    # actions, never take them. The registry below plus _ea_tool_loop() closes
+    # that gap.
+    #
+    # Design decisions worth keeping:
+    #  - EVERY tool reuses an existing store or endpoint. No new data lanes, no
+    #    new writers. add_task lands in the same .kanban_store.json the board
+    #    already reads, so a task Hermes creates is indistinguishable from one
+    #    Fadi dragged in.
+    #  - Reads are free. Writes are reversible and traced. Nothing here sends an
+    #    email, moves money, or touches the vault (VAULT_DIR stays read-only).
+    #  - Every call is recorded in a trace the UI renders. An EA that acts
+    #    without showing its work is worse than one that can't act at all —
+    #    Fadi has to be able to audit it.
+    #  - Jackman/KOC is a hard rule in the persona, but a prompt rule is not a
+    #    control. search_knowledge and read_file ENFORCE it in code (see
+    #    _ea_blocked_path) — the model cannot retrieve those files even if it
+    #    tries, and the refusal is logged in the trace.
+
+    EA_TOOL_MAX_ITERS = 4   # generous for chained calls, bounded against loops
+
+    @staticmethod
+    def _ea_blocked_path(s):
+        """Hard block on Jackman/KOC. The persona forbids it; this ENFORCES it.
+        A rule that lives only in a prompt is a suggestion."""
+        low = str(s or '').lower()
+        return any(k in low for k in ('jackman', 'koc'))
+
+    def _ea_tool_specs(self):
+        """OpenAI-format tool specs. Descriptions are written FOR the model —
+        they say when to reach for each tool, since that judgement is the whole
+        game with a 70B-class model."""
+        return [
+            {"type": "function", "function": {
+                "name": "add_task",
+                "description": "Add a task to Fadi's kanban board. Use whenever he says to remember, add, track, or follow up on something actionable. Confirm back with the exact title you used.",
+                "parameters": {"type": "object", "properties": {
+                    "title": {"type": "string", "description": "Short imperative title, e.g. 'Chase Karim on the Employee 1 SOW'"},
+                    "priority": {"type": "string", "enum": ["high", "medium", "low"], "description": "Default medium"},
+                    "tag": {"type": "string", "enum": ["fieldbridge", "career", "trading", "second-brain", "personal", "urgent", "project"], "description": "Best-fit area"},
+                    "column": {"type": "string", "enum": ["backlog", "todo", "progress"], "description": "Default backlog"},
+                    "due": {"type": "string", "description": "YYYY-MM-DD, only if he gave a date"},
+                }, "required": ["title"]}}},
+            {"type": "function", "function": {
+                "name": "list_tasks",
+                "description": "Read Fadi's current open tasks. Your system prompt already has a snapshot — use this only to re-check AFTER you have added or changed something, or if he thinks it is stale.",
+                "parameters": {"type": "object", "properties": {
+                    "tag": {"type": "string", "description": "Optional filter, e.g. 'fieldbridge'"}}}}},
+            {"type": "function", "function": {
+                "name": "search_knowledge",
+                "description": "Search Fadi's Second Brain vault (150+ wiki pages: AI/AIOS, construction PM, business strategy, CRM). Use for 'what do I know about X', 'did I save anything on Y', or to ground a claim in his own notes rather than your training data.",
+                "parameters": {"type": "object", "properties": {
+                    "query": {"type": "string"}}, "required": ["query"]}}},
+            {"type": "function", "function": {
+                "name": "find_file",
+                "description": "Find files in the vault by name fragment. Use when he asks where something is or to pull up a document.",
+                "parameters": {"type": "object", "properties": {
+                    "name": {"type": "string", "description": "Part of a filename"}}, "required": ["name"]}}},
+            {"type": "function", "function": {
+                "name": "read_file",
+                "description": "Read a vault file's contents by its path (get the path from find_file or search_knowledge first).",
+                "parameters": {"type": "object", "properties": {
+                    "path": {"type": "string", "description": "Vault-relative path, e.g. 'CRM/Karim Filfil — NIC UAE.md'"}}, "required": ["path"]}}},
+            {"type": "function", "function": {
+                "name": "report_pipeline",
+                "description": "Full FieldBridge pipeline report: every customer and prospect, their stage, status, next action and last interaction. Use for 'who are my customers', 'what does the pipeline look like', 'what's gone quiet', 'what's owed to whom'. REPORTING ONLY — you never build the deliverables.",
+                "parameters": {"type": "object", "properties": {
+                    "name": {"type": "string", "description": "Optional: one contact's name for a deep dive"}}}}},
+        ]
+
+    def _ea_run_tool(self, name, args):
+        """Execute one tool. Returns (result_dict, human_summary_for_the_trace).
+        Never raises — a tool that blows up must report the failure to the model
+        so it can tell Fadi it failed, rather than inventing a success."""
+        try:
+            args = args if isinstance(args, dict) else {}
+
+            if name == "add_task":
+                title = str(args.get('title') or '').strip()
+                if not title:
+                    return {"error": "title is required"}, "add_task rejected: no title"
+                card = {
+                    "id": "hermes_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S%f"),
+                    "title": title[:200],
+                    "description": str(args.get('description') or ''),
+                    "priority": args.get('priority') if args.get('priority') in ('high', 'medium', 'low') else 'medium',
+                    "tag": args.get('tag') or 'project',
+                    "column": args.get('column') if args.get('column') in ('backlog', 'todo', 'progress') else 'backlog',
+                    "due": str(args.get('due') or ''),
+                    "source": "Hermes (EA)",
+                    "created_at": datetime.datetime.now().isoformat(),
+                }
+                path = DATA_DIR / ".kanban_store.json"
+                store = []
+                if path.exists():
+                    try:
+                        with open(path, 'r', encoding='utf-8') as f:
+                            store = json.load(f)
+                        if not isinstance(store, list):
+                            store = []
+                    except Exception:
+                        store = []
+                store.append(card)
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(store, f, indent=2)
+                return ({"ok": True, "added": card["title"], "column": card["column"], "id": card["id"]},
+                        f"Added task “{card['title']}” to {card['column']} ({card['priority']} · #{card['tag']})")
+
+            if name == "list_tasks":
+                tasks, err = self._ea_tasks()
+                if err:
+                    return {"error": err}, f"list_tasks failed: {err}"
+                tag = (args.get('tag') or '').strip().lower()
+                if tag:
+                    tasks = [t for t in tasks if t.get('tag', '').lower() == tag]
+                return ({"count": len(tasks), "tasks": tasks[:40]},
+                        f"Read {len(tasks)} open task(s)" + (f" tagged #{tag}" if tag else ""))
+
+            if name == "search_knowledge":
+                q = str(args.get('query') or '').strip()
+                if not q:
+                    return {"error": "query is required"}, "search_knowledge rejected: no query"
+                if self._ea_blocked_path(q):
+                    return ({"error": "blocked", "reason": "Jackman Construction and KOC are off-limits. Hard rule, no exceptions."},
+                            "⛔ BLOCKED: search mentioned Jackman/KOC")
+                hits = []
+                try:
+                    # brain.score_index is the SAME deterministic ladder that backs
+                    # /api/kb/search and the 3D Brain — so Hermes, the search box,
+                    # and the graph all agree on what the vault says. (Verified
+                    # 2026-07-17: brain.py exposes score_index, NOT search(); an
+                    # earlier hasattr(brain,'search') guess would have silently
+                    # fallen through to the grep fallback below forever.)
+                    res = brain.score_index(q, VAULT_DIR, data_dir=DATA_DIR, top_n=6)
+                    for r in res.get("results", []):
+                        if r.get("score", 0) <= 0:
+                            continue
+                        p = r.get("path", "")
+                        if self._ea_blocked_path(p):
+                            continue
+                        hits.append({"path": p, "title": p.split('/')[-1].replace('.md', ''),
+                                     "excerpt": (r.get("insight") or "")[:300]})
+                except Exception as e:
+                    print(f"[ea] brain.score_index failed, falling back to grep: {e}")
+                    hits = []
+                if not hits:
+                    # Fallback: plain filename+content grep so this tool degrades
+                    # to something useful instead of to nothing.
+                    ql = q.lower()
+                    for f in list(VAULT_DIR.rglob("*.md"))[:4000]:
+                        sp = str(f)
+                        if '.smart-env' in sp or '.obsidian' in sp or self._ea_blocked_path(sp):
+                            continue
+                        try:
+                            if ql in f.stem.lower():
+                                hits.append({"path": str(f.relative_to(VAULT_DIR)), "title": f.stem,
+                                             "excerpt": f.read_text(encoding='utf-8', errors='ignore')[:300]})
+                            elif ql in f.read_text(encoding='utf-8', errors='ignore').lower():
+                                hits.append({"path": str(f.relative_to(VAULT_DIR)), "title": f.stem, "excerpt": ""})
+                        except Exception:
+                            continue
+                        if len(hits) >= 6:
+                            break
+                return ({"count": len(hits), "results": hits},
+                        f"Searched the vault for “{q}” — {len(hits)} hit(s)")
+
+            if name == "find_file":
+                frag = str(args.get('name') or '').strip().lower()
+                if not frag:
+                    return {"error": "name is required"}, "find_file rejected: no name"
+                if self._ea_blocked_path(frag):
+                    return ({"error": "blocked", "reason": "Jackman/KOC are off-limits."}, "⛔ BLOCKED: find_file mentioned Jackman/KOC")
+                out = []
+                for f in VAULT_DIR.rglob("*"):
+                    sp = str(f)
+                    if not f.is_file() or '.smart-env' in sp or '.obsidian' in sp or '.git' in sp:
+                        continue
+                    if self._ea_blocked_path(sp):
+                        continue
+                    if frag in f.name.lower():
+                        out.append({"path": str(f.relative_to(VAULT_DIR)), "name": f.name,
+                                    "size_kb": round(f.stat().st_size / 1024, 1)})
+                    if len(out) >= 20:
+                        break
+                return {"count": len(out), "files": out}, f"Found {len(out)} file(s) matching “{frag}”"
+
+            if name == "read_file":
+                rel = str(args.get('path') or '').strip().lstrip('/')
+                if not rel:
+                    return {"error": "path is required"}, "read_file rejected: no path"
+                if self._ea_blocked_path(rel):
+                    return ({"error": "blocked", "reason": "Jackman/KOC are off-limits."}, "⛔ BLOCKED: read_file hit Jackman/KOC")
+                target = (VAULT_DIR / rel).resolve()
+                # Path-traversal guard: a model that hallucinates '../../etc/passwd'
+                # must not get it.
+                if not str(target).startswith(str(VAULT_DIR.resolve())):
+                    return {"error": "path outside the vault"}, "⛔ BLOCKED: read_file escaped the vault root"
+                if not target.exists() or not target.is_file():
+                    return {"error": f"not found: {rel}"}, f"read_file: {rel} not found"
+                text = target.read_text(encoding='utf-8', errors='ignore')
+                truncated = len(text) > 12000
+                return ({"path": rel, "truncated": truncated, "content": text[:12000]},
+                        f"Read {rel}" + (" (truncated to 12k chars)" if truncated else ""))
+
+            if name == "report_pipeline":
+                rows, err = self._ea_pipeline()
+                if err:
+                    return {"error": err}, f"report_pipeline failed: {err}"
+                who = (args.get('name') or '').strip().lower()
+                if who:
+                    rows = [r for r in rows if who in (r.get('name', '') + ' ' + r.get('company', '')).lower()]
+                return ({"count": len(rows), "contacts": rows},
+                        f"Pulled the pipeline — {len(rows)} contact(s)" + (f" matching “{who}”" if who else ""))
+
+            return {"error": f"unknown tool: {name}"}, f"Unknown tool: {name}"
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}"}, f"{name} threw: {type(e).__name__}"
+
+    @staticmethod
+    def _ea_parse_native_toolcalls(content):
+        """Nous Hermes models emit <tool_call>{"name":..,"arguments":{..}}</tool_call>
+        in the CONTENT when the server doesn't handle OpenAI function-calling
+        itself. We support both paths because the Hermes API Server's capability
+        here is untested from this codebase — if it speaks OpenAI tools we use
+        those; if it just talks, we parse. Belt and braces beats a silent no-op."""
+        calls = []
+        if not content:
+            return calls
+        for m in re.finditer(r'<tool_call>\s*(\{.*?\})\s*</tool_call>', content, re.S):
+            try:
+                obj = json.loads(m.group(1))
+                nm = obj.get('name')
+                a = obj.get('arguments', obj.get('parameters', {}))
+                if isinstance(a, str):
+                    try:
+                        a = json.loads(a)
+                    except Exception:
+                        a = {}
+                if nm:
+                    calls.append({"name": nm, "arguments": a or {}})
+            except Exception:
+                continue
+        return calls
+
+    def _ea_call_hermes(self, model, messages, tools=None, temperature=0.7, max_tokens=4000):
+        """One round-trip to the Hermes API Server. Returns (message_dict, error)."""
+        import urllib.request
+        payload = {"model": model, "messages": messages, "stream": False,
+                   "temperature": temperature, "max_tokens": max_tokens}
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
+        req = urllib.request.Request(
+            f"{HERMES_CHAT_PROXY_URL}/v1/chat/completions",
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json',
+                     'Authorization': 'Bearer life-os-dashboard-2026'},
+            method='POST')
+        try:
+            with urllib.request.urlopen(req, timeout=150) as r:
+                body = json.loads(r.read().decode('utf-8'))
+            return (body.get('choices', [{}])[0].get('message', {}) or {}), None
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = e.read().decode('utf-8', errors='replace')[:400]
+            except Exception:
+                pass
+            # A server that rejects the `tools` key tells us so here; the caller
+            # retries clean rather than dying.
+            return None, f"HTTP {e.code}: {detail or str(e)}"
+        except Exception as e:
+            return None, str(e)
+
+    def _ea_tool_loop(self, model, messages, temperature=0.7, max_tokens=4000):
+        """The agent loop: call Hermes → if it asked for tools, run them, feed the
+        results back, call again → until it answers in prose or we hit the cap.
+
+        Returns (final_text, trace, tools_supported)."""
+        tools = self._ea_tool_specs()
+        trace = []
+        convo = list(messages)
+        tools_supported = True
+
+        for _ in range(self.EA_TOOL_MAX_ITERS):
+            msg, err = self._ea_call_hermes(model, convo, tools=tools if tools_supported else None,
+                                            temperature=temperature, max_tokens=max_tokens)
+            if err and tools_supported and ('tool' in err.lower() or 'function' in err.lower() or '400' in err):
+                # The server choked on the tools key — fall back to native
+                # <tool_call> parsing for the rest of this turn.
+                trace.append({"type": "note", "text": "Server rejected OpenAI tool schema; using Hermes native tool_call parsing."})
+                tools_supported = False
+                continue
+            if err:
+                return None, trace, tools_supported
+
+            content = msg.get('content') or ''
+            calls = msg.get('tool_calls') or []
+            norm = []
+            for c in calls:
+                fn = c.get('function', {})
+                a = fn.get('arguments')
+                if isinstance(a, str):
+                    try:
+                        a = json.loads(a)
+                    except Exception:
+                        a = {}
+                norm.append({"id": c.get('id'), "name": fn.get('name'), "arguments": a or {}})
+            if not norm:
+                norm = [{"id": None, **c} for c in self._ea_parse_native_toolcalls(content)]
+
+            if not norm:
+                return content, trace, tools_supported   # plain answer — done
+
+            convo.append({"role": "assistant", "content": content,
+                          **({"tool_calls": calls} if calls else {})})
+            for c in norm:
+                result, summary = self._ea_run_tool(c["name"], c["arguments"])
+                trace.append({"type": "tool", "name": c["name"], "args": c["arguments"],
+                              "summary": summary, "ok": "error" not in result})
+                if c.get("id"):
+                    convo.append({"role": "tool", "tool_call_id": c["id"],
+                                  "name": c["name"], "content": json.dumps(result)[:8000]})
+                else:
+                    convo.append({"role": "user",
+                                  "content": f"<tool_response>{json.dumps(result)[:8000]}</tool_response>"})
+
+        # Cap hit. Say so rather than pretending — a silent stall after N tool
+        # calls is exactly how an EA loses trust.
+        return ("I ran several steps but didn't reach a clean answer within my tool limit. "
+                "Here's what I did — ask me to continue if this is on track."), trace, tools_supported
 
     def _serve_tasks_impl(self):
         """Serve tasks: combine vault markdown checkboxes + kanban store"""
@@ -3082,7 +3436,14 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
                         continue
                     rows.append({
                         # --- existing keys (crm.html contract — do not change) ---
-                        "company": meta.get('title', f.stem),
+                        # FIXED 2026-07-17: this read meta.get('title', f.stem).
+                        # NO CRM note has a `title:` field — all 7 have `company:` —
+                        # so this ALWAYS fell through to the filename, and every CRM
+                        # row rendered as "Bassam El-Sakka — AGCM Abu Dhabi" instead
+                        # of "Al Ahd General Contracting LLC (AGCM)". The real
+                        # company value was parsed and thrown away. Filename stays
+                        # as the last-resort fallback.
+                        "company": meta.get('company', meta.get('title', f.stem)),
                         "stage": meta.get('stage', ''),
                         "trade": meta.get('trade', ''),
                         "region": meta.get('region', ''),
@@ -3653,6 +4014,29 @@ class LifeOSHandler(http.server.BaseHTTPRequestHandler):
             # unchanged, for backward compat with any other /api/chat caller.
             if data.get('stream_ui'):
                 self._handle_chat_proxy_stream_ui(model, messages, data)
+                return
+
+            # EA TOOLS (Phase 2, 2026-07-17). Opt-in via tools:true so every other
+            # caller of /api/chat keeps its exact current behaviour — this endpoint
+            # has several clients and a blanket change would be a blast radius for
+            # no reason. chat.html sets the flag only for the 'lifeos' EA persona;
+            # the Health and PM coaches stay pure advisors with no hands.
+            if data.get('tools'):
+                text, trace, tools_supported = self._ea_tool_loop(
+                    model, messages,
+                    temperature=data.get('temperature', 0.7),
+                    max_tokens=data.get('max_tokens', 4000))
+                if text is None:
+                    self._json_error(502, "Could not reach Hermes while running tools. Nothing was executed.")
+                    return
+                # Same envelope the plain path returns, plus ea_trace. The client
+                # renders the trace; older clients ignore the extra key.
+                self._json_response({
+                    "choices": [{"message": {"role": "assistant", "content": text},
+                                 "finish_reason": "stop"}],
+                    "ea_trace": trace,
+                    "ea_tools_native": not tools_supported,
+                })
                 return
 
             # Build OpenAI-compatible request
@@ -4486,8 +4870,23 @@ tags: {data.get('tags', [])}
     # ═══════════════════════════════════════════════════════════
 
     def _serve_chat_sessions(self):
-        """GET /api/chat/sessions — list all chat sessions (index only, no full message bodies)"""
-        index_path = VAULT_DIR / ".chat_sessions_index.json"
+        """GET /api/chat/sessions — list all chat sessions (index only, no full message bodies)
+
+        MOVED 2026-07-17: this index used to be written to VAULT_DIR while the
+        session BODIES were written to DATA_DIR/.chat_sessions/ — split-brain,
+        and a direct violation of the read-only-mirror rule stated at the top of
+        this file ("ALL server-side writes go here — never into VAULT_DIR").
+        VAULT_DIR is a git clone; a re-clone or hard reset would silently empty
+        the session list while every body survived. Index now lives beside the
+        bodies in DATA_DIR. Migrates the old file once, on first read."""
+        index_path = DATA_DIR / ".chat_sessions_index.json"
+        legacy_path = VAULT_DIR / ".chat_sessions_index.json"
+        if not index_path.exists() and legacy_path.exists():
+            try:
+                index_path.write_text(legacy_path.read_text(encoding='utf-8'), encoding='utf-8')
+                print(f"[migrate] chat session index moved out of the vault mirror -> {index_path}")
+            except Exception as e:
+                print(f"[migrate] chat session index migration failed (non-fatal): {e}")
         sessions = []
         if index_path.exists():
             try:
@@ -4552,7 +4951,7 @@ tags: {data.get('tags', [])}
                 self._log_skill_mentions(new_messages)
 
             # Update lightweight index used by the sidebar
-            index_path = VAULT_DIR / ".chat_sessions_index.json"
+            index_path = DATA_DIR / ".chat_sessions_index.json"
             index = []
             if index_path.exists():
                 try:
@@ -4598,7 +4997,7 @@ tags: {data.get('tags', [])}
             if session_path.exists():
                 session_path.unlink()
 
-            index_path = VAULT_DIR / ".chat_sessions_index.json"
+            index_path = DATA_DIR / ".chat_sessions_index.json"
             if index_path.exists():
                 with open(index_path, 'r', encoding='utf-8') as f:
                     index = json.load(f)
